@@ -1,0 +1,12 @@
+.git
+.venv
+**/__pycache__
+.pytest_cache
+web/node_modules
+web/dist
+.env
+.env.*
+.claude
+Claude MD file
+Perplexity MD file
+docs/mockup

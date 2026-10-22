@@ -31,7 +31,7 @@ def test_measure_ignores_frames_with_the_ball_near_the_defending_goal():
 def test_classify():
     assert classify(25.0, 800.0, 0.0) == "low_block"
     assert classify(50.0, 900.0, 1.0) == "high_press"
-    assert classify(50.0, 900.0, 0.2) == "mid_block"
+    assert classify(50.0, 900.0, 0.1) == "mid_block"
     assert classify(35.0, 900.0, 1.0) == "mid_block"
 
 

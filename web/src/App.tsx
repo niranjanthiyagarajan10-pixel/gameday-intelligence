@@ -1,0 +1,205 @@
+import { useEffect, useMemo, useState } from "react";
+import type { Audience, MatchState, Side } from "./types";
+import { useMatch } from "./useMatch";
+import { Live } from "./components/Live";
+import { Analyst } from "./components/Analyst";
+import { clock } from "./format";
+
+const SPEEDS = [1, 4, 10, 30];
+
+/** Room from the URL. ?t=55 asks the server for a private replay that starts at minute 55. */
+function useRoom(): string | null {
+  const [room, setRoom] = useState<string | null>(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("room") ?? (p.get("t") ? null : "main");
+  });
+  useEffect(() => {
+    if (room) return;
+    const p = new URLSearchParams(location.search);
+    fetch("/api/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start_minute: Number(p.get("t")) || 0, speed: Number(p.get("speed")) || 1 }),
+    })
+      .then((r) => r.json())
+      .then((body) => {
+        p.delete("t");
+        p.set("room", body.room_id);
+        history.replaceState(null, "", `?${p.toString()}`);
+        setRoom(body.room_id);
+      })
+      .catch(() => setRoom("main"));
+  }, [room]);
+  return room;
+}
+
+function Scoreboard({ state }: { state: MatchState }) {
+  const { roster, stats, analyst, status, halfS } = state;
+  if (!roster || !stats) return null;
+  const men = analyst?.men ?? [11, 11];
+  const half = status === "full_time" ? "Full time" : stats.t < halfS ? "First half" : "Second half";
+  const team = (side: Side) => {
+    const c = roster.clubs[side];
+    const reds = 11 - men[side === "home" ? 0 : 1];
+    return { c, reds, sub: `${side === "home" ? "Home" : "Away"}. ${c.formation}${reds ? `, down to ${11 - reds}` : ""}` };
+  };
+  const h = team("home");
+  const a = team("away");
+  return (
+    <section className="score">
+      <div className="team">
+        <div className="crest" style={{ background: h.c.primary }}>
+          {h.c.short}
+        </div>
+        <div>
+          <div className="nm">
+            {h.c.name}
+            {Array.from({ length: h.reds }, (_, i) => (
+              <span key={i} className="redc" />
+            ))}
+          </div>
+          <div className="sub">{h.sub}</div>
+        </div>
+      </div>
+      <div className="mid">
+        <div className="sc num">
+          {stats.score[0]}
+          <i>:</i>
+          {stats.score[1]}
+        </div>
+        <div className="live">
+          <span className={`dot ${status === "live" && !state.paused ? "" : "off"}`} />
+          <span className="num">{status === "full_time" ? "FT" : clock(stats.t)}</span>
+          <span className="label" style={{ marginLeft: 4 }}>
+            {status === "catching_up" ? "Catching up" : state.paused ? "Paused" : half}
+          </span>
+        </div>
+      </div>
+      <div className="team r">
+        <div>
+          <div className="nm">
+            {a.c.name}
+            {Array.from({ length: a.reds }, (_, i) => (
+              <span key={i} className="redc" />
+            ))}
+          </div>
+          <div className="sub">{a.sub}</div>
+        </div>
+        <div className="crest" style={{ background: a.c.primary }}>
+          {a.c.short}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function App() {
+  const room = useRoom();
+  const { state, control } = useMatch(room ?? "main");
+  const [tab, setTab] = useState<"live" | "analyst">("live");
+  const [depth, setDepth] = useState<Audience>("casual");
+  const [club, setClub] = useState<Side | "">("");
+  const [focus, setFocus] = useState<string | null>(null);
+  const { roster, stats, analyst } = state;
+
+  useEffect(() => {
+    if (roster && focus === null && roster.players["KR10"]) setFocus("KR10");
+  }, [roster, focus]);
+
+  const onPitch = useMemo(
+    () => (state.frame?.players.map((p) => p[0]) ?? []).filter((id) => roster?.players[id]),
+    [state.frame, roster],
+  );
+
+  const toggleDepth = () => {
+    const next = depth === "casual" ? "analyst" : "casual";
+    setDepth(next);
+    setTab(next === "analyst" ? "analyst" : "live");
+  };
+
+  if (!room || !roster || !stats) {
+    return (
+      <div className="wrap">
+        <header className="topbar">
+          <div className="brand">
+            <b>Gameday</b>
+            <span>Intelligence</span>
+          </div>
+        </header>
+        <div className="empty" style={{ padding: 24 }}>
+          {room ? "Connecting to the match feed." : "Starting your replay."}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wrap">
+      <header className="topbar">
+        <div className="brand">
+          <b>Gameday</b>
+          <span>Intelligence</span>
+        </div>
+        <div className="tabs">
+          <button className={`tab ${tab === "live" ? "on" : ""}`} onClick={() => setTab("live")}>
+            Live Match
+          </button>
+          <button className={`tab ${tab === "analyst" ? "on" : ""}`} onClick={() => setTab("analyst")}>
+            Analyst
+          </button>
+        </div>
+        <div className="settings">
+          <button className="set" onClick={toggleDepth} title="Switch between casual and analyst depth">
+            <span className="label">Depth</span>
+            <b>{depth === "casual" ? "Casual" : "Analyst"}</b>
+          </button>
+          <label className="set">
+            <span className="label">My club</span>
+            <select value={club} onChange={(e) => setClub(e.target.value as Side | "")}>
+              <option value="">None</option>
+              <option value="home">{roster.clubs.home.short}</option>
+              <option value="away">{roster.clubs.away.short}</option>
+            </select>
+          </label>
+          <label className={`set ${focus ? "on" : ""}`}>
+            <span className="label">Player focus</span>
+            <select value={focus ?? ""} onChange={(e) => setFocus(e.target.value || "")}>
+              <option value="">Off</option>
+              {(["home", "away"] as Side[]).map((side) => (
+                <optgroup key={side} label={roster.clubs[side].name}>
+                  {onPitch
+                    .filter((id) => roster.players[id].side === side)
+                    .sort((x, y) => roster.players[x].number - roster.players[y].number)
+                    .map((id) => (
+                      <option key={id} value={id}>
+                        #{roster.players[id].number} {roster.players[id].short}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <div className="playback" aria-label="Playback">
+            <span className={`conn ${state.connected ? "ok" : ""}`} title={state.connected ? "Connected" : "Reconnecting"} />
+            {SPEEDS.map((s) => (
+              <button key={s} className={state.speed === s ? "on" : ""} onClick={() => control("speed", s)}>
+                {s}x
+              </button>
+            ))}
+            <button onClick={() => control(state.paused ? "resume" : "pause")}>{state.paused ? "Play" : "Pause"}</button>
+            <button onClick={() => control("restart")}>Restart</button>
+          </div>
+        </div>
+      </header>
+
+      <Scoreboard state={state} />
+
+      <main className={tab === "live" ? "" : "hidden"}>
+        <Live state={state} depth={depth} focus={focus || null} />
+      </main>
+      <main className={tab === "analyst" ? "" : "hidden"}>
+        {analyst && <Analyst analyst={analyst} roster={roster} halfS={state.halfS} now={stats.t} />}
+      </main>
+    </div>
+  );
+}

@@ -307,7 +307,10 @@ class LiveStats:
         self.leverage_log[e.event_id] = lev
         if abs(lev.value) < LEVERAGE_MOMENT:
             return []
-        player = e.player_id or (lev.credits[0].player_id if lev.credits else "")
+        if lev.action == "misplaced_pass":
+            player = next((c.player_id for c in lev.credits if c.kind == "turnovers"), "")
+        else:
+            player = e.player_id or (lev.credits[0].player_id if lev.credits else "")
         return self._moment(
             "leverage_swing", e, lev.value, [c.player_id for c in lev.credits],
             {"action": lev.action, "player": player, "wp_before": round(lev.wp_before, 3),

@@ -335,7 +335,7 @@ line_height = mean distance from own goal of the four deepest outfield players
 compactness = area of the convex hull of the outfield players
 pressers    = defenders within 5 m of the ball
 low block:  line_height < 30 m and compactness below 1000 m2
-high press: line_height > 45 m and pressers >= 0.6 on average (calibrated on simulated matches)
+high press: line_height > 45 m and pressers >= 0.35 on average (calibrated on simulated matches)
 mid block:  otherwise
 ```
 Emit a `shape_change` moment when a team's state changes and holds for at least 60 s.
@@ -369,7 +369,7 @@ Built with Microsoft Agent Framework on Foundry. Fast model for Editor and Perso
 Rules:
 - Every number and every name is a slot. Code fills slots.
 - Verifier calls the deterministic `verify_claims` tool. It checks that each slot value exists in evidence and that each claim matches the numbers (direction, size, minute).
-- On fail: send reasons back to the author agent. Maximum 2 retries, then use the template in `agents/templates/{kind}.txt`.
+- On fail: send reasons back to the author agent. Maximum 2 retries, then use the fallback template for that moment in `agents/fallback.py`.
 - Personalizer output is re-checked for slot integrity before use.
 - Analyst only uses read-only MCP tools. If the data cannot answer, it says so.
 - Timeout per model call: 8 seconds. On timeout use fallback or replay cache.

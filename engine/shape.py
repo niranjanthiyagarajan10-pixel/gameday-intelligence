@@ -7,7 +7,7 @@ rolling 60 s window:
   compactness = convex hull area of the outfield players
   pressers    = defenders within 5 m of the ball
   low block:  line_height < 30 m and compactness below the baseline
-  high press: line_height > 45 m and at least 0.6 pressers on average (calibrated on simulated matches)
+  high press: line_height > 45 m and at least 0.35 pressers on average (calibrated on simulated matches)
   mid block:  otherwise
 A change is confirmed only after the new state has held for 60 s.
 """
@@ -33,7 +33,7 @@ MIN_SAMPLES_S = 10.0
 LOW_LINE_M = 30.0
 HIGH_LINE_M = 45.0
 PRESS_RADIUS_M = 5.0
-HIGH_PRESSERS = 0.6
+HIGH_PRESSERS = 0.35
 COMPACT_BASELINE_M2 = 1000.0
 BACK_LINE = 4
 BALL_ZONE_M = (50.0, 85.0)  # ball distance from the defending team's goal

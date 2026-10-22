@@ -12,10 +12,13 @@ requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.0,<3",
     "pydantic>=2.8,<3",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "websockets>=13,<16",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "httpx>=0.27,<1"]
 
 [tool.setuptools.packages.find]
 include = ["engine*", "agents*", "mcp_server*", "app*"]
@@ -24,3 +27,4 @@ include = ["engine*", "agents*", "mcp_server*", "app*"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:Using `httpx`"]
