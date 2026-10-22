@@ -5,8 +5,8 @@ from engine.models import TrackingFrame
 
 
 @pytest.mark.parametrize("distance, expected", [(6, 0.49), (11, 0.24), (16, 0.12), (25, 0.04)])
-def test_xg_calibration_points(distance, expected):
-    assert metrics.xg(105 - distance, 34) == pytest.approx(expected, abs=0.02)
+def test_prior_xg_calibration_points(distance, expected):
+    assert metrics.PRIOR_XG.prob(105 - distance, 34) == pytest.approx(expected, abs=0.02)
 
 
 def test_xg_falls_with_distance_angle_headers_and_pressure():
@@ -14,6 +14,34 @@ def test_xg_falls_with_distance_angle_headers_and_pressure():
     assert metrics.xg(95, 34) > metrics.xg(95, 10)
     assert metrics.xg(95, 34, header=True) < metrics.xg(95, 34)
     assert metrics.xg(95, 34, pressure=1.0) < metrics.xg(95, 34)
+
+
+def test_fit_xg_recovers_known_coefficients():
+    from engine.rng import SeedTree
+
+    truth = metrics.XGModel(intercept=-0.5, distance=-0.12, angle=1.1, header=-0.9, pressure=-0.7, defender=0.15)
+    gen = SeedTree(5).generator("xg-fit-test")
+    feats, goals = [], []
+    for _ in range(40000):
+        xa, ya = gen.uniform(75, 104), gen.uniform(14, 54)
+        header, pressure, defender = bool(gen.random() < 0.2), float(gen.random()), float(gen.uniform(0.5, 8))
+        feats.append(metrics.shot_features(xa, ya, header, pressure, defender, 3.0))
+        goals.append(float(gen.random() < truth.prob(xa, ya, header, pressure, defender)))
+    fitted = metrics.fit_xg(feats, goals)
+    assert fitted.distance == pytest.approx(truth.distance, abs=0.02)
+    assert fitted.defender == pytest.approx(truth.defender, abs=0.03)
+    assert fitted.header == pytest.approx(truth.header, abs=0.15)
+
+
+def test_xg_model_round_trip_and_defender_cap():
+    m = metrics.XGModel(intercept=-1.0, distance=-0.1, angle=1.0, header=-1.0, pressure=-0.5, defender=0.2)
+    assert metrics.XGModel.from_json(m.to_json()) == m
+    assert m.logit(95, 34, defender_m=20.0) == pytest.approx(m.logit(95, 34, defender_m=metrics.DEFENDER_CAP_M))
+
+
+def test_nearest_defender():
+    assert metrics.nearest_defender(90.0, 34.0, [[93.0, 38.0], [80.0, 34.0]]) == pytest.approx(5.0)
+    assert metrics.nearest_defender(90.0, 34.0, []) is None
 
 
 def test_pass_completion_falls_with_distance_pressure_and_forwardness():
@@ -29,8 +57,8 @@ def test_vectorized_models_match_scalar_ones():
     import numpy as np
 
     xs, ys = np.array([80.0, 95.0]), np.array([20.0, 34.0])
-    for x, y, z in zip(xs, ys, metrics.xg_logit_array(xs, ys)):
-        assert z == pytest.approx(metrics.xg_logit(x, y))
+    for x, y, z in zip(xs, ys, metrics.PRIOR_XG.logit_array(xs, ys)):
+        assert z == pytest.approx(metrics.PRIOR_XG.logit(x, y))
     for x, y, z in zip(xs, ys, metrics.pass_logit_array(50.0, 34.0, xs, ys, 0.3)):
         assert z == pytest.approx(metrics.pass_logit(50.0, 34.0, x, y, 0.3))
 

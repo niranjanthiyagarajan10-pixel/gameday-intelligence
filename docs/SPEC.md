@@ -335,7 +335,7 @@ Block and press detection (from tracking frames, per team, rolling 60 s window w
 line_height = mean distance from own goal of the four deepest outfield players
 compactness = area of the convex hull of the outfield players
 pressers    = defenders within 5 m of the ball
-low block:  line_height < 30 m and compactness below 1000 m2
+low block:  line_height < 36 m and compactness below 650 m2 (set on training matches, scored on held-out ones)
 high press: line_height > 45 m and pressers >= 0.35 on average (calibrated on simulated matches)
 mid block:  otherwise
 ```

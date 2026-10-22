@@ -257,7 +257,8 @@ class LiveStats:
     def _shot(self, e: MatchEvent, k: int) -> list[Moment]:
         xa, ya = to_attacking(e.x, e.y, e.team)
         header = e.body_part == "head"
-        xg = metrics.xg(xa, ya, header, e.pressure)
+        defender_m = self._defender_distance(e)
+        xg = metrics.xg(xa, ya, header, e.pressure, defender_m)
         score_before = f"{self.score[0]}-{self.score[1]}"
         self.xg[k] += xg
         shooter = e.player_id or ""
@@ -276,7 +277,7 @@ class LiveStats:
             distance_m=round(distance, 1),
             angle_deg=round(math.degrees(angle), 1),
             pressure=e.pressure,
-            defender_m=self._defender_distance(e),
+            defender_m=None if defender_m is None else round(defender_m, 1),
             creator=creator,
             score_before=score_before,
             wp_if_goal=round(lev.wp_actual if goal else lev.wp_opposite, 4),
@@ -300,12 +301,17 @@ class LiveStats:
         return []
 
     def _defender_distance(self, e: MatchEvent) -> float | None:
-        """Distance from the shooter to the nearest outfield opponent in the latest tracking frame."""
+        """Distance from the shooter to the nearest outfield defender: from the shot's freeze frame
+        when the feed sends one, otherwise from the latest tracking frame."""
+        frozen = e.meta.get("defenders")
+        if frozen:
+            return metrics.nearest_defender(e.x, e.y, frozen)
         f = self._last_frame
         if f is None:
             return None
-        gaps = [math.hypot(p.x - e.x, p.y - e.y) for p in f.players if p.team != e.team and p.id not in self._keepers]
-        return round(min(gaps), 1) if gaps else None
+        return metrics.nearest_defender(
+            e.x, e.y, [(p.x, p.y) for p in f.players if p.team != e.team and p.id not in self._keepers]
+        )
 
     def _goal(self, e: MatchEvent, k: int) -> list[Moment]:
         self.score[k] += 1

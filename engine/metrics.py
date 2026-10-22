@@ -7,9 +7,11 @@ metrics here have to recover the truth from data, the way real models do.
 
 from __future__ import annotations
 
+import json
 import math
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 import numpy as np
 
@@ -24,25 +26,118 @@ def sigmoid(z: float) -> float:
     return e / (1.0 + e)
 
 
-# Expected goals. Unpressured central shots: 6 m about 0.49, 11 m about 0.24,
-# 16 m about 0.12, 25 m about 0.04. Penalties are not simulated.
-XG = {"intercept": -0.8, "distance": -0.11, "angle": 1.3, "header": -1.0, "pressure": -0.8}
+# Expected goals: a logistic model of distance, goal-mouth angle, header, pressure and the
+# distance to the nearest outfield defender (the NBA's "defender contest"). The coefficients
+# are fitted by regression on simulated shots (engine/calibrate.py writes data/models/xg.json).
+# PRIOR_XG is the hand-set starting point used until a fitted model exists.
+
+XG_PATH = Path(__file__).resolve().parent.parent / "data" / "models" / "xg.json"
+DEFENDER_CAP_M = 8.0  # a defender further than this does not affect the shot
 
 
-def xg_logit(x_att: float, y_att: float, header: bool = False, pressure: float = 0.0) -> float:
-    distance, angle = goal_geometry(x_att, y_att)
-    return (
-        XG["intercept"]
-        + XG["distance"] * distance
-        + XG["angle"] * angle
-        + XG["header"] * float(header)
-        + XG["pressure"] * pressure
-    )
+@dataclass(frozen=True)
+class XGModel:
+    intercept: float
+    distance: float
+    angle: float
+    header: float
+    pressure: float
+    defender: float = 0.0
+    defender_default: float = 3.0  # used when a shot comes without defender positions
+
+    def logit(
+        self, x_att: float, y_att: float, header: bool = False, pressure: float = 0.0, defender_m: float | None = None
+    ) -> float:
+        distance, angle = goal_geometry(x_att, y_att)
+        d = self.defender_default if defender_m is None else min(defender_m, DEFENDER_CAP_M)
+        return (
+            self.intercept
+            + self.distance * distance
+            + self.angle * angle
+            + self.header * float(header)
+            + self.pressure * pressure
+            + self.defender * d
+        )
+
+    def prob(
+        self, x_att: float, y_att: float, header: bool = False, pressure: float = 0.0, defender_m: float | None = None
+    ) -> float:
+        return sigmoid(self.logit(x_att, y_att, header, pressure, defender_m))
+
+    def logit_array(self, x_att: np.ndarray, y_att: np.ndarray) -> np.ndarray:
+        """Unpressured, footed shots from many spots at once."""
+        dx = np.maximum(PITCH_LENGTH - x_att, 0.1)
+        distance = np.hypot(dx, CENTER_Y - y_att)
+        angle = np.abs(np.arctan2(GOAL_Y_HIGH - y_att, dx) - np.arctan2(GOAL_Y_LOW - y_att, dx))
+        return self.intercept + self.distance * distance + self.angle * angle + self.defender * self.defender_default
+
+    def to_json(self) -> str:
+        return json.dumps({k: round(v, 5) for k, v in asdict(self).items()}, indent=2)
+
+    @classmethod
+    def from_json(cls, text: str) -> XGModel:
+        return cls(**json.loads(text))
+
+    @classmethod
+    def load(cls, path: Path = XG_PATH) -> XGModel:
+        return cls.from_json(path.read_text(encoding="utf-8")) if path.exists() else PRIOR_XG
 
 
-def xg(x_att: float, y_att: float, header: bool = False, pressure: float = 0.0) -> float:
+# Unpressured central shots: 6 m about 0.49, 11 m about 0.24, 16 m about 0.12, 25 m about 0.04.
+PRIOR_XG = XGModel(intercept=-0.8, distance=-0.11, angle=1.3, header=-1.0, pressure=-0.8)
+XG_MODEL = XGModel.load()
+
+
+def xg_logit(
+    x_att: float, y_att: float, header: bool = False, pressure: float = 0.0, defender_m: float | None = None
+) -> float:
+    return XG_MODEL.logit(x_att, y_att, header, pressure, defender_m)
+
+
+def xg(
+    x_att: float, y_att: float, header: bool = False, pressure: float = 0.0, defender_m: float | None = None
+) -> float:
     """Probability that a shot from this spot, in the shooter's attacking frame, is a goal."""
-    return sigmoid(xg_logit(x_att, y_att, header, pressure))
+    return XG_MODEL.prob(x_att, y_att, header, pressure, defender_m)
+
+
+def nearest_defender(x: float, y: float, defenders: list[list[float]] | list[tuple[float, float]]) -> float | None:
+    """Distance from a shot to the closest outfield defender, from a freeze frame or tracking frame."""
+    if not defenders:
+        return None
+    return min(math.hypot(dx - x, dy - y) for dx, dy in defenders)
+
+
+def shot_features(
+    x_att: float, y_att: float, header: bool, pressure: float, defender_m: float | None, default_defender: float
+) -> list[float]:
+    distance, angle = goal_geometry(x_att, y_att)
+    d = default_defender if defender_m is None else min(defender_m, DEFENDER_CAP_M)
+    return [1.0, distance, angle, float(header), pressure, d]
+
+
+def fit_xg(features: list[list[float]], goals: list[float], ridge: float = 1e-3, iterations: int = 30) -> XGModel:
+    """Logistic regression by Newton's method (iteratively reweighted least squares) with a small ridge."""
+    X = np.array(features, dtype=float)
+    y = np.array(goals, dtype=float)
+    beta = np.zeros(X.shape[1])
+    beta[0] = math.log(max(y.mean(), 1e-6) / max(1 - y.mean(), 1e-6))
+    penalty = ridge * np.eye(X.shape[1])
+    penalty[0, 0] = 0.0
+    for _ in range(iterations):
+        p = 1.0 / (1.0 + np.exp(-X @ beta))
+        w = p * (1.0 - p)
+        gradient = X.T @ (y - p) - penalty @ beta
+        hessian = (X * w[:, None]).T @ X + penalty
+        step = np.linalg.solve(hessian, gradient)
+        beta += step
+        if np.max(np.abs(step)) < 1e-8:
+            break
+    defaults = np.median(X[:, 5])
+    return XGModel(
+        intercept=float(beta[0]), distance=float(beta[1]), angle=float(beta[2]), header=float(beta[3]),
+        pressure=float(beta[4]), defender=float(beta[5]), defender_default=float(defaults),
+    )
 
 
 # Pass completion. Forward is the cosine of the pass direction against the attack
@@ -66,13 +161,6 @@ def pass_difficulty(sx: float, sy: float, ex: float, ey: float, pressure: float 
 
 
 # Vectorized versions for the simulator, which scores every pass option at once.
-
-
-def xg_logit_array(x_att: np.ndarray, y_att: np.ndarray) -> np.ndarray:
-    dx = np.maximum(PITCH_LENGTH - x_att, 0.1)
-    distance = np.hypot(dx, CENTER_Y - y_att)
-    angle = np.abs(np.arctan2(GOAL_Y_HIGH - y_att, dx) - np.arctan2(GOAL_Y_LOW - y_att, dx))
-    return XG["intercept"] + XG["distance"] * distance + XG["angle"] * angle
 
 
 def pass_logit_array(sx: float, sy: float, ex: np.ndarray, ey: np.ndarray, pressure: float) -> np.ndarray:

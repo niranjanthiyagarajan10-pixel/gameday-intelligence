@@ -15,7 +15,7 @@ import copy
 import math
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -50,6 +50,10 @@ from engine.sim.scenario import Incident, Scenario
 
 SIDES = ("home", "away")
 Output = MatchEvent | TrackingFrame
+
+# The simulated world's own shooting physics. Frozen on purpose: the public xG model in
+# engine/metrics.py is refitted on simulated shots, and must never feed back into the world it measures.
+TRUE_XG = metrics.XGModel(intercept=-0.8, distance=-0.11, angle=1.3, header=-1.0, pressure=-0.8)
 
 # Timing (seconds)
 DECISION_S = (0.7, 1.9)
@@ -1020,7 +1024,7 @@ class MatchSimulator:
 
         header = s.aerial and (t - s.received_t) <= HEADER_WINDOW_S
         if xa > 70.0 and s.role[c] != "GK":
-            xg_here = metrics.xg(xa, ya, header, pressure)
+            xg_here = TRUE_XG.prob(xa, ya, header, pressure)
             p_shoot = metrics.sigmoid((xg_here - SHOT_XG_PIVOT) * SHOT_XG_SLOPE + 0.4 * float(s.momentum[k]))
             if header:
                 p_shoot = max(p_shoot, 0.5)
@@ -1048,8 +1052,8 @@ class MatchSimulator:
             - 1.2 * np.maximum(0.0, 1.0 - marking / 4.0)
         )
         p = 1.0 / (1.0 + np.exp(-logit))
-        threat_here = metrics.sigmoid(metrics.xg_logit(xa, ya)) + 0.03 * (xa / PITCH_LENGTH) ** 2
-        threat = 1.0 / (1.0 + np.exp(-metrics.xg_logit_array(rx, ry))) + 0.03 * (rx / PITCH_LENGTH) ** 2
+        threat_here = TRUE_XG.prob(xa, ya) + 0.03 * (xa / PITCH_LENGTH) ** 2
+        threat = 1.0 / (1.0 + np.exp(-TRUE_XG.logit_array(rx, ry))) + 0.03 * (rx / PITCH_LENGTH) ** 2
         gain = threat - threat_here
         forward = (rx - xa) / np.maximum(dist, 1e-6)
         ambition = 0.7 + 0.15 * club.truth.tempo + 0.4 * club.truth.attack
@@ -1176,14 +1180,14 @@ class MatchSimulator:
         side = SIDES[k]
         defending = 1 - k
         logit_true = (
-            metrics.xg_logit(xa, ya, header, pressure)
+            TRUE_XG.logit(xa, ya, header, pressure)
             + FINISHING_OFFSET
             + 1.0 * (s.finishing[c] - 0.5)
             + FINISH_QUALITY_W * (self.clubs[k].truth.attack - self.clubs[defending].truth.defence)
             + 0.3 * float(s.momentum[k])
         )
         roll = r.random()
-        meta: dict[str, str] = {}
+        meta: dict[str, Any] = {}
         if roll < metrics.sigmoid(logit_true):
             result = "goal"
             gy = r.uniform(GOAL_Y_LOW + 0.3, GOAL_Y_HIGH - 0.3)
@@ -1216,6 +1220,9 @@ class MatchSimulator:
         peak = r.uniform(0.0, GOAL_HEIGHT / 2) if result in ("goal", "saved") else r.uniform(0.0, 3.0)
         s.flight = Flight("shot", sx, sy, ex, ey, t, t + max(d / speed, 0.15), peak, k, c, -1, result)
         s.owner = -1
+        # A freeze frame of the outfield defenders at the moment of the shot, like StatsBomb 360 data.
+        defenders = np.flatnonzero((s.team == defending) & s.active & ~self._gk_mask)
+        meta["defenders"] = [[round(float(s.x[i]), 1), round(float(s.y[i]), 1)] for i in defenders]
         out.append(
             self._event(t, EventType.SHOT, k, c, sx, sy, end=(ex, ey), outcome=result, pressure=round(pressure, 3),
                         body_part="head" if header else "foot", meta=meta)

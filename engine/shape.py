@@ -6,7 +6,7 @@ rolling 60 s window:
   line_height = mean distance from own goal of the four deepest outfield players
   compactness = convex hull area of the outfield players
   pressers    = defenders within 5 m of the ball
-  low block:  line_height < 30 m and compactness below the baseline
+  low block:  line_height < 36 m and compactness below 650 sq m
   high press: line_height > 45 m and at least 0.35 pressers on average (calibrated on simulated matches)
   mid block:  otherwise
 A change is confirmed only after the new state has held for 60 s.
@@ -30,11 +30,14 @@ WINDOW_S = 60.0
 HOLD_S = 60.0
 EVAL_EVERY_S = 5.0
 MIN_SAMPLES_S = 10.0
-LOW_LINE_M = 30.0
+# Thresholds set from training matches where the simulator's true block is known (seeds 700 to 711):
+# true low blocks measured a 31 to 34 m line and a 340 to 550 sq m hull, mid blocks 39 to 43 m and
+# 780 to 940 sq m, high presses 48 to 56 m. They are scored on separate held-out matches in docs/validation.md.
+LOW_LINE_M = 36.0
 HIGH_LINE_M = 45.0
 PRESS_RADIUS_M = 5.0
 HIGH_PRESSERS = 0.35
-COMPACT_BASELINE_M2 = 1000.0
+COMPACT_BASELINE_M2 = 650.0
 BACK_LINE = 4
 BALL_ZONE_M = (50.0, 85.0)  # ball distance from the defending team's goal
 

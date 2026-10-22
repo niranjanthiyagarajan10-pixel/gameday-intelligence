@@ -240,7 +240,7 @@ function ShapeStrip({ analyst, roster, halfS, now }: Props) {
           </span>
         ))}
         <span className="label" style={{ marginLeft: "auto" }}>
-          Low block: back line under 30 m and compact. High press: line over 45 m with pressure on the ball.
+          Low block: back line under 36 m and very compact. High press: line over 45 m with pressure on the ball.
         </span>
       </div>
     </div>

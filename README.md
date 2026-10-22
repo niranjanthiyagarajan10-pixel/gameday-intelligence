@@ -79,27 +79,33 @@ Everything a fan sees starts here, and none of it calls a language model.
 
 ### How realistic is the simulator?
 
-From 90 simulated matches (a full double round robin). Full report: [docs/realism.md](docs/realism.md).
+From 360 simulated matches (four full seasons); physical metrics from 12 matches with full tracking. Full report: [docs/realism.md](docs/realism.md).
 
 | Per team per match | Simulated | Real football |
 |---|---|---|
-| Shots | 11.3 | 10 to 14 |
-| Passes | 477 | 400 to 500 |
-| Pass completion | 84.8% | 80 to 85% |
+| Shots | 11.2 | 10 to 14 |
+| Passes | 481 | 400 to 500 |
+| Pass completion | 84.9% | 80 to 85% |
 | Goals per match (both teams) | 2.7 | 2.5 to 3.0 |
-| xG per shot | 0.10 | 0.09 to 0.13 |
-| Fouls | 10.6 | 9 to 13 |
+| xG per shot | 0.12 | 0.09 to 0.13 |
+| Fouls | 10.7 | 9 to 13 |
 | Cards | 1.7 | 1.5 to 2.5 |
-| Distance per outfield player | 11.1 km | 9.5 to 11.5 km |
-| Top speed in a match | 33.4 km/h | 31 to 36 km/h |
+| Distance per outfield player | 10.9 km | 9.5 to 11.5 km |
+| Top speed in a match | 33.3 km/h | 31 to 36 km/h |
 
 ### How accurate are the models?
 
-Fitted on one simulated season, tested on 60 held-out matches. Full report: [docs/validation.md](docs/validation.md).
+Fitted on four simulated seasons (360 matches) and scored on a fifth season they never saw (90 matches). Full report: [docs/validation.md](docs/validation.md).
 
-- **xG is calibrated.** Shots rated 0.13 to 0.14 score 15% of the time, shots rated 0.37 score 40%.
-- **Fitted team ratings recover the hidden strengths** the simulator used: correlation 0.63 for attack and 0.58 for defence, from results alone.
-- **Pre-match ratings improve the kickoff forecast** (Brier score 0.589 against 0.653 for a league-average baseline). After half time both models are within noise of each other, because the score and xG on the day carry most of the information.
+| Check on held-out data | Result |
+|---|---|
+| xG, refitted by regression | 240 goals against 246 expected (the hand-set first version expected 205); every band within a few points |
+| Team ratings against the hidden strengths | Correlation 0.65 attack, 0.69 defence |
+| Win probability at kickoff (Brier, lower is better) | 0.505 against 0.650 for a league-average baseline: 22% better |
+| Win probability at half time | 0.419 against 0.436: 4% better |
+| Shape detection against the block each team really played | 86% agreement; low block 92% precision and 73% recall, high press 90% and 72% |
+
+xG includes nearest-defender distance, the NBA's "defender contest". In our simulator it adds little beyond pressure, because the simulated world's shooting physics already uses pressure; on real tracking data it would carry more.
 
 Our validation also caught a flaw in our own simulator: an early version let one hidden setting (pressing) decide almost every match, so fitted ratings did not track the clubs' real quality. Controlled experiments found it, and the fix is why the numbers above line up.
 
