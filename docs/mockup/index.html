@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gameday Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000000;
+  --surface: #0B0C0E;
+  --surface-2: #141519;
+  --line: #24262B;
+  --line-dash: #3A3D44;
+  --text: #F4F4F1;
+  --text-muted: #8C9097;
+  --text-dim: #5A5E66;
+  --signal: #E8FF3A;
+  --up: #38E07B;
+  --down: #FF4D4D;
+  --home: #FF5A3C;
+  --away: #F5C542;
+  --pitch: #0E1A12;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: Barlow, sans-serif; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+.cond { font-family: "Barlow Condensed", sans-serif; }
+.label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.wrap { max-width: 1600px; margin: 0 auto; padding: 0 16px 32px; }
+
+/* top bar */
+.topbar { display: flex; align-items: center; justify-content: space-between; height: 64px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 26px; letter-spacing: .01em; text-transform: uppercase; }
+.brand span { font-family: "Barlow Condensed"; font-weight: 600; font-size: 26px; color: var(--text-muted); text-transform: uppercase; }
+.tabs { display: flex; border: 1px solid var(--line); border-radius: 3px; }
+.tab { font-family: "Barlow Condensed"; font-weight: 700; font-size: 17px; text-transform: uppercase; letter-spacing: .03em; padding: 7px 22px; color: var(--text-muted); cursor: pointer; background: none; border: 0; }
+.tab.on { background: var(--text); color: #000; }
+.settings { display: flex; gap: 8px; align-items: center; }
+.set { display: flex; flex-direction: column; border: 1px solid var(--line); padding: 4px 10px; border-radius: 3px; min-width: 92px; }
+.set .label { font-size: 10px; }
+.set b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 16px; text-transform: uppercase; }
+.set.on { border-color: var(--signal); }
+
+/* scoreboard */
+.score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 0 8px; border-bottom: 1px solid var(--line); }
+.team { display: flex; align-items: center; gap: 14px; }
+.team.r { justify-content: flex-end; text-align: right; }
+.crest { width: 44px; height: 44px; border-radius: 3px; display: grid; place-items: center; font-family: "Barlow Condensed"; font-weight: 800; font-size: 18px; color: #000; }
+.team .nm { font-family: "Barlow Condensed"; font-weight: 800; font-size: 30px; text-transform: uppercase; line-height: 1; }
+.team .sub { font-size: 13px; color: var(--text-muted); }
+.mid { text-align: center; padding: 0 40px; }
+.mid .sc { font-family: "Barlow Condensed"; font-weight: 800; font-size: 56px; line-height: .9; letter-spacing: .02em; }
+.mid .sc i { font-style: normal; color: var(--text-dim); padding: 0 10px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; margin-top: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+.redc { display: inline-block; width: 9px; height: 13px; background: var(--down); border-radius: 1px; vertical-align: -1px; margin-left: 6px; }
+
+/* grid */
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; margin-top: 16px; }
+.c8 { grid-column: span 8; } .c4 { grid-column: span 4; } .c6 { grid-column: span 6; } .c12 { grid-column: span 12; } .c5 { grid-column: span 5; } .c7 { grid-column: span 7; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 2px; }
+.ph { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 16px 0; }
+.ph h3 { font-family: "Barlow Condensed"; font-weight: 700; font-size: 22px; text-transform: uppercase; letter-spacing: .02em; }
+.pb { padding: 12px 16px 16px; }
+.hero { font-family: "Barlow Condensed"; font-weight: 800; font-size: 48px; line-height: 1; }
+.hero small { font-size: 20px; font-weight: 700; color: var(--text-muted); margin-left: 4px; }
+
+/* pitch */
+.pitchwrap { position: relative; padding: 12px 16px 16px; }
+.pitch { width: 100%; height: 440px; display: block; background: var(--pitch); }
+.legend { display: flex; gap: 18px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.focusbox { position: absolute; top: 24px; left: 28px; background: rgba(0,0,0,.82); border-left: 4px solid var(--home); padding: 10px 14px; min-width: 240px; }
+.focusbox .nm { font-family: "Barlow Condensed"; font-weight: 800; font-size: 22px; text-transform: uppercase; line-height: 1.1; }
+.fstats { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 18px; margin-top: 8px; }
+.fstats b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 22px; display: block; line-height: 1; }
+
+/* momentum */
+.mom { position: relative; height: 34px; background: var(--surface-2); margin-top: 10px; }
+.mom .ctr { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 1px; background: var(--text-muted); }
+.mom .fill { position: absolute; top: 0; bottom: 0; }
+.ends { display: flex; justify-content: space-between; margin-top: 6px; }
+.kv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.kv .k { border-top: 1px solid var(--line); padding-top: 10px; }
+.kv b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 34px; display: block; line-height: 1.05; }
+.delta { font-size: 13px; font-weight: 600; }
+.up { color: var(--up); } .down { color: var(--down); }
+
+/* cards */
+.feed { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 16px; }
+.card { background: var(--surface-2); border-left: 4px solid var(--home); padding: 12px 14px 12px; }
+.card.away { border-left-color: var(--away); }
+.card.neutral { border-left-color: var(--text-muted); }
+.card .top { display: flex; justify-content: space-between; }
+.card .kind { font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: .08em; color: var(--text-muted); text-transform: uppercase; }
+.card .min { font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; color: var(--text-muted); }
+.card p { font-size: 16px; margin: 6px 0 8px; }
+.card .big { display: flex; align-items: baseline; gap: 10px; }
+.card .big b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 34px; line-height: 1; }
+.acts { display: flex; gap: 18px; margin-top: 10px; }
+.acts button { background: none; border: 0; color: var(--text); font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; padding: 0; border-bottom: 1px solid var(--line-dash); }
+.verified { font-size: 12px; color: var(--up); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.evidence { margin-top: 12px; border-top: 1px dashed var(--line-dash); padding-top: 10px; font-size: 13px; }
+.evidence table { width: 100%; border-collapse: collapse; }
+.evidence td { padding: 3px 0; color: var(--text-muted); }
+.evidence td:last-child { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.formula { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+/* ask */
+.ask { padding: 12px 16px 16px; }
+.q { font-family: "Barlow Condensed"; font-weight: 600; font-size: 18px; color: var(--text-muted); }
+.a { margin-top: 6px; font-size: 15px; }
+.a b { font-variant-numeric: tabular-nums; }
+.limits { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+.input { margin-top: 14px; display: flex; border: 1px solid var(--line); }
+.input input { flex: 1; background: none; border: 0; color: var(--text); font: inherit; padding: 10px 12px; outline: none; }
+.input input::placeholder { color: var(--text-dim); }
+.input button { background: var(--text); color: #000; border: 0; font-family: "Barlow Condensed"; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 0 18px; font-size: 15px; }
+
+/* trace */
+.trace { font-family: "JetBrains Mono", monospace; font-size: 12.5px; }
+.trace .row { display: grid; grid-template-columns: 72px 120px 1fr 80px 90px; gap: 12px; padding: 5px 16px; border-top: 1px solid var(--line); }
+.trace .row:first-child { border-top: 0; }
+.trace .t { color: var(--text-dim); }
+.trace .ag { color: var(--text); }
+.trace .msg { color: var(--text-muted); }
+.trace .ms { text-align: right; color: var(--text-muted); }
+.ok { color: var(--up); } .fail { color: var(--down); }
+
+/* analyst */
+.swarm { position: relative; }
+.swarm svg { width: 100%; display: block; }
+.dirs { display: flex; justify-content: space-between; padding: 0 16px; margin-top: 12px; }
+.dirs span { font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; }
+table.lv { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.lv th { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+table.lv th:first-child, table.lv td:first-child { text-align: left; }
+table.lv td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: right; font-size: 15px; }
+table.lv tr:hover td { background: var(--surface-2); }
+.pl { display: flex; align-items: center; gap: 10px; }
+.pl .sh { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #000; }
+.pl b { font-weight: 600; }
+.pl em { font-style: normal; color: var(--text-muted); font-size: 13px; }
+.bar { display: inline-block; height: 8px; vertical-align: middle; margin-right: 8px; }
+th.sorted { color: var(--text) !important; }
+.neg { color: var(--down); }
+.shape .row { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; margin: 10px 0; }
+.shape .strip { display: flex; height: 18px; }
+.shape .strip i { display: block; height: 100%; }
+.shape .axis { display: grid; grid-template-columns: 110px 1fr; gap: 12px; }
+.shape .axis div { display: flex; justify-content: space-between; color: var(--text-dim); font-size: 12px; }
+.lb { list-style: none; }
+.lb li { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); }
+.lb li:first-child { border-top: 0; }
+.lb .r { font-family: "Barlow Condensed"; font-weight: 800; font-size: 18px; color: var(--text-dim); }
+.lb .v { font-family: "Barlow Condensed"; font-weight: 800; font-size: 22px; }
+.lb .d { font-size: 13px; color: var(--text-muted); }
+.pr { display: grid; grid-template-columns: 1fr 120px 58px 48px; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); }
+.pr:first-of-type { border-top: 0; }
+.pr .track { height: 6px; background: var(--surface-2); position: relative; }
+.pr .track i { position: absolute; left: 0; top: 0; bottom: 0; }
+.pr .pct { font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; text-align: right; }
+.pr .att { color: var(--text-muted); font-size: 13px; text-align: right; }
+.hidden { display: none; }
+@media (max-width: 1100px) { .c8, .c4, .c6, .c5, .c7 { grid-column: span 12; } .settings { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand"><b>Gameday</b><span>Intelligence</span></div>
+    <div class="tabs">
+      <button class="tab on" data-tab="live">Live Match</button>
+      <button class="tab" data-tab="analyst">Analyst</button>
+    </div>
+    <div class="settings">
+      <div class="set"><span class="label">Depth</span><b id="depthLabel">Casual</b></div>
+      <div class="set"><span class="label">My club</span><b>Kingsport</b></div>
+      <div class="set on"><span class="label">Player focus</span><b>R. Okafor</b></div>
+      <div class="set"><span class="label">Language</span><b>English</b></div>
+      <div class="set"><span class="label">Voice</span><b>On</b></div>
+    </div>
+  </header>
+
+  <section class="score">
+    <div class="team">
+      <div class="crest" style="background:var(--home)">KR</div>
+      <div><div class="nm">Kingsport Rovers</div><div class="sub">Home. 4-3-3</div></div>
+    </div>
+    <div class="mid">
+      <div class="sc num">2<i>:</i>1</div>
+      <div class="live"><span class="dot"></span><span class="num">67'</span> <span class="label" style="margin-left:4px">Second half</span></div>
+    </div>
+    <div class="team r">
+      <div><div class="nm">Ashford Vale<span class="redc" title="Red card 55'"></span></div><div class="sub">Away. 4-4-1, down to 10</div></div>
+      <div class="crest" style="background:var(--away)">AV</div>
+    </div>
+  </section>
+
+  <!-- LIVE -->
+  <main id="live">
+    <div class="grid">
+      <div class="c8">
+        <div class="panel">
+          <div class="ph">
+            <h3>Live pitch</h3>
+            <div class="legend">
+              <span><i class="sw" style="background:var(--home)"></i>Kingsport</span>
+              <span><i class="sw" style="background:var(--away)"></i>Ashford</span>
+              <span class="label" style="color:var(--signal)">Focus: #10 Okafor</span>
+            </div>
+          </div>
+          <div class="pitchwrap">
+            <svg class="pitch" id="pitch" viewBox="-3 -3 111 74" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="focusbox">
+              <div class="label">Player focus</div>
+              <div class="nm">#10 Rafael Okafor</div>
+              <div class="fstats">
+                <div><b class="num">9.4</b><span class="label">km run</span></div>
+                <div><b class="num">32.1</b><span class="label">top km/h</span></div>
+                <div><b class="num">+1.42</b><span class="label">leverage</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:16px">
+          <div class="panel c7">
+            <div class="ph"><h3>Win probability</h3><span class="label">Model: live Poisson</span></div>
+            <div class="pb">
+              <div style="display:flex; gap:28px; align-items:baseline">
+                <div><div class="hero num" style="color:var(--home)">74<small>%</small></div><div class="label">Kingsport win</div></div>
+                <div><div class="hero num" style="color:var(--text-muted)">18<small>%</small></div><div class="label">Draw</div></div>
+                <div><div class="hero num" style="color:var(--away)">8<small>%</small></div><div class="label">Ashford win</div></div>
+              </div>
+              <svg id="wp" viewBox="0 0 600 150" style="width:100%; margin-top:14px; display:block"></svg>
+            </div>
+          </div>
+          <div class="panel c5">
+            <div class="ph"><h3>Momentum</h3><span class="label">Last 5 min</span></div>
+            <div class="pb">
+              <div class="mom">
+                <div class="fill" style="left:50%; width:31%; background:var(--home)"></div>
+                <div class="ctr"></div>
+              </div>
+              <div class="ends"><span class="label">Ashford</span><span class="label">Kingsport</span></div>
+              <div class="kv">
+                <div class="k"><span class="label">Control index</span><b class="num">0.64</b><span class="delta up num">+0.11 since red card</span></div>
+                <div class="k"><span class="label">Chaos index</span><b class="num">0.22</b><span class="delta down num">-0.09 since red card</span></div>
+                <div class="k"><span class="label">xG</span><b class="num">1.84 <span style="color:var(--text-dim)">/</span> 0.71</b></div>
+                <div class="k"><span class="label">Possession</span><b class="num">61 <span style="color:var(--text-dim)">/</span> 39</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="c4" style="display:flex; flex-direction:column; gap:16px">
+        <div class="panel">
+          <div class="ph"><h3>Key moments</h3><span class="label">Verified</span></div>
+          <div class="feed">
+            <div class="card">
+              <div class="top"><span class="kind">Key moment</span><span class="min num">66'</span></div>
+              <p>Okafor wins the ball high and starts the move. Kingsport's chance of winning jumps.</p>
+              <div class="big"><b class="num up">+17</b><span class="label">pts win probability</span></div>
+              <div class="acts"><button>Hide evidence</button><button>Go deeper</button><span class="verified" style="margin-left:auto">Verified</span></div>
+              <div class="evidence">
+                <table>
+                  <tr><td>Win probability before</td><td>57%</td></tr>
+                  <tr><td>If the tackle was lost</td><td>52%</td></tr>
+                  <tr><td>Win probability after</td><td>74%</td></tr>
+                  <tr><td>Leverage (Okafor, defending)</td><td>+0.84</td></tr>
+                  <tr><td>Events</td><td>m001-000812, 000814</td></tr>
+                </table>
+                <div class="formula">leverage = WP(won) - WP(lost) = 0.74 - 0.52</div>
+              </div>
+            </div>
+            <div class="card away">
+              <div class="top"><span class="kind">Shape change</span><span class="min num">58'</span></div>
+              <p>Down to ten, Ashford drop into a low block. Their back line now sits 24 m from goal.</p>
+              <div class="big"><b class="num">24 m</b><span class="label">line height</span></div>
+              <div class="acts"><button>Show evidence</button><button>Go deeper</button><span class="verified" style="margin-left:auto">Verified</span></div>
+            </div>
+            <div class="card neutral">
+              <div class="top"><span class="kind">Red card</span><span class="min num">55'</span></div>
+              <p>Hale is sent off. Ashford lose their best presser in midfield.</p>
+              <div class="big"><b class="num down">-11</b><span class="label">pts Ashford win probability</span></div>
+              <div class="acts"><button>Show evidence</button><button>Go deeper</button><span class="verified" style="margin-left:auto">Verified</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><h3>Ask the match</h3></div>
+          <div class="ask">
+            <div class="q">Why are Ashford struggling since the red card?</div>
+            <div class="a">They kept <b>58%</b> of possessions under pressure in the last 10 minutes, down from <b>79%</b> before the red card. Kingsport now press with <b>2.6</b> players near the ball on average.</div>
+            <div class="limits">Based on 31 pressured possessions. Tools: compare_windows, get_press_resistance. <span class="verified">Verified</span></div>
+            <div class="input"><input placeholder="Ask about this match"><button>Ask</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel c12">
+        <div class="ph"><h3>Agent trace</h3><span class="label">Microsoft Foundry. Agent Framework. MCP</span></div>
+        <div class="trace" style="padding:8px 0 10px">
+          <div class="row"><span class="t">66:12</span><span class="ag">Editor</span><span class="msg">moment m001-mo-14 tackle_swing, leverage 0.84. Emit. Personas: casual, analyst</span><span class="ms num">412 ms</span><span class="ok">ok</span></div>
+          <div class="row"><span class="t">66:13</span><span class="ag">Narrator</span><span class="msg">template with 3 slots, 2 claims. Tools: get_moment_evidence</span><span class="ms num">1,284 ms</span><span class="ok">ok</span></div>
+          <div class="row"><span class="t">66:14</span><span class="ag">Verifier</span><span class="msg">claim c2 "biggest swing of the match" fails: 41' goal swing was larger</span><span class="ms num">96 ms</span><span class="fail">rejected</span></div>
+          <div class="row"><span class="t">66:15</span><span class="ag">Narrator</span><span class="msg">retry 1 of 2. Claim c2 removed</span><span class="ms num">1,102 ms</span><span class="ok">ok</span></div>
+          <div class="row"><span class="t">66:15</span><span class="ag">Verifier</span><span class="msg">all slots found in evidence, 1 claim matches state</span><span class="ms num">88 ms</span><span class="ok">pass</span></div>
+          <div class="row"><span class="t">66:16</span><span class="ag">Personalizer</span><span class="msg">casual / Kingsport / en. Slots intact 3 of 3</span><span class="ms num">640 ms</span><span class="ok">ok</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ANALYST -->
+  <main id="analyst" class="hidden">
+    <div class="grid">
+      <div class="panel c12">
+        <div class="ph"><h3>Shot quality</h3><span class="label">Every shot placed by expected goals (xG)</span></div>
+        <div class="dirs"><span>&larr; More difficult</span><span>Less difficult &rarr;</span></div>
+        <div class="swarm"><svg id="swarm" viewBox="0 0 1560 520"></svg></div>
+      </div>
+
+      <div class="panel c7">
+        <div class="ph"><h3>Player leverage</h3><span class="label">1.0 = 10 pts of win probability</span></div>
+        <div class="pb" style="padding-top:6px">
+          <table class="lv" id="lev">
+            <thead><tr><th>Player</th><th class="sorted">Total &darr;</th><th>Shot making</th><th>Creation</th><th>Defending</th><th>Turnovers</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="c5" style="display:flex; flex-direction:column; gap:16px">
+        <div class="panel">
+          <div class="ph"><h3>Press resistance</h3><span class="label">Kept the ball when pressed</span></div>
+          <div class="pb" id="press"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>Hardest goals</h3><span class="label">Lowest xG scored</span></div>
+          <div class="pb">
+            <ul class="lb">
+              <li><span class="r">1</span><div><b>D. Mensah</b> <span class="d">Kingsport. 41'. Volley, 24 m</span></div><span class="v num">0.04</span></li>
+              <li><span class="r">2</span><div><b>T. Brandt</b> <span class="d">Ashford. 29'. Header under pressure</span></div><span class="v num">0.09</span></li>
+              <li><span class="r">3</span><div><b>R. Okafor</b> <span class="d">Kingsport. 12'. Tight angle</span></div><span class="v num">0.17</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel c12">
+        <div class="ph"><h3>Team shape</h3><span class="label">Out of possession, rolling 60 s</span></div>
+        <div class="pb shape">
+          <div class="row"><span class="label">Kingsport</span><div class="strip" id="shapeH"></div></div>
+          <div class="row"><span class="label">Ashford</span><div class="strip" id="shapeA"></div></div>
+          <div class="axis"><span></span><div><span>0'</span><span>15'</span><span>30'</span><span>45'</span><span>60'</span><span>67'</span></div></div>
+          <div class="legend" style="margin-top:12px">
+            <span><i class="sw" style="border-radius:0; background:#F4F4F1"></i>High press</span>
+            <span><i class="sw" style="border-radius:0; background:#6B6F77"></i>Mid block</span>
+            <span><i class="sw" style="border-radius:0; background:#2A2D33"></i>Low block</span>
+            <span class="label" style="margin-left:auto">Low block: back line under 30 m and compact. High press: line over 45 m and 2+ pressers.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  const a = t.dataset.tab === 'analyst';
+  document.getElementById('live').classList.toggle('hidden', a);
+  document.getElementById('analyst').classList.toggle('hidden', !a);
+  document.getElementById('depthLabel').textContent = a ? 'Analyst' : 'Casual';
+}));
+
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const HOME = css('--home'), AWAY = css('--away');
+
+// Seeded random so the mockup is stable
+let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+
+// Pitch
+(function pitch() {
+  const p = document.getElementById('pitch');
+  const L = { fill: 'none', stroke: 'rgba(255,255,255,.25)', 'stroke-width': .3 };
+  el('rect', { x: 0, y: 0, width: 105, height: 68, ...L }, p);
+  el('line', { x1: 52.5, y1: 0, x2: 52.5, y2: 68, ...L }, p);
+  el('circle', { cx: 52.5, cy: 34, r: 9.15, ...L }, p);
+  el('circle', { cx: 52.5, cy: 34, r: .4, fill: 'rgba(255,255,255,.35)' }, p);
+  [[0, 1], [105, -1]].forEach(([x, d]) => {
+    el('rect', { x: d > 0 ? 0 : 105 - 16.5, y: 13.85, width: 16.5, height: 40.3, ...L }, p);
+    el('rect', { x: d > 0 ? 0 : 105 - 5.5, y: 24.85, width: 5.5, height: 18.3, ...L }, p);
+    el('rect', { x: d > 0 ? -1.8 : 105, y: 30.34, width: 1.8, height: 7.32, ...L }, p);
+    el('circle', { cx: x + d * 11, cy: 34, r: .35, fill: 'rgba(255,255,255,.35)' }, p);
+  });
+  // Focus player trail
+  const trail = [[48, 40], [52, 37], [57, 36], [61, 33], [65, 31], [68.5, 30.2]];
+  el('polyline', { points: trail.map(q => q.join(',')).join(' '), fill: 'none', stroke: HOME, 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: .35 }, p);
+  // Players: home attacks right
+  const home = [[6, 34, 1], [30, 12, 2], [27, 27, 4], [28, 42, 5], [33, 58, 3], [46, 22, 8], [44, 46, 6], [68.5, 30.2, 10], [74, 12, 7], [79, 36, 9], [72, 56, 11]];
+  const away = [[99, 34, 1], [86, 14, 2], [88, 28, 5], [87, 41, 4], [85, 55, 3], [77, 20, 8], [78, 33, 6], [76, 46, 7], [74, 60, 11], [64, 38, 9]];
+  const focus = 10;
+  away.forEach(([x, y, n]) => { const g = el('g', { opacity: .3 }, p); el('circle', { cx: x, cy: y, r: 1.55, fill: AWAY }, g); el('text', { x, y: y + .62, 'text-anchor': 'middle', 'font-size': 1.7, 'font-weight': 700, fill: '#000', 'font-family': 'Barlow' }, g).textContent = n; });
+  home.forEach(([x, y, n]) => {
+    const f = n === focus; const g = el('g', { opacity: f ? 1 : .3 }, p);
+    if (f) el('circle', { cx: x, cy: y, r: 3, fill: 'none', stroke: css('--signal'), 'stroke-width': .35 }, g);
+    el('circle', { cx: x, cy: y, r: f ? 1.9 : 1.55, fill: HOME }, g);
+    el('text', { x, y: y + .62, 'text-anchor': 'middle', 'font-size': 1.7, 'font-weight': 700, fill: '#000', 'font-family': 'Barlow' }, g).textContent = n;
+    if (f) {
+      el('rect', { x: x + 3.6, y: y - 2.6, width: 13, height: 3.4, fill: '#000', opacity: .85 }, g);
+      el('rect', { x: x + 3.6, y: y - 2.6, width: .5, height: 3.4, fill: HOME }, g);
+      el('text', { x: x + 4.8, y: y - .2, 'font-size': 2, 'font-weight': 700, fill: '#F4F4F1', 'font-family': 'Barlow Condensed', 'letter-spacing': .05 }, g).textContent = 'OKAFOR  31.4 KM/H';
+    }
+  });
+  // Ball with trail
+  el('line', { x1: 63, y1: 34, x2: 70.2, y2: 30.8, stroke: 'rgba(255,255,255,.4)', 'stroke-width': .35, 'stroke-dasharray': '.8 .8' }, p);
+  el('circle', { cx: 70.4, cy: 30.7, r: .75, fill: '#fff' }, p);
+})();
+
+// Win probability: stacked bands, home at bottom
+(function wp() {
+  const svg = document.getElementById('wp'); const W = 600, H = 150, T = 67;
+  const pts = []; let h = .46, d = .27;
+  const ev = { 12: [.16, -.06], 29: [-.17, .02], 41: [.15, -.05], 55: [.12, -.03], 66: [.13, -.03] };
+  for (let m = 0; m <= T; m++) { if (ev[m]) { h += ev[m][0]; d += ev[m][1]; } else if (m % 6 === 0) { h += (rnd() - .5) * .03; } h = Math.min(.92, Math.max(.05, h)); d = Math.min(.4, Math.max(.06, d)); if (m === T) { h = .74; d = .18; } pts.push([m, h, d]); }
+  const x = m => m / 90 * W, y = v => H - v * H;
+  const step = f => { let s = ''; pts.forEach(([m, hh, dd], i) => { const v = f(hh, dd); s += (i ? `H${x(m)}V${y(v)}` : `M${x(m)},${y(v)}`); }); return s; };
+  const area = (fTop, fBot) => { const top = step(fTop); const bot = pts.slice().reverse().map(([m, hh, dd]) => `L${x(m)},${y(fBot(hh, dd))}`).join(''); return top + `H${x(T)}` + bot + 'Z'; };
+  for (let i = 1; i < 4; i++) el('line', { x1: 0, x2: W, y1: H * i / 4, y2: H * i / 4, stroke: css('--line-dash'), 'stroke-dasharray': '2 4' }, svg);
+  el('path', { d: area((hh, dd) => hh, () => 0), fill: HOME, opacity: .9 }, svg);
+  el('path', { d: area((hh, dd) => hh + dd, (hh) => hh), fill: '#3A3D44' }, svg);
+  el('path', { d: area(() => 1, (hh, dd) => hh + dd), fill: AWAY, opacity: .9 }, svg);
+  el('rect', { x: x(T), y: 0, width: W - x(T), height: H, fill: css('--surface') }, svg);
+  el('line', { x1: x(45), x2: x(45), y1: 0, y2: H, stroke: '#000', 'stroke-width': 1.5 }, svg);
+  [[12, 'G', HOME], [29, 'G', AWAY], [41, 'G', HOME], [55, 'RC', css('--down')], [66, 'T', '#fff']].forEach(([m, t, c]) => {
+    el('line', { x1: x(m), x2: x(m), y1: -2, y2: H, stroke: '#000', 'stroke-width': 1 }, svg);
+    el('rect', { x: x(m) - 1, y: 0, width: 2, height: 8, fill: c }, svg);
+  });
+  svg.setAttribute('viewBox', `0 -4 ${W} ${H + 22}`);
+  [[0, "0'"], [45, 'HT'], [67, "67'"], [90, "90'"]].forEach(([m, t]) => { const tx = el('text', { x: x(m), y: H + 16, 'font-size': 11, fill: css('--text-muted'), 'font-family': 'Barlow', 'font-weight': 600, 'text-anchor': m === 0 ? 'start' : m === 90 ? 'end' : 'middle' }, svg); tx.textContent = t; });
+})();
+
+// Shot quality beeswarm
+(function swarm() {
+  const svg = document.getElementById('swarm');
+  const W = 1560, X0 = 300, X1 = 1530, MAX = .6;
+  const xs = v => X0 + Math.min(v, MAX) / MAX * (X1 - X0);
+  const teams = [
+    { name: 'Kingsport', code: 'KR', c: HOME, y0: 10, xg: 1.84, goals: 2, shots: 16, gl: [.04, .17, .52] },
+    { name: 'Ashford', code: 'AV', c: AWAY, y0: 230, xg: .71, goals: 1, shots: 9, gl: [.09] }
+  ];
+  svg.setAttribute('viewBox', '0 0 1560 450');
+  teams.forEach((t, ti) => {
+    const H = 190;
+    el('rect', { x: 0, y: t.y0, width: W, height: H, fill: css('--bg') }, svg);
+    // gridlines
+    [0, .15, .3, .45, .6].forEach(v => {
+      el('line', { x1: xs(v), x2: xs(v), y1: t.y0, y2: t.y0 + H, stroke: css('--line-dash'), 'stroke-dasharray': '3 4', opacity: v === 0 ? 0 : 1 }, svg);
+      const tx = el('text', { x: xs(v), y: t.y0 + H + 18, 'font-size': 13, 'font-family': 'Barlow Condensed', 'font-weight': 700, fill: css('--text-muted'), 'text-anchor': v === 0 ? 'start' : v === MAX ? 'end' : 'middle' }, svg);
+      tx.textContent = v === MAX ? '0.60+ xG' : v.toFixed(2);
+    });
+    // header block
+    el('rect', { x: 24, y: t.y0 + 30, width: 54, height: 54, fill: t.c, rx: 2 }, svg);
+    el('text', { x: 51, y: t.y0 + 66, 'text-anchor': 'middle', 'font-size': 22, 'font-family': 'Barlow Condensed', 'font-weight': 800, fill: '#000' }, svg).textContent = t.code;
+    const big = el('text', { x: 94, y: t.y0 + 72, 'font-size': 52, 'font-family': 'Barlow Condensed', 'font-weight': 800, fill: '#F4F4F1' }, svg);
+    big.textContent = t.xg.toFixed(2);
+    el('text', { x: 94 + (t.xg.toFixed(2).length * 22) + 8, y: t.y0 + 72, 'font-size': 22, 'font-family': 'Barlow Condensed', 'font-weight': 700, fill: '#F4F4F1' }, svg).textContent = 'xG';
+    el('text', { x: 96, y: t.y0 + 96, 'font-size': 15, 'font-family': 'Barlow', 'font-weight': 600, fill: css('--text-muted') }, svg).textContent = `${t.goals} goals from ${t.shots} shots`;
+    const diff = t.goals - t.xg;
+    el('text', { x: 96, y: t.y0 + 118, 'font-size': 14, 'font-family': 'Barlow', 'font-weight': 600, fill: diff >= 0 ? css('--up') : css('--down') }, svg).textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(2)} goals vs expected`;
+    // shots: misses + goals
+    const shots = [];
+    for (let i = 0; i < t.shots - t.gl.length; i++) { const r = rnd(); shots.push({ v: Math.max(.01, r * r * .42 + .015), g: false }); }
+    t.gl.forEach(v => shots.push({ v, g: true }));
+    // simple beeswarm dodge
+    const placed = []; const mid = t.y0 + H / 2; const R = 13;
+    shots.sort((a, b) => a.v - b.v).forEach(sh => {
+      const x = xs(sh.v); let y = mid, k = 0;
+      while (placed.some(p => Math.hypot(p.x - x, p.y - y) < R * 2.1)) { k++; y = mid + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * R * 1.4; }
+      placed.push({ x, y, g: sh.g });
+    });
+    placed.forEach(p => {
+      if (p.g) el('circle', { cx: p.x, cy: p.y, r: R, fill: t.c }, svg);
+      else { const g = el('g', { stroke: '#7A7E86', 'stroke-width': 3, 'stroke-linecap': 'round' }, svg); el('line', { x1: p.x - 8, y1: p.y - 8, x2: p.x + 8, y2: p.y + 8 }, g); el('line', { x1: p.x - 8, y1: p.y + 8, x2: p.x + 8, y2: p.y - 8 }, g); }
+    });
+  });
+})();
+
+// Leverage table
+(function lev() {
+  const rows = [
+    ['Rafael Okafor', 'KR', 10, 1.42, .38, .71, .84, -.51],
+    ['Dani Mensah', 'KR', 9, 1.31, 1.12, .29, .06, -.16],
+    ['Tobias Brandt', 'AV', 9, .97, .88, .12, .18, -.21],
+    ['Ike Salazar', 'KR', 6, .74, .00, .52, .41, -.19],
+    ['Marek Holm', 'AV', 4, .51, .00, .08, .62, -.19],
+    ['Jonah Pryce', 'KR', 2, .38, .00, .21, .30, -.13],
+    ['Callum Hale', 'AV', 8, -.62, .00, .14, .11, -.87]
+  ];
+  const tb = document.querySelector('#lev tbody'); const max = 1.5;
+  rows.forEach(([n, c, num, tot, sm, cr, df, tv]) => {
+    const col = c === 'KR' ? HOME : AWAY; const f = v => (v > 0 ? '+' : '') + v.toFixed(2);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><div class="pl"><span class="sh" style="background:${col}">${num}</span><b>${n}</b><em>${c}</em></div></td>
+      <td><span class="bar" style="width:${Math.abs(tot) / max * 80}px; background:${tot < 0 ? css('--down') : col}"></span><b class="${tot < 0 ? 'neg' : ''}">${f(tot)}</b></td>
+      <td>${f(sm)}</td><td>${f(cr)}</td><td>${f(df)}</td><td class="neg">${f(tv)}</td>`;
+    tb.appendChild(tr);
+  });
+})();
+
+// Press resistance
+(function press() {
+  const box = document.getElementById('press');
+  [['Rafael Okafor', 'KR', 86, 14], ['Ike Salazar', 'KR', 81, 21], ['Tobias Brandt', 'AV', 72, 18], ['Marek Holm', 'AV', 58, 12], ['Callum Hale', 'AV', 44, 9]].forEach(([n, c, p, a]) => {
+    const d = document.createElement('div'); d.className = 'pr';
+    d.innerHTML = `<div class="pl"><b>${n}</b><em>${c}</em></div><div class="track"><i style="width:${p}%; background:${c === 'KR' ? HOME : AWAY}"></i></div><span class="pct num">${p}%</span><span class="att num">${a} att</span>`;
+    box.appendChild(d);
+  });
+})();
+
+// Team shape strips
+(function shape() {
+  const C = { H: '#F4F4F1', M: '#6B6F77', L: '#2A2D33' };
+  const draw = (id, segs) => { const s = document.getElementById(id); segs.forEach(([k, m]) => { const i = document.createElement('i'); i.style.width = (m / 67 * 100) + '%'; i.style.background = C[k]; s.appendChild(i); }); };
+  draw('shapeH', [['M', 9], ['H', 14], ['M', 12], ['H', 10], ['M', 9], ['H', 13]]);
+  draw('shapeA', [['H', 11], ['M', 17], ['H', 6], ['M', 18], ['L', 15]]);
+})();
+</script>
+</body>
+</html>

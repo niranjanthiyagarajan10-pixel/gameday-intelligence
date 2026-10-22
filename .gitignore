@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+build/
+dist/
+
+# Web
+node_modules/
+web/dist/
+
+# Azure
+.azure/
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Early planning notes (superseded by docs/SPEC.md)
+Claude MD file/
+Perplexity MD file/
