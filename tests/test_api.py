@@ -69,6 +69,55 @@ def test_private_room_starts_from_a_minute(client):
     assert state["stats"]["t"] >= 60.0
 
 
+def test_shot_page_has_metrics_and_a_replay_clip():
+    from app.room import MatchRoom
+    from engine.league import build_league
+
+    room = MatchRoom("clips", build_league(), CONFIG)
+    while not room.feed.finished:
+        room.advance()
+    assert room.live.shots, "expected at least one shot in two halves of a minute"
+    shot = room.live.shots[0]
+    page = room.shot(shot.event_id)
+    s = page["shot"]
+    assert s["shot_type"] and s["distance_m"] > 0 and 0 <= s["xg"] <= 1
+    assert s["defender_m"] is None or s["defender_m"] >= 0
+    assert 0 <= s["wp_if_miss"] <= s["wp_if_goal"] <= 1
+    clip = page["clip"]
+    times = [f["t"] for f in clip["frames"]]
+    assert times == sorted(times) and times[0] >= shot.t - 12.0 - 1e-6
+    assert all(e["t"] <= shot.t for e in clip["events"])
+    assert room.shot("nope") is None
+
+
+def test_player_page_summary():
+    from app.room import MatchRoom
+    from engine.league import build_league
+
+    room = MatchRoom("players", build_league(), CONFIG)
+    while not room.feed.finished:
+        room.advance()
+    shooter = room.live.shots[0].player_id
+    summary = room.player(shooter)["summary"]
+    assert summary["shots"] >= 1 and len(summary["list"]) == summary["shots"]
+    assert summary["goals_minus_xg"] == round(summary["goals"] - summary["xg"], 3)
+    assert summary["distance_km"] >= 0
+    assert room.player("ZZ99") is None
+
+
+def test_shot_and_player_endpoints(client):
+    for _ in range(200):
+        shots = client.get("/api/rooms/main").json()["analyst"]["shots"]
+        if shots:
+            break
+        time.sleep(0.1)
+    assert shots
+    first = shots[0]
+    assert client.get(f"/api/rooms/main/shots/{first['event_id']}").json()["shot"]["event_id"] == first["event_id"]
+    assert client.get(f"/api/rooms/main/players/{first['player']}").json()["summary"]["shots"] >= 1
+    assert client.get("/api/rooms/main/shots/missing").status_code == 404
+
+
 def test_private_replays_are_the_same_match():
     """A jump link must replay the match everyone else sees, not a new one."""
     from app.room import MatchRoom

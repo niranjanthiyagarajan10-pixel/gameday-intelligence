@@ -88,7 +88,8 @@ Auto-eventing from video is out of scope. Say so in the README.
 8. Evidence drawer: every card opens the events, numbers and formulas behind it.
 9. Ask the match: chat answered by the Analyst agent through MCP tools, with evidence.
 10. Replay mode: cached agent outputs so the demo works with Foundry off.
-11. Judge-facing extras:
+11. Shot replay and player pages (NBA style): click a shot to watch a tracking replay of the move with its difficulty and details; player pages with goals above expected, xG of goals and misses, nearest defender distance and every shot. Built on an explicit `Feed` ingest boundary (`engine/feed.py`).
+12. Judge-facing extras:
     - `docs/JUDGING.md`: each criterion mapped to the screen, file and number that proves it, plus a 2-minute tour.
     - Jump-to-moment links (for example `/?match=demo&t=55m`) that start playback just before the red card, the shape change and the winner.
     - Agent evaluation harness (`tests/agent_eval.py`): scripted questions and moments at set minutes, every card and answer checked by code, pass rate published in `docs/agent-eval.md` and the README.

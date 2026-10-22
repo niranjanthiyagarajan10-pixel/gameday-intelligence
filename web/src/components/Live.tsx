@@ -3,6 +3,7 @@ import { Pitch } from "./Pitch";
 import { WinProbability } from "./WinProbability";
 import { MomentCard } from "./MomentCard";
 import { signed } from "../format";
+import { playerHref } from "../route";
 
 interface Props {
   state: MatchState;
@@ -58,9 +59,9 @@ export function Live({ state, depth, focus }: Props) {
             {focusInfo && (
               <div className="focusbox" style={{ borderLeftColor: roster.clubs[focusInfo.side].primary }}>
                 <div className="label">Player focus</div>
-                <div className="nm">
+                <a className="nm" href={playerHref(focus!)}>
                   #{focusInfo.number} {focusInfo.name}
-                </div>
+                </a>
                 <div className="fstats">
                   <div>
                     <b className="num">{focusRun ? (focusRun.distance_m / 1000).toFixed(1) : "0.0"}</b>

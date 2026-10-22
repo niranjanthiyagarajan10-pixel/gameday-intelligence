@@ -85,9 +85,12 @@ function reducer(state: MatchState, msg: Action): MatchState {
   }
 }
 
-export function useMatch(room: string) {
+/** Live connection to a match room. onGone fires if the room no longer exists, say after a redeploy. */
+export function useMatch(room: string, onGone?: () => void) {
   const [state, dispatch] = useReducer(reducer, initial);
   const socket = useRef<WebSocket | null>(null);
+  const gone = useRef(onGone);
+  gone.current = onGone;
 
   useEffect(() => {
     let closed = false;
@@ -103,8 +106,12 @@ export function useMatch(room: string) {
         dispatch({ type: "connected", value: true });
       };
       ws.onmessage = (e) => dispatch(JSON.parse(e.data) as Message);
-      ws.onclose = () => {
+      ws.onclose = (e) => {
         dispatch({ type: "connected", value: false });
+        if (e.code === 4404) {
+          gone.current?.();
+          return;
+        }
         if (!closed) {
           retry = Math.min(retry + 1, 6);
           timer = window.setTimeout(connect, 500 * 2 ** retry);

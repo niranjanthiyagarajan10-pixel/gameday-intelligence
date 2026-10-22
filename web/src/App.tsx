@@ -3,12 +3,15 @@ import type { Audience, MatchState, Side } from "./types";
 import { useMatch } from "./useMatch";
 import { Live } from "./components/Live";
 import { Analyst } from "./components/Analyst";
+import { ShotPage } from "./components/ShotPage";
+import { PlayerPage } from "./components/PlayerPage";
 import { clock } from "./format";
+import { useRoute } from "./route";
 
 const SPEEDS = [1, 4, 10, 30];
 
 /** Room from the URL. ?t=55 asks the server for a private replay that starts at minute 55. */
-function useRoom(): string | null {
+function useRoom(): [string | null, (room: string) => void] {
   const [room, setRoom] = useState<string | null>(() => {
     const p = new URLSearchParams(location.search);
     return p.get("room") ?? (p.get("t") ? null : "main");
@@ -30,7 +33,7 @@ function useRoom(): string | null {
       })
       .catch(() => setRoom("main"));
   }, [room]);
-  return room;
+  return [room, setRoom];
 }
 
 function Scoreboard({ state }: { state: MatchState }) {
@@ -94,8 +97,15 @@ function Scoreboard({ state }: { state: MatchState }) {
 }
 
 export default function App() {
-  const room = useRoom();
-  const { state, control } = useMatch(room ?? "main");
+  const [room, setRoom] = useRoom();
+  const route = useRoute();
+  const { state, control } = useMatch(room ?? "main", () => {
+    // That replay has ended or the server restarted: fall back to the main broadcast.
+    const p = new URLSearchParams(location.search);
+    p.delete("room");
+    history.replaceState(null, "", `${location.pathname}${p.toString() ? `?${p}` : ""}${location.hash}`);
+    setRoom("main");
+  });
   const [tab, setTab] = useState<"live" | "analyst">("live");
   const [depth, setDepth] = useState<Audience>("casual");
   const [club, setClub] = useState<Side | "">("");
@@ -141,10 +151,22 @@ export default function App() {
           <span>Intelligence</span>
         </div>
         <div className="tabs">
-          <button className={`tab ${tab === "live" ? "on" : ""}`} onClick={() => setTab("live")}>
+          <button
+            className={`tab ${route.page === "match" && tab === "live" ? "on" : ""}`}
+            onClick={() => {
+              setTab("live");
+              location.hash = "#/";
+            }}
+          >
             Live Match
           </button>
-          <button className={`tab ${tab === "analyst" ? "on" : ""}`} onClick={() => setTab("analyst")}>
+          <button
+            className={`tab ${route.page === "match" && tab === "analyst" ? "on" : ""}`}
+            onClick={() => {
+              setTab("analyst");
+              location.hash = "#/";
+            }}
+          >
             Analyst
           </button>
         </div>
@@ -194,10 +216,12 @@ export default function App() {
 
       <Scoreboard state={state} />
 
-      <main className={tab === "live" ? "" : "hidden"}>
+      {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
+      {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
+      <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>
         <Live state={state} depth={depth} focus={focus || null} />
       </main>
-      <main className={tab === "analyst" ? "" : "hidden"}>
+      <main className={route.page === "match" && tab === "analyst" ? "" : "hidden"}>
         {analyst && <Analyst analyst={analyst} roster={roster} halfS={state.halfS} now={stats.t} />}
       </main>
     </div>

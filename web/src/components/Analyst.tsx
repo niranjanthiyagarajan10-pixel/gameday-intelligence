@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Analyst as AnalystData, LeverageRow, Roster, Shot, Side } from "../types";
 import { SHAPE_LABEL, playerName, signed } from "../format";
+import { playerHref, shotHref } from "../route";
 
 interface Props {
   analyst: AnalystData;
@@ -85,17 +86,19 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
               const title = `${playerName(roster, s.player)}, ${s.minute}'. xG ${s.xg.toFixed(2)}, ${s.outcome.replace("_", " ")}${
                 s.speed_kmh ? `, ${Math.round(s.speed_kmh)} km/h` : ""
               }${s.body_part === "head" ? ", header" : ""}`;
-              return s.outcome === "goal" ? (
-                <circle key={s.event_id} cx={x} cy={y} r={R} fill={club.primary}>
-                  <title>{title}</title>
-                </circle>
-              ) : (
-                <g key={s.event_id} stroke="#7A7E86" strokeWidth={3} strokeLinecap="round">
-                  <title>{title}</title>
-                  <line x1={x - 8} y1={y - 8} x2={x + 8} y2={y + 8} />
-                  <line x1={x - 8} y1={y + 8} x2={x + 8} y2={y - 8} />
-                  <rect x={x - R} y={y - R} width={2 * R} height={2 * R} fill="transparent" stroke="none" />
-                </g>
+              return (
+                <a key={s.event_id} href={shotHref(s.event_id)} className="mark">
+                  <title>{`${title}. Click to watch the replay.`}</title>
+                  {s.outcome === "goal" ? (
+                    <circle cx={x} cy={y} r={R} fill={club.primary} />
+                  ) : (
+                    <g stroke="#7A7E86" strokeWidth={3} strokeLinecap="round">
+                      <line x1={x - 8} y1={y - 8} x2={x + 8} y2={y + 8} />
+                      <line x1={x - 8} y1={y + 8} x2={x + 8} y2={y - 8} />
+                    </g>
+                  )}
+                  <rect x={x - R} y={y - R} width={2 * R} height={2 * R} fill="transparent" />
+                </a>
               );
             })}
           </g>
@@ -161,7 +164,9 @@ function LeverageTable({ rows, roster }: { rows: LeverageRow[]; roster: Roster }
                         <span className="shirt" style={{ background: color }}>
                           {p?.number}
                         </span>
-                        <b>{p?.name ?? r.player}</b>
+                        <a href={playerHref(r.player)}>
+                          <b>{p?.name ?? r.player}</b>
+                        </a>
                         <em>{roster.clubs[r.team].short}</em>
                       </div>
                     </td>
@@ -280,7 +285,9 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
             {press.map((r) => (
               <div className="pr" key={r.player}>
                 <div className="pl-cell">
-                  <b>{playerName(roster, r.player)}</b>
+                  <a href={playerHref(r.player)}>
+                    <b>{playerName(roster, r.player)}</b>
+                  </a>
                   <em>{roster.clubs[r.team].short}</em>
                 </div>
                 <div className="track">
@@ -304,7 +311,9 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
                   <li key={s.event_id}>
                     <span className="r">{i + 1}</span>
                     <div>
-                      <b>{playerName(roster, s.player, true)}</b>{" "}
+                      <a href={shotHref(s.event_id)}>
+                        <b>{playerName(roster, s.player, true)}</b>
+                      </a>{" "}
                       <span className="d">
                         {s.minute}'{s.body_part === "head" ? ", header" : ""}
                       </span>

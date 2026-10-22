@@ -10,14 +10,25 @@ import asyncio
 import os
 import time
 import uuid
-from dataclasses import dataclass, replace
+from collections import deque
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from app.payloads import analyst_message, card_message, frame_message, roster, stats_message
+from app.payloads import (
+    analyst_message,
+    card_message,
+    clip_event,
+    frame_message,
+    player_summary,
+    roster,
+    shot_dict,
+    stats_message,
+)
+from engine.feed import Feed, SimulatorFeed
 from engine.league import League
 from engine.live import LiveStats
-from engine.models import MatchMeta, TrackingFrame
+from engine.models import MatchEvent, MatchMeta, TrackingFrame
 from engine.sim import MatchSimulator, SimConfig, load_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,6 +42,16 @@ HISTORY_EVERY_S = 30.0
 QUEUE_MAX = 500
 PRIVATE_IDLE_S = 15 * 60
 MAX_PRIVATE_ROOMS = 20
+CLIP_BEFORE_S = 12.0
+CLIP_AFTER_S = 3.0
+
+
+@dataclass
+class _PendingClip:
+    event_id: str
+    shot_t: float
+    frames: list[dict[str, Any]]
+    events: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -72,9 +93,11 @@ class MatchRoom:
         # the room, so every replay of the demo is the same match the main room broadcasts.
         meta = MatchMeta(match_id=f"{c.home}{c.away}-{c.seed}", home=c.home, away=c.away, seed=c.seed, scenario=c.scenario)
         scenario = load_scenario(c.scenario) if c.scenario else None
-        self.sim = MatchSimulator(meta, self.league, SimConfig(mode="full", half_s=c.half_s), scenario)
+        sim = MatchSimulator(meta, self.league, SimConfig(mode="full", half_s=c.half_s), scenario)
+        # The room only ever reads the match through the feed: the ingest boundary.
+        self.feed: Feed = SimulatorFeed(sim)
         self.live = LiveStats(meta, self.league)
-        self.roster = roster(self.sim, self.league)
+        self.roster = roster(self.feed, self.league)
         self.names = {pid: p["name"] for pid, p in self.roster["players"].items()}
         self.teams = {side: club["name"] for side, club in self.roster["clubs"].items()}
         self.cards: list[dict[str, Any]] = []
@@ -82,6 +105,13 @@ class MatchRoom:
         self.last_frame: dict[str, Any] | None = None
         self.status = "live"
         self._next_history_t = 0.0
+        # Rolling buffers for shot replays, and the finished clips by shot event id.
+        keep = int(CLIP_BEFORE_S / self.feed.dt) + 1
+        self._recent_frames: deque[dict[str, Any]] = deque(maxlen=keep)
+        self._recent_events: deque[dict[str, Any]] = deque(maxlen=400)
+        self._pending_clips: list[_PendingClip] = []
+        self._shots_clipped = 0
+        self.clips: dict[str, dict[str, Any]] = {}
 
     # Snapshots
 
@@ -103,6 +133,28 @@ class MatchRoom:
 
     def cues(self) -> list[dict[str, Any]]:
         return [cue for card in self.cards for cue in card["cues"].values()]
+
+    def shot(self, event_id: str) -> dict[str, Any] | None:
+        record = next((s for s in self.live.shots if s.event_id == event_id), None)
+        if record is None:
+            return None
+        clip = self.clips.get(event_id)
+        if clip is None:  # still recording its last seconds, or the match ended first
+            pending = next((p for p in self._pending_clips if p.event_id == event_id), None)
+            if pending is not None:
+                clip = {"shot_t": pending.shot_t, "dt": self.feed.dt, "frames": list(pending.frames),
+                        "events": pending.events}
+        return {
+            "shot": shot_dict(record),
+            "clip": clip,
+            "roster": self.roster,
+            "match_id": self.feed.meta.match_id,
+        }
+
+    def player(self, player_id: str) -> dict[str, Any] | None:
+        if player_id not in self.roster["players"]:
+            return None
+        return {"player": player_id, "summary": player_summary(self.live, player_id), "roster": self.roster}
 
     # Viewers
 
@@ -128,27 +180,58 @@ class MatchRoom:
         """One simulator tick through the live engine. Returns the cards it produced."""
         produced: list[dict[str, Any]] = []
         frame = None
-        for item in self.sim.step():
+        for item in self.feed.step():
             for moment in self.live.push(item):
-                card = card_message(moment, self.names, self.teams, self.sim.meta.match_id)
+                card = card_message(moment, self.names, self.teams, self.feed.meta.match_id)
                 self.cards.append(card)
                 produced.append(card)
                 self._record_history()
             if isinstance(item, TrackingFrame):
                 frame = item
+            elif isinstance(item, MatchEvent) and (ev := clip_event(item)) is not None:
+                self._recent_events.append(ev)
         if frame is not None:
             self.last_frame = frame_message(frame)
+            self._clip(self.last_frame)
         if self.live.t >= self._next_history_t:
             self._record_history()
             self._next_history_t = self.live.t + HISTORY_EVERY_S
         return produced
+
+    def _clip(self, frame: dict[str, Any]) -> None:
+        """Keep a replay of every shot: 12 s of tracking before it and 3 s after."""
+        compact = {"t": frame["t"], "ball": frame["ball"], "players": frame["players"]}
+        while self._shots_clipped < len(self.live.shots):
+            shot = self.live.shots[self._shots_clipped]
+            self._shots_clipped += 1
+            t0 = shot.t - CLIP_BEFORE_S
+            self._pending_clips.append(_PendingClip(
+                event_id=shot.event_id,
+                shot_t=shot.t,
+                frames=[f for f in self._recent_frames if f["t"] >= t0],
+                events=[e for e in self._recent_events if t0 <= e["t"] <= shot.t],
+            ))
+        self._recent_frames.append(compact)
+        still: list[_PendingClip] = []
+        for clip in self._pending_clips:
+            clip.frames.append(compact)
+            if compact["t"] >= clip.shot_t + CLIP_AFTER_S:
+                self.clips[clip.event_id] = {
+                    "shot_t": clip.shot_t,
+                    "dt": self.feed.dt,
+                    "frames": clip.frames,
+                    "events": clip.events,
+                }
+            else:
+                still.append(clip)
+        self._pending_clips = still
 
     def _record_history(self) -> None:
         s = self.live.stats()
         self.history.append([round(s.t, 1), *(round(p, 4) for p in s.win_prob)])
 
     def fast_forward(self, until_t: float) -> None:
-        while not self.sim.finished and self.sim.t < until_t:
+        while not self.feed.finished and self.feed.t < until_t:
             self.advance()
 
     async def run(self) -> None:
@@ -157,11 +240,11 @@ class MatchRoom:
             await asyncio.to_thread(self.fast_forward, self.config.start_minute * 60)
             self.status = "live"
             self.publish(self.hello())
-        dt = self.sim.config.dt
+        dt = self.feed.dt
         last_frame = last_stats = last_analyst = 0.0
         next_tick = time.monotonic()
         while True:
-            if self.sim.finished:
+            if self.feed.finished:
                 if self.status != "full_time":
                     self.status = "full_time"
                     self.publish(stats_message(self.live.stats()))

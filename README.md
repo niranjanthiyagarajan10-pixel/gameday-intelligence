@@ -55,6 +55,17 @@ Refit the public models on a fresh simulated season and regenerate the reports:
 python -m engine.calibrate
 ```
 
+## How data flows in
+
+```
+Feed (engine/feed.py)  ->  Live stats engine  ->  Match room  ->  WebSocket  ->  Dashboard
+ simulator today            interpret, explain     cards, clips     frames, stats,
+ recorded replay            key moments            history          cards, analyst
+ provider adapter later
+```
+
+Everything downstream reads a match through a `Feed`, one tick at a time: the events of that tick, then the tracking frame. Today the feed is our simulator, because the hackathon requires synthetic data. A recorded feed replays any match exactly (`tests/test_feed.py` proves the stats come out identical). For a real league only the feed changes: an adapter that turns a data provider's live feed into the same `MatchEvent` and `TrackingFrame` contracts.
+
 ## The engine
 
 Everything a fan sees starts here, and none of it calls a language model.
@@ -96,6 +107,7 @@ Our validation also caught a flaw in our own simulator: an early version let one
 
 - **Live Match.** All 22 players on a 2D pitch at broadcast speed, the score and clock, live win probability, momentum, control and chaos, and key moment cards that slide in as they happen. Every card has a hero number, a casual and an analyst version, and opens the evidence and formula behind it. Player focus follows one player with live distance, speed and leverage.
 - **Analyst.** Shot quality beeswarm by xG in the style of NBA Inside the Game, a sortable player leverage table, press resistance, hardest goals scored, fastest players and a team shape timeline.
+- **Shot replay and player pages.** Click any shot in the beeswarm, a goal card or a shot map. The Shot page replays the 12 seconds before the shot from tracking data, with all 22 players, the ball, the numbered passes of the move and a scoreboard strip, next to its difficulty (xG), distance, angle, nearest defender, pressure, shot speed, creator and what it was worth to the win probability. The Player page shows game averages in the spirit of the NBA player shot page: goals above expected, average xG of goals and of misses, average nearest defender at the shot, physical numbers and every shot with its replay.
 - **Streaming.** `app/` runs each match live in a room and streams frames, stats, cards and analyst data over WebSocket. The main room is the shared broadcast; `?t=55` opens a private replay of the same match from minute 55. Timed, machine-readable overlay cues for a broadcast renderer are at `GET /api/rooms/{room}/cues`.
 - **Cards before agents.** Until the agents land in M3, cards come from `agents/fallback.py`: templates that contain only words, with every number and name filled from the moment's evidence. A test fails if any template contains a digit. These stay as the agents' fallback.
 

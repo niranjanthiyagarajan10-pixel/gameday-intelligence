@@ -81,6 +81,7 @@ export interface Shot {
   team: Side;
   player: string;
   minute: number;
+  t: number;
   x: number;
   y: number;
   xg: number;
@@ -88,6 +89,64 @@ export interface Shot {
   body_part: string;
   speed_kmh: number | null;
   leverage: number;
+  shot_type: string;
+  distance_m: number;
+  angle_deg: number;
+  pressure: number;
+  defender_m: number | null;
+  creator: string | null;
+  score_before: string;
+  wp_if_goal: number;
+  wp_if_miss: number;
+}
+
+export interface ClipFrame {
+  t: number;
+  ball: [number, number, number];
+  players: [string, number, number, number][];
+}
+
+export interface ClipEvent {
+  t: number;
+  type: string;
+  team: Side;
+  player: string | null;
+  x: number;
+  y: number;
+  end_x: number | null;
+  end_y: number | null;
+  outcome: string | null;
+}
+
+export interface Clip {
+  shot_t: number;
+  dt: number;
+  frames: ClipFrame[];
+  events: ClipEvent[];
+}
+
+export interface ShotPageData {
+  shot: Shot;
+  clip: Clip | null;
+  match_id: string;
+}
+
+export interface PlayerSummary {
+  shots: number;
+  goals: number;
+  on_target: number;
+  xg: number;
+  goals_minus_xg: number;
+  made_xg: number | null;
+  missed_xg: number | null;
+  avg_defender_m: number | null;
+  distance_km: number;
+  top_speed_kmh: number;
+  sprints: number;
+  leverage: number;
+  press_rate: number | null;
+  press_attempts: number;
+  list: Shot[];
 }
 
 export interface LeverageRow {

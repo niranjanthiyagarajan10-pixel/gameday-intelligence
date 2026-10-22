@@ -14,7 +14,7 @@ from engine import metrics
 from engine.league import League
 from engine.leverage import Leverage, LeverageModel
 from engine.models import EventType, MatchEvent, MatchMeta, Moment, MomentKind, Side, StatsUpdate, TrackingFrame
-from engine.pitch import to_attacking
+from engine.pitch import goal_geometry, to_attacking
 from engine.press import PossessionTimeline, PressResistance, PressRow
 from engine.shape import ShapeChange, ShapeTracker
 from engine.winprob import GameState, Ratings, result_probs
@@ -52,7 +52,28 @@ class ShotRecord:
     outcome: str
     body_part: str
     leverage: float
+    shot_type: str = "Shot"
+    distance_m: float = 0.0
+    angle_deg: float = 0.0
+    pressure: float = 0.0
+    defender_m: float | None = None  # nearest outfield defender at the moment of the shot, from tracking
+    creator: str | None = None
+    score_before: str = "0-0"
+    wp_if_goal: float = 0.0  # shooting team's win probability if it goes in
+    wp_if_miss: float = 0.0  # and if it does not
     speed_ms: float | None = None
+
+
+def shot_type(header: bool, distance: float, first_time: bool, cross: bool, assisted: bool = False) -> str:
+    if header:
+        return "Header from a cross" if cross else "Header"
+    if distance < 8.0:
+        return "Close-range finish"
+    if distance >= 20.0:
+        return "Long shot"
+    if first_time:
+        return "First-time shot"
+    return "Shot after a pass" if assisted else "Shot after a dribble"
 
 
 @dataclass
@@ -95,6 +116,8 @@ class LiveStats:
         self.prior = self.ratings.prior(meta.home, meta.away)
         self.model = LeverageModel(self.prior, self.xt)
         keepers = {p.player_id for c in (meta.home, meta.away) for p in league.squads[c] if p.position == "GK"}
+        self._keepers = keepers
+        self._last_frame: TrackingFrame | None = None
 
         self.t = 0.0
         self.score = [0, 0]
@@ -115,7 +138,7 @@ class LiveStats:
         self.leverage_log: dict[str, Leverage] = {}
         self.moments: list[Moment] = []
 
-        self._last_complete: dict[Side, tuple[str, str, float]] = {}
+        self._last_complete: dict[Side, tuple[str, str, float, bool]] = {}  # passer, receiver, t, cross
         self._last_failed: tuple[str, Side, float, float] | None = None
         self._pending_goal: tuple[ShotRecord, Leverage] | None = None
         self._pending_speed: list[ShotRecord] = []
@@ -212,7 +235,7 @@ class LiveStats:
             self.window.add(e.t, e.team, "pass_ok")
             self._threat(k, sx, sy, ex, ey)
             receiver = e.meta.get("receiver", "")
-            self._last_complete[e.team] = (e.player_id or "", receiver, e.t)
+            self._last_complete[e.team] = (e.player_id or "", receiver, e.t, bool(e.meta.get("cross")))
             lev = self.model.completed_pass(self.state(), k, e.end_x, e.end_y, e.player_id or "", p_complete)
             return self._apply(e, lev)
         self.window.add(e.t, e.team, "pass_fail")
@@ -235,15 +258,30 @@ class LiveStats:
         xa, ya = to_attacking(e.x, e.y, e.team)
         header = e.body_part == "head"
         xg = metrics.xg(xa, ya, header, e.pressure)
+        score_before = f"{self.score[0]}-{self.score[1]}"
         self.xg[k] += xg
         shooter = e.player_id or ""
         lc = self._last_complete.get(e.team)
-        creator = lc[0] if lc and lc[1] == shooter and e.t - lc[2] <= ASSIST_WINDOW_S else None
+        fed = lc is not None and lc[1] == shooter
+        creator = lc[0] if fed and e.t - lc[2] <= ASSIST_WINDOW_S else None
+        first_time = fed and e.t - lc[2] <= 1.0
         stopper = e.meta.get("keeper") or e.meta.get("blocker") or None
         goal = e.outcome == "goal"
         lev = self.model.shot(self.state(), k, xg, goal, shooter, creator, stopper)
-        record = ShotRecord(e.event_id, e.team, shooter, e.minute, e.t, e.x, e.y, round(xg, 3),
-                            e.outcome or "", e.body_part or "foot", round(lev.value, 3))
+        distance, angle = goal_geometry(xa, ya)
+        record = ShotRecord(
+            e.event_id, e.team, shooter, e.minute, e.t, e.x, e.y, round(xg, 3), e.outcome or "",
+            e.body_part or "foot", round(lev.value, 3),
+            shot_type=shot_type(header, distance, first_time, fed and lc[3], assisted=creator is not None),
+            distance_m=round(distance, 1),
+            angle_deg=round(math.degrees(angle), 1),
+            pressure=e.pressure,
+            defender_m=self._defender_distance(e),
+            creator=creator,
+            score_before=score_before,
+            wp_if_goal=round(lev.wp_actual if goal else lev.wp_opposite, 4),
+            wp_if_miss=round(lev.wp_opposite if goal else lev.wp_actual, 4),
+        )
         self.shots.append(record)
         if e.outcome != "blocked":  # a blocked shot stops within metres, so its speed means nothing
             self._pending_speed.append(record)
@@ -260,6 +298,14 @@ class LiveStats:
                 debounce=True,
             )
         return []
+
+    def _defender_distance(self, e: MatchEvent) -> float | None:
+        """Distance from the shooter to the nearest outfield opponent in the latest tracking frame."""
+        f = self._last_frame
+        if f is None:
+            return None
+        gaps = [math.hypot(p.x - e.x, p.y - e.y) for p in f.players if p.team != e.team and p.id not in self._keepers]
+        return round(min(gaps), 1) if gaps else None
 
     def _goal(self, e: MatchEvent, k: int) -> list[Moment]:
         self.score[k] += 1
@@ -328,6 +374,7 @@ class LiveStats:
 
     def _on_frame(self, frame: TrackingFrame) -> list[Moment]:
         self.t = max(self.t, frame.t)
+        self._last_frame = frame
         self.kinematics.update(frame)
         found: list[Moment] = []
         for change in self.shape.update(frame, self.timeline.current):

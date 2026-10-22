@@ -61,6 +61,22 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         """Timed, machine-readable overlay cues, ready for a broadcast renderer."""
         return {"cues": room_or_404(room_id).cues()}
 
+    @app.get("/api/rooms/{room_id}/shots/{event_id}")
+    async def shot(room_id: str, event_id: str) -> dict[str, Any]:
+        """One shot: its metrics and a tracking replay of the 12 seconds before it."""
+        found = room_or_404(room_id).shot(event_id)
+        if found is None:
+            raise HTTPException(404, "no such shot")
+        return found
+
+    @app.get("/api/rooms/{room_id}/players/{player_id}")
+    async def player(room_id: str, player_id: str) -> dict[str, Any]:
+        """A player's game averages and every shot they took."""
+        found = room_or_404(room_id).player(player_id)
+        if found is None:
+            raise HTTPException(404, "no such player")
+        return found
+
     @app.post("/api/rooms")
     async def new_room(body: NewRoom) -> dict[str, Any]:
         if body.speed not in SPEEDS:

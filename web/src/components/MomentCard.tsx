@@ -1,6 +1,9 @@
 import { useState } from "react";
 import type { Audience, Card, Roster } from "../types";
 import { KIND_LABEL, evidenceRows, sideColor } from "../format";
+import { shotHref } from "../route";
+
+const SHOT_KINDS = new Set(["goal", "low_xg_goal", "big_chance"]);
 
 interface Props {
   card: Card;
@@ -44,6 +47,11 @@ export function MomentCard({ card, roster, depth, open: openByDefault }: Props) 
         <button onClick={() => setOwn(audience === "casual" ? "analyst" : "casual")}>
           {audience === "casual" ? "Go deeper" : "Explain simply"}
         </button>
+        {SHOT_KINDS.has(m.kind) && m.event_ids[0] && (
+          <a className="actlink" href={shotHref(m.event_ids[0])}>
+            Watch replay
+          </a>
+        )}
         {cue.verified && <span className="verified">Verified</span>}
       </div>
       {open && (

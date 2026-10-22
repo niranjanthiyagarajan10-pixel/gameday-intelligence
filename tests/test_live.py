@@ -62,6 +62,25 @@ def test_leverage_table_is_finite_and_sorted(played):
     assert totals == sorted(totals, reverse=True)
 
 
+def test_shot_types():
+    from engine.live import shot_type
+
+    assert shot_type(True, 9.0, False, True) == "Header from a cross"
+    assert shot_type(False, 6.0, False, False) == "Close-range finish"
+    assert shot_type(False, 24.0, True, False) == "Long shot"
+    assert shot_type(False, 14.0, True, False, assisted=True) == "First-time shot"
+    assert shot_type(False, 14.0, False, False, assisted=True) == "Shot after a pass"
+    assert shot_type(False, 14.0, False, False) == "Shot after a dribble"
+
+
+def test_shots_record_context_from_tracking(played):
+    _, live, _, _, _ = played
+    for s in live.shots:
+        assert s.distance_m > 0 and 0 < s.angle_deg < 180
+        assert s.defender_m is None or 0 <= s.defender_m < 80
+        assert s.wp_if_miss <= s.wp_if_goal
+
+
 def test_physical_metrics_are_plausible(played):
     _, live, _, _, _ = played
     runs = live.kinematics.runs.values()
