@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Analyst as AnalystData, LeverageRow, Roster, Shot, Side } from "../types";
-import { SHAPE_LABEL, playerName, signed } from "../format";
+import { SHAPE_LABEL, clock, playerName, signed } from "../format";
 import { playerHref, shotHref } from "../route";
 
 interface Props {
@@ -12,6 +12,51 @@ interface Props {
 
 const SIDES: Side[] = ["home", "away"];
 
+const OUTCOME: Record<string, { label: string; color: string }> = {
+  goal: { label: "Goal", color: "var(--up)" },
+  saved: { label: "Saved", color: "var(--text-muted)" },
+  off_target: { label: "Off target", color: "var(--down)" },
+  blocked: { label: "Blocked", color: "var(--text-muted)" },
+};
+
+/** The hover card on a shot, in the spirit of the NBA's: who, how hard the chance was, what happened. */
+function ShotCard({ shot, roster }: { shot: Shot; roster: Roster }) {
+  const p = roster.players[shot.player];
+  const club = roster.clubs[shot.team];
+  const outcome = OUTCOME[shot.outcome] ?? { label: shot.outcome, color: "var(--text-muted)" };
+  return (
+    <>
+      <div className="sc-who">
+        <span className="sc-badge" style={{ background: club.primary }}>
+          {p?.number}
+        </span>
+        <div>
+          <div className="sc-name">{p?.name ?? shot.player}</div>
+          <div className="sc-club">{club.short}</div>
+        </div>
+      </div>
+      <div className="sc-body">
+        <div>
+          <div className="sc-big num">
+            {(shot.xg * 100).toFixed(1)}
+            <small>%</small>
+          </div>
+          <div className="sc-label">xG</div>
+        </div>
+        <div className="sc-facts">
+          <div>
+            <i className="sc-dot" style={{ background: outcome.color }} />
+            {outcome.label}
+          </div>
+          <div className="num">{clock(shot.t)}</div>
+          <div>{shot.shot_type}</div>
+        </div>
+      </div>
+      <div className="sc-hint">Click to watch the replay</div>
+    </>
+  );
+}
+
 /** NBA Inside the Game style beeswarm: every shot placed by xG, goals filled, misses as crosses. */
 function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
   const W = 1560;
@@ -21,11 +66,16 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
   const H = 190;
   const GAP = 40;
   const R = 13;
+  const TOTAL_H = 2 * H + GAP + 20;
   const xs = (v: number) => X0 + (Math.min(v, MAX) / MAX) * (X1 - X0);
   const ticks = [0, 0.15, 0.3, 0.45, 0.6];
+  const [hover, setHover] = useState<{ shot: Shot; x: number; y: number } | null>(null);
+  const edge = hover ? (hover.x / W < 0.18 ? "left" : hover.x / W > 0.82 ? "right" : "mid") : "mid";
+  const below = hover !== null && hover.y < 190; // no room above a dot in the top row: open the card below it
 
   return (
-    <svg viewBox={`0 0 ${W} ${2 * H + GAP + 20}`} role="img" aria-label="Shot quality by expected goals">
+    <div className="swarm-wrap" onMouseLeave={() => setHover(null)}>
+    <svg viewBox={`0 0 ${W} ${TOTAL_H}`} role="img" aria-label="Shot quality by expected goals">
       {SIDES.map((side, row) => {
         const club = roster.clubs[side];
         const mine = shots.filter((s) => s.team === side).sort((a, b) => a.xg - b.xg);
@@ -83,16 +133,23 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
               </text>
             )}
             {placed.map(({ x, y, s }) => {
-              const title = `${playerName(roster, s.player)}, ${s.minute}'. xG ${s.xg.toFixed(2)}, ${s.outcome.replace("_", " ")}${
-                s.speed_kmh ? `, ${Math.round(s.speed_kmh)} km/h` : ""
-              }${s.body_part === "head" ? ", header" : ""}`;
+              const label = `${playerName(roster, s.player)}, ${clock(s.t)}. xG ${s.xg.toFixed(2)}, ${s.outcome.replace("_", " ")}. Watch the replay.`;
+              const on = hover?.shot.event_id === s.event_id;
               return (
-                <a key={s.event_id} href={shotHref(s.event_id)} className="mark">
-                  <title>{`${title}. Click to watch the replay.`}</title>
+                <a
+                  key={s.event_id}
+                  href={shotHref(s.event_id)}
+                  className="mark"
+                  aria-label={label}
+                  onMouseEnter={() => setHover({ shot: s, x, y })}
+                  onFocus={() => setHover({ shot: s, x, y })}
+                  onBlur={() => setHover(null)}
+                >
+                  {on && <circle cx={x} cy={y} r={R + 6} fill="none" stroke="var(--signal)" strokeWidth={2} />}
                   {s.outcome === "goal" ? (
                     <circle cx={x} cy={y} r={R} fill={club.primary} />
                   ) : (
-                    <g stroke="#7A7E86" strokeWidth={3} strokeLinecap="round">
+                    <g stroke={on ? "var(--text)" : "#7A7E86"} strokeWidth={3} strokeLinecap="round">
                       <line x1={x - 8} y1={y - 8} x2={x + 8} y2={y + 8} />
                       <line x1={x - 8} y1={y + 8} x2={x + 8} y2={y - 8} />
                     </g>
@@ -105,6 +162,19 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
         );
       })}
     </svg>
+      {hover && (
+        <div
+          className={`shotcard ${edge}${below ? " below" : ""}`}
+          style={{
+            left: `${(hover.x / W) * 100}%`,
+            top: `${((below ? hover.y + R + 10 : hover.y - R - 10) / TOTAL_H) * 100}%`,
+          }}
+          role="tooltip"
+        >
+          <ShotCard shot={hover.shot} roster={roster} />
+        </div>
+      )}
+    </div>
   );
 }
 

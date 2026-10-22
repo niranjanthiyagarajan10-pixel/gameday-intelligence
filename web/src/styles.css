@@ -157,6 +157,26 @@ table.lv tr:hover td { background: var(--surface-2); }
 .shape .axis { display: grid; grid-template-columns: 110px 1fr; gap: 12px; }
 .shape .axis div { display: flex; justify-content: space-between; color: var(--text-dim); font-size: 12px; }
 
+/* Shot hover card (beeswarm) */
+.swarm-wrap { position: relative; }
+.shotcard { position: absolute; z-index: 5; width: 300px; transform: translate(-50%, -100%); background: #000; border: 1px solid var(--line-dash); border-radius: 4px; padding: 12px 14px; pointer-events: none; }
+.shotcard.left { transform: translate(-12%, -100%); }
+.shotcard.right { transform: translate(-88%, -100%); }
+.shotcard.below { transform: translate(-50%, 0); }
+.shotcard.left.below { transform: translate(-12%, 0); }
+.shotcard.right.below { transform: translate(-88%, 0); }
+.sc-who { display: flex; align-items: center; gap: 10px; }
+.sc-badge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-family: "Barlow Condensed"; font-weight: 800; font-size: 18px; color: #000; flex: none; }
+.sc-name { font-family: "Barlow Condensed"; font-weight: 700; font-size: 20px; line-height: 1.1; }
+.sc-club { font-size: 13px; color: var(--text-muted); }
+.sc-body { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 12px; }
+.sc-big { font-family: "Barlow Condensed"; font-weight: 800; font-size: 44px; line-height: 0.9; }
+.sc-big small { font-size: 24px; }
+.sc-label { font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; margin-top: 2px; }
+.sc-facts { text-align: right; font-family: "Barlow Condensed"; font-weight: 700; font-size: 16px; line-height: 1.3; }
+.sc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 2px; }
+.sc-hint { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-muted); }
+
 /* Links */
 a { color: inherit; text-decoration: none; }
 .pl-cell a:hover b, .lb a:hover b, .focusbox a.nm:hover, .shot-title h2 a:hover { text-decoration: underline; text-decoration-color: var(--line-dash); }
