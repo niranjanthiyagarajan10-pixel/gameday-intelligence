@@ -266,8 +266,9 @@ Overlays are timed and machine-readable so a broadcast renderer could draw them.
 ## 7. Simulator (`engine/sim/`)
 
 - Seeded numpy generator via `engine/rng.py`.
-- Tick loop at 5 Hz for tracking frames. The ball carrier makes a decision every 1.5 to 3 seconds.
-- Players move toward formation anchors shifted by ball position, team style and fatigue.
+- Tick loop at 5 Hz for tracking frames. The ball carrier decides every 0.7 to 2.6 seconds: shoot, pass, carry or hold.
+- Players move toward formation anchors shifted by ball position, team style and fatigue. Defenders stay goal-side of the ball and squeeze toward goal. Attackers respect an offside line.
+- Home attacks toward x = 105 in both halves.
 - Each team has hidden truth parameters: attack, defence, press, tempo. Each player has pace, passing, finishing, stamina.
 - Action probabilities depend on zone, pressure and traits. Outcomes are sampled from the same true functions the metrics later try to recover.
 - State includes momentum and fatigue, so matches have rhythm.
@@ -283,7 +284,7 @@ Overlays are timed and machine-readable so a broadcast renderer could draw them.
 ```
 xG = sigmoid(b0 + b1*distance + b2*angle + b3*header + b4*pressure)
 ```
-Choose coefficients so a penalty-spot shot is about 0.75, a central shot from 16 m is about 0.10, and a shot from 25 m is about 0.03. Check with a calibration script and store in config.
+Coefficients (in `engine/metrics.py`) give unpressured central shots of about 0.49 from 6 m, 0.24 from 11 m, 0.12 from 16 m and 0.04 from 25 m. Penalties are not simulated. Mean xG per shot over simulated matches is about 0.11, as in real football.
 
 ```
 xT(z) = s(z)*g(z) + m(z) * SUM_w T(z->w) * xT(w)     (value iteration on a 16 x 12 grid)
@@ -291,7 +292,7 @@ pass value = xT(end zone) - xT(start zone)
 ```
 
 ```
-P(complete) = sigmoid(c0 + c1*distance + c2*angle + c3*pressure)
+P(complete) = sigmoid(c0 + c1*distance + c2*forward + c3*pressure)    forward = cosine of pass direction vs attack direction
 pass difficulty = 1 - P(complete)
 ```
 
@@ -309,28 +310,32 @@ control_index = possession_share * pass_completion
 chaos_index = turnovers_per_min_last_5 / baseline
 ```
 
-Counterfactual leverage (adapted from NBA Leverage):
+Counterfactual leverage (adapted from NBA Leverage, implemented in `engine/leverage.py`):
 ```
-leverage(event) = WP(actual outcome) - WP(opposite outcome)
-  shot:     goal vs saved or missed with opponent possession
-  tackle:   won vs lost (opponent keeps the ball at that spot)
-  pass:     completed vs intercepted at the receiver spot
-  turnover: lost ball vs retained ball
-Credit split per event:
-  shot:  shooter (1 - xG) share for shot making, assister and chance creator share for creation
-  defensive actions: defender for defending
-  turnovers: player who lost the ball (negative)
-Player leverage = sum over the match. Scale: 1.0 leverage = 10 points of win probability.
+value = P(win) + 0.5 * P(draw)        (so an equaliser gets its due)
+possession at a spot = xT(spot) * value(score + 1) + (1 - xT(spot)) * value(score)
+swing = value(actual outcome) - value(opposite outcome)
+  shot:     goal vs no goal
+  tackle:   ball won vs carrier keeps it at that spot
+  pass:     completed vs lost at the receiver spot
+  turnover: ball lost vs retained
+Credit is earned against expectation, so an average player sums to about zero:
+  shot:      shooter (goal - xG) * swing for shot making, creator xG * swing for creation,
+             stopper xG * swing for defending on a save or block
+  pass:      completed pass earns (1 - P(complete)) * swing for creation
+  turnover:  ball winner gets the swing for defending, the loser a share for turnovers
+  red card:  the change in value goes to the player sent off, under turnovers
+Player leverage = sum over the match. Scale: 1.0 leverage = 10 points of win value.
 ```
-The opposite outcome WP is computed by the same Poisson win probability model with the alternate score and possession. Moments rank by |leverage|, not by before and after change.
+Moments rank by |leverage|, not by before and after change.
 
-Block and press detection (from tracking frames, per team, rolling 60 s window while out of possession):
+Block and press detection (from tracking frames, per team, rolling 60 s window while out of possession and the ball is 50 to 85 m from the defending goal, where a block is chosen rather than forced):
 ```
-line_height = mean x of the back four, measured from own goal
-compactness = area of the convex hull of the 10 outfield players
-pressers    = defenders within 5 m of the ball carrier
-low block:  line_height < 30 m and compactness below baseline
-high press: line_height > 45 m and pressers >= 2 on average
+line_height = mean distance from own goal of the four deepest outfield players
+compactness = area of the convex hull of the outfield players
+pressers    = defenders within 5 m of the ball
+low block:  line_height < 30 m and compactness below 1000 m2
+high press: line_height > 45 m and pressers >= 0.6 on average (calibrated on simulated matches)
 mid block:  otherwise
 ```
 Emit a `shape_change` moment when a team's state changes and holds for at least 60 s.

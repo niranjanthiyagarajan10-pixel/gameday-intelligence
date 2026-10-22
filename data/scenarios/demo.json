@@ -1,0 +1,6 @@
+{
+  "name": "Demo: Kingsport Rovers v Ashford Vale",
+  "incidents": [
+    {"minute": 55, "kind": "red_card", "team": "away", "player_number": 8}
+  ]
+}

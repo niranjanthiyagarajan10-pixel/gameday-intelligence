@@ -12,6 +12,9 @@ from typing import Any
 
 import numpy as np
 
+# The one generator type the engine uses. Import it from here, not from numpy.random.
+Generator = np.random.Generator
+
 
 def _name_key(name: str) -> int:
     """Stable 32 bit key for a stream name. Python's hash() is salted, so it is not used."""
