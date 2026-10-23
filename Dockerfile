@@ -14,6 +14,7 @@ COPY pyproject.toml README.md ./
 COPY engine/ engine/
 COPY agents/ agents/
 COPY app/ app/
+COPY mcp_server/ mcp_server/
 RUN pip install --no-cache-dir .
 COPY data/ data/
 COPY --from=web /web/dist web/dist
