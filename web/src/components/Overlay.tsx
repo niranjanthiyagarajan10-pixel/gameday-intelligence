@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import type { Audience, Card, MatchState } from "../types";
 import { Pitch } from "./Pitch";
 import { KIND_LABEL, clock } from "../format";
-import { Tick } from "../tween";
+import { Tick, useChangedSinceMount } from "../tween";
 
 interface Props {
   state: MatchState;
@@ -53,6 +53,7 @@ function useLatestCard(cards: Card[], ready: boolean) {
 export function Overlay({ state, bg, audience }: Props) {
   const scale = useStageScale();
   const latest = useLatestCard(state.cards, state.roster !== null);
+  const scored = useChangedSinceMount(state.stats ? state.stats.score.join(":") : "");
   const { roster, stats, frame, analyst } = state;
   if (!roster || !stats) return null;
 
@@ -90,7 +91,7 @@ export function Overlay({ state, bg, audience }: Props) {
               {Array.from({ length: 11 - men[i] }, (_, k) => (
                 <span key={k} className="redc" />
               ))}
-              <span key={stats.score[i]} className="ov-goals num bump">
+              <span key={stats.score[i]} className={`ov-goals num${scored ? " bump" : ""}`}>
                 {stats.score[i]}
               </span>
             </div>

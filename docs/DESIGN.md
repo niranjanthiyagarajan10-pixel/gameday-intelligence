@@ -87,8 +87,10 @@ Specific charts:
 
 ## 7. The pitch
 
-- Dark pitch: `#0E1A12` grass with `#FFFFFF` lines at 25 percent opacity. No textures, no stripes.
-- Players are filled circles in team colour with a white shirt number. The ball is a small white dot with a short trail.
+- Dark pitch: `#0E1A12` grass with subtle mowing stripes (white at 3 percent opacity) and `#FFFFFF` lines at 25 percent opacity. Full markings: penalty arcs, corner arcs, and goals drawn with white posts and a net. No other textures.
+- Players are kit tokens: a circle in the team colour, trimmed and numbered in the club's second colour, with a soft ground shadow. Goalkeepers wear a dark kit trimmed in the team colour. A small white tick shows the direction of travel, a short streak in team colour shows a sprint, and the player on the ball gets a thin white ring.
+- The ball is a classic black and white football. It spins as it travels, grows and casts an offset shadow when it is in the air, and leaves a short trail.
+- Movement glides between tracking frames. A goal ripples the net; no rings or flashes on the pitch itself.
 - Name tags appear on the focused player and on players involved in the current card.
 - Player focus mode dims everyone else to 30 percent and draws a soft heat trail for the focused player.
 

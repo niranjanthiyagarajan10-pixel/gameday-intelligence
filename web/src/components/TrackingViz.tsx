@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Network, Roster, Shot, Side } from "../types";
-import { Markings } from "./Pitch";
+import { Grass, Markings } from "./Pitch";
 import { playerHref } from "../route";
 
 /** Pitch coordinates seen from a team attacking left to right. */
@@ -98,6 +98,7 @@ export function PassNetwork({ network, roster }: { network: Record<Side, Network
       </div>
       <div className="pb">
         <svg viewBox="-3 -3 111 74" className="pitch mini" role="img" aria-label={`${roster.clubs[side].name} pass network`}>
+          <Grass />
           <Markings />
           {net.edges.map((e) => {
             const a = pos.get(e.a);
@@ -151,6 +152,7 @@ export function Heatmap({ grid, side, roster }: { grid: number[][]; side: Side; 
   );
   return (
     <svg viewBox="-3 -3 111 74" className="pitch mini" role="img" aria-label="Heatmap from tracking">
+      <Grass />
       {cells.map((c) => (
         <rect key={`${c.x}-${c.y}`} x={c.x} y={c.y} width={c.w} height={c.h} fill={color} fillOpacity={0.08 + c.v * 0.8} />
       ))}

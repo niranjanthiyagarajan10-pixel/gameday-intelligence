@@ -28,6 +28,12 @@ export function useTween(target: number, ms = 300): number {
   return value;
 }
 
+/** True once the value differs from the one first shown, so a page load does not count as a change. */
+export function useChangedSinceMount(value: string): boolean {
+  const first = useRef(value);
+  return value !== first.current;
+}
+
 /** Renders a ticking number. */
 export function Tick({ value, digits = 0, scale = 1 }: { value: number; digits?: number; scale?: number }) {
   const v = useTween(value * scale);

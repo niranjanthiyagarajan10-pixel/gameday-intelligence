@@ -121,7 +121,7 @@ One main screen, Live Match, with an Analyst tab beside it. The fan story happen
 Layout:
 - Top bar: scoreboard, minute, viewer settings (depth, club, player focus, language, voice on or off).
 - Centre: 2D pitch with moving players, ball, and player name tags. Player focus mode highlights one player and shows their live speed, distance and actions.
-- Pitch animation: players and ball glide between tracking frames on requestAnimationFrame, timed by the measured gap between frames. The room streams a compact `events` message with each frame batch (passes, shots, won tackles, interceptions, cards, goals); the pitch draws pass lines, shot trails, tackle bursts, card pops and goal pulse rings from it, shorter at high speed. A goal shows a broadcast GOAL banner. Numbers tick to each new value over 300 ms. Reduced motion turns all of it off.
+- Pitch animation: players and ball glide between tracking frames on requestAnimationFrame, timed by the measured gap between frames. The room streams a compact `events` message with each frame batch (passes, shots, won tackles, interceptions, cards, goals); the pitch draws pass lines, shot trails, tackle bursts, card pops and a net ripple on goals from it, shorter at high speed. A goal shows a broadcast GOAL banner. Numbers tick to each new value over 300 ms. Reduced motion turns all of it off.
 - Under the pitch: momentum bar and win probability line.
 - Right rail: overlay cards as they arrive. Each card has "Show evidence" and "Explain simply" or "Go deeper".
 - Bottom drawer: Ask the match chat.

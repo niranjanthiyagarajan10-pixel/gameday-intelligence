@@ -6,6 +6,8 @@ import { Analyst } from "./components/Analyst";
 import { ShotPage } from "./components/ShotPage";
 import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
+import { Crest } from "./components/Crest";
+import { useChangedSinceMount } from "./tween";
 import { clock } from "./format";
 import { overlayHref, useRoute } from "./route";
 
@@ -39,6 +41,7 @@ function useRoom(): [string | null, (room: string) => void] {
 
 function Scoreboard({ state }: { state: MatchState }) {
   const { roster, stats, analyst, status, halfS } = state;
+  const scored = useChangedSinceMount(stats ? stats.score.join(":") : "");
   if (!roster || !stats) return null;
   const men = analyst?.men ?? [11, 11];
   const half = status === "full_time" ? "Full time" : stats.t < halfS ? "First half" : "Second half";
@@ -52,9 +55,7 @@ function Scoreboard({ state }: { state: MatchState }) {
   return (
     <section className="score">
       <div className="team">
-        <div className="crest" style={{ background: h.c.primary }}>
-          {h.c.short}
-        </div>
+        <Crest club={h.c} />
         <div>
           <div className="nm">
             {h.c.name}
@@ -67,9 +68,9 @@ function Scoreboard({ state }: { state: MatchState }) {
       </div>
       <div className="mid">
         <div className="sc num">
-          <span key={`h${stats.score[0]}`} className="bump">{stats.score[0]}</span>
+          <span key={`h${stats.score[0]}`} className={scored ? "bump" : undefined}>{stats.score[0]}</span>
           <i>:</i>
-          <span key={`a${stats.score[1]}`} className="bump">{stats.score[1]}</span>
+          <span key={`a${stats.score[1]}`} className={scored ? "bump" : undefined}>{stats.score[1]}</span>
         </div>
         <div className="live">
           <span className={`dot ${status === "live" && !state.paused ? "" : "off"}`} />
@@ -89,9 +90,7 @@ function Scoreboard({ state }: { state: MatchState }) {
           </div>
           <div className="sub">{a.sub}</div>
         </div>
-        <div className="crest" style={{ background: a.c.primary }}>
-          {a.c.short}
-        </div>
+        <Crest club={a.c} />
       </div>
     </section>
   );
