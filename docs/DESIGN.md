@@ -84,6 +84,8 @@ Specific charts:
 - Momentum: a centered bar that leans toward the team in control, filled with that team's colour.
 - Leverage table: dense rows, tabular numbers, a small inline bar for total leverage, sortable headers.
 - Team shape strip: a thin horizontal timeline with three shades for low block, mid block and high press.
+- Gravity heatmap: copy the NBA Gravity map. Smooth contour bands on a near-black pitch with light lines, a diverging scale from dark red to pink for more attention and from dark blue to ice for less, with a labelled scale bar under it. This is the one place a blue scale is allowed, because it encodes data, not decoration.
+- Match Blueprint: one long page of bordered sections in the NBA Blueprint order. Player cards use a club-colour band with the shirt (our stand-in for a player photo); shot difficulty uses red triangles, blue circles and green squares for hard, average and easy, filled for goals.
 
 ## 7. The pitch
 

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from app.blueprint import build_blueprint
 from app.payloads import (
     analyst_message,
     anim_event,
@@ -153,6 +154,10 @@ class MatchRoom:
             "roster": self.roster,
             "match_id": self.feed.meta.match_id,
         }
+
+    def blueprint(self) -> dict[str, Any]:
+        """The Match Blueprint page: the whole match story so far."""
+        return {**build_blueprint(self.live, self.roster, self.status, self.config.half_s), "roster": self.roster}
 
     def player(self, player_id: str) -> dict[str, Any] | None:
         if player_id not in self.roster["players"]:

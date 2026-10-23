@@ -94,6 +94,7 @@ export interface Shot {
   angle_deg: number;
   pressure: number;
   defender_m: number | null;
+  defender?: string | null; // nearest outfield defender at the shot
   creator: string | null;
   score_before: string;
   wp_if_goal: number;
@@ -208,6 +209,95 @@ export interface Analyst {
 }
 
 export type Status = "live" | "catching_up" | "full_time";
+
+// Match Blueprint (app/blueprint.py)
+
+export interface BlueprintShot extends Shot {
+  half: 1 | 2;
+  score_after: string;
+}
+
+export interface Highlight {
+  event_id: string;
+  team: Side;
+  player: string;
+  title: string;
+  subtitle: string;
+  minute: number;
+  xg: number;
+  outcome: string;
+}
+
+export interface Performer {
+  key: "goals_above_xg" | "creation" | "defending" | "gravity";
+  label: string;
+  info: string;
+  player: string;
+  team: Side;
+  value: string;
+}
+
+export interface GravityPlayer {
+  player: string;
+  team: Side;
+  overall: number;
+  frames: number;
+  seconds: number;
+  build_up_off_ball: number | null;
+  final_third_off_ball: number | null;
+  build_up_on_ball: number | null;
+  final_third_on_ball: number | null;
+  text: string;
+}
+
+export interface GravityGrid {
+  on_sum: number[][];
+  on_n: number[][];
+  off_sum: number[][];
+  off_n: number[][];
+}
+
+export interface MarkingSpot {
+  team: Side; // the defending side
+  defender: string;
+  attacker: string;
+  seconds: number;
+  defending_s: number;
+  share: number;
+  shots: number;
+  xg: number;
+  goals: number;
+  received: number;
+  tackles: number;
+  caption: string;
+  text: string;
+}
+
+export interface LeverageSpot {
+  player: string;
+  team: Side;
+  total: number;
+  shot_making: number;
+  creation: number;
+  defending: number;
+  turnovers: number;
+  text: string;
+}
+
+export interface BlueprintData {
+  status: Status;
+  t: number;
+  score: [number, number];
+  men: [number, number];
+  overview: { headline: string; text: string };
+  highlights: Highlight[];
+  performers: Performer[];
+  shots: BlueprintShot[];
+  finishing: Partial<Record<Side, string>>;
+  gravity: { players: GravityPlayer[]; maps: Record<Side, GravityGrid>; cell_m: number };
+  marking: MarkingSpot[];
+  leverage: LeverageSpot[];
+}
 
 /** A match event the live pitch animates, stamped with when it arrived (performance.now()). */
 export interface FxEvent {

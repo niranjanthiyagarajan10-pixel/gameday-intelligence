@@ -89,7 +89,8 @@ Auto-eventing from video is out of scope. Say so in the README.
 9. Ask the match: chat answered by the Analyst agent through MCP tools, with evidence.
 10. Replay mode: cached agent outputs so the demo works with Foundry off.
 11. Shot replay and player pages (NBA style): click a shot to watch a tracking replay of the move with its difficulty and details; player pages with goals above expected, xG of goals and misses, nearest defender distance and every shot. Built on an explicit `Feed` ingest boundary (`engine/feed.py`).
-12. Judge-facing extras:
+12. Match Blueprint page (`#/blueprint`), adapted from the NBA Inside the Game Blueprint: match overview, highlight reel of tracking replays, top performers, shot difficulty explorer with the nearest defender named, Gravity heatmap and player card, marking spotlight, leverage spotlight. Updates live and works as the full-time report.
+13. Judge-facing extras:
     - `docs/JUDGING.md`: each criterion mapped to the screen, file and number that proves it, plus a 2-minute tour.
     - Jump-to-moment links (for example `/?match=demo&t=55m`) that start playback just before the red card, the shape change and the winner.
     - Agent evaluation harness (`tests/agent_eval.py`): scripted questions and moments at set minutes, every card and answer checked by code, pass rate published in `docs/agent-eval.md` and the README.
@@ -104,9 +105,8 @@ Auto-eventing from video is out of scope. Say so in the README.
 ### Stretch (only if ahead on Oct 26)
 
 1. Voice commentary with Azure AI Speech in the selected language (section 10).
-2. Gravity (defenders drawn above expected, from tracking).
-3. Season storylines (drought, upset, comeback, rivalry).
-4. Event Hubs adapter behind the stream interface.
+2. Season storylines (drought, upset, comeback, rivalry).
+3. Event Hubs adapter behind the stream interface.
 
 ### Cut (mention as roadmap in README and video)
 
@@ -138,6 +138,16 @@ Analyst tab (updates live):
 - Pass network: each player's average position while their team has the ball, from tracking, joined by lines for pairs with 2 or more completed passes. Line width is the pass count, node size the passes a player made or received.
 
 Player page: adds a heatmap from every tracking frame on 5 m cells, drawn attacking left to right.
+
+Match Blueprint (`#/blueprint`, built from `GET /api/rooms/{room}/blueprint`, refreshed every 5 s):
+- Header: crests, score (the trailing side greyed), live minute or full time.
+- Match overview: a headline and a paragraph from word-only templates in `agents/report.py`, slots filled by `app/blueprint.py` (result, top scorer or threat, wasteful finisher, chance battle, best spell, red cards, gravity and leverage callouts). The Recap agent rewrites it in M3.
+- Highlights: up to five goals and big chances, each a tracking replay with a broadcast title such as "MENSAH SCORES AFTER A DRIBBLE".
+- Top performers: four different players for goals above xG, creation leverage, defensive leverage and average gravity, each with an info tooltip.
+- Shot difficulty: the attacking half stood up like the NBA half court, every shot marked Hard (under 0.05 xG), Average or Easy (0.20 and up), goals filled. Filter by half. Clicking a shot shows the shooter, the nearest defender by name, xG on a bar against the 0.12 league average, defender distance, pressure, shot speed, distance, angle and result, with a replay link.
+- Gravity: team heatmap in the NBA's diverging scale with an Overall, On-ball or Off-ball switch, and a player card with overall gravity and its final third and build-up, on-ball and off-ball parts.
+- Marking spotlight: for each side, the opponent's main threat and the defender who marked them most, with the time bar, shots, xG and goals allowed and passes received.
+- Leverage spotlight: each side's top player, total leverage and its four parts as diverging bars.
 
 Broadcast overlay (`#/overlay`): a 1920x1080 stage on a transparent page for OBS or a vision mixer. Score bug with clock and a win probability strip, a GOAL flash in the scoring club's colour, and the newest verified cue as a lower third, held at least 6 s. `?bg=pitch` previews it over the live pitch, `aud=analyst` switches the cue depth.
 
@@ -357,6 +367,19 @@ pressured possession = carrier has a defender within 3 m, or event pressure >= 0
 press resistance = retained / pressured possessions  (retained = still in team possession 5 s later)
 ```
 Show attempts next to every rate. Hide a rate with fewer than 5 attempts.
+
+Gravity (`engine/gravity.py`, adapted from NBA Gravity):
+```
+attention(player) = sum over outfield defenders of max(0, 1 - distance / 6 m)
+gravity = 100 * (attention - league average attention for the same zone and role)
+zones: 7.5 m x 6.8 m in attacking coordinates; role: on the ball (nearest attacker within 2 m of a grounded ball) or off it
+parts: final third (x >= 70 m) or build-up, on-ball or off-ball
+```
+The league average is fitted on 8 simulated tracked matches (`python -m engine.gravity`, also run by calibration) and stored in `data/models/gravity.json`. +100 means one extra defender held close. A player's gravity shows after five minutes measured with the ball.
+
+Marking (`engine/matchups.py`): every frame out of possession, each outfield attacker's nearest outfield defender is the marker. Time accumulates per pair; shots, xG, goals and passes received while marked are charged to the marker, and tackles to the tackler. Share = time marking that attacker / time the defender spent defending. A spotlight needs 3 minutes together.
+
+Spells (`engine/spells.py`): for each team, the 10-minute window with the largest threat (xT) margin over the opponent, kept if the team held at least 60% of the threat in it.
 
 Player thresholds: sprint above 7 m/s, high-speed running above 5.5 m/s. Emit a player cue when a player passes a distance milestone or hits a top speed for the match.
 

@@ -83,7 +83,7 @@ def shot_dict(s: ShotRecord) -> dict[str, Any]:
         "x": s.x, "y": s.y, "xg": s.xg, "outcome": s.outcome, "body_part": s.body_part,
         "speed_kmh": round(s.speed_ms * 3.6, 1) if s.speed_ms else None, "leverage": s.leverage,
         "shot_type": s.shot_type, "distance_m": s.distance_m, "angle_deg": s.angle_deg,
-        "pressure": round(s.pressure, 2), "defender_m": s.defender_m, "creator": s.creator,
+        "pressure": round(s.pressure, 2), "defender_m": s.defender_m, "defender": s.defender_id, "creator": s.creator,
         "score_before": s.score_before, "wp_if_goal": s.wp_if_goal, "wp_if_miss": s.wp_if_miss,
     }
 

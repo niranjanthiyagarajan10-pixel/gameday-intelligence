@@ -11,12 +11,15 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from engine import metrics
+from engine.gravity import GravityBaseline, GravityTracker
 from engine.league import League
 from engine.leverage import Leverage, LeverageModel
+from engine.matchups import MarkingTracker
 from engine.models import EventType, MatchEvent, MatchMeta, Moment, MomentKind, Side, StatsUpdate, TrackingFrame
 from engine.pitch import goal_geometry, to_attacking
 from engine.press import PossessionTimeline, PressResistance, PressRow
 from engine.shape import ShapeChange, ShapeTracker
+from engine.spells import MinuteBucket, empty_bucket
 from engine.winprob import GameState, Ratings, result_probs
 from engine.xt import XTGrid
 
@@ -57,6 +60,7 @@ class ShotRecord:
     angle_deg: float = 0.0
     pressure: float = 0.0
     defender_m: float | None = None  # nearest outfield defender at the moment of the shot, from tracking
+    defender_id: str | None = None  # and who that defender was
     creator: str | None = None
     score_before: str = "0-0"
     wp_if_goal: float = 0.0  # shooting team's win probability if it goes in
@@ -109,6 +113,7 @@ class LiveStats:
         league: League,
         ratings: Ratings | None = None,
         xt: XTGrid | None = None,
+        gravity: GravityBaseline | None = None,
     ) -> None:
         self.meta = meta
         self.ratings = ratings or Ratings.load()
@@ -132,6 +137,10 @@ class LiveStats:
         self.press = PressResistance()
         self.shape = ShapeTracker(keepers)
         self.kinematics = metrics.Kinematics()
+        self.gravity = GravityTracker(keepers, gravity)
+        self.marking = MarkingTracker(keepers)
+        self.by_minute: list[MinuteBucket] = []  # threat, shots, goals and xG per minute, for spells
+        self.sent_off: list[tuple[Side, str]] = []
 
         self.shots: list[ShotRecord] = []
         # Pass network: completed passes between pairs, and each player's average position in possession.
@@ -242,6 +251,7 @@ class LiveStats:
             if e.player_id and receiver:
                 pair = (e.player_id, receiver)
                 self.pass_pairs[pair] = self.pass_pairs.get(pair, 0) + 1
+                self.marking.on_received(receiver)
             lev = self.model.completed_pass(self.state(), k, e.end_x, e.end_y, e.player_id or "", p_complete)
             return self._apply(e, lev)
         self.window.add(e.t, e.team, "pass_fail")
@@ -257,16 +267,20 @@ class LiveStats:
     def _threat(self, k: int, sx: float, sy: float, ex: float, ey: float) -> None:
         gain = self.xt.at(ex, ey) - self.xt.at(sx, sy)
         self.xt_added[k] += max(gain, 0.0)
+        self._bucket().xt[k] += max(gain, 0.0)
         signed = gain if k == 0 else -gain
         self.momentum_raw = MOMENTUM_ALPHA * signed + (1 - MOMENTUM_ALPHA) * self.momentum_raw
 
     def _shot(self, e: MatchEvent, k: int) -> list[Moment]:
         xa, ya = to_attacking(e.x, e.y, e.team)
         header = e.body_part == "head"
-        defender_m = self._defender_distance(e)
+        defender_m, defender_id = self._defender_distance(e)
         xg = metrics.xg(xa, ya, header, e.pressure, defender_m)
         score_before = f"{self.score[0]}-{self.score[1]}"
         self.xg[k] += xg
+        bucket = self._bucket()
+        bucket.shots[k] += 1
+        bucket.xg[k] += xg
         shooter = e.player_id or ""
         lc = self._last_complete.get(e.team)
         fed = lc is not None and lc[1] == shooter
@@ -274,6 +288,7 @@ class LiveStats:
         first_time = fed and e.t - lc[2] <= 1.0
         stopper = e.meta.get("keeper") or e.meta.get("blocker") or None
         goal = e.outcome == "goal"
+        self.marking.on_shot(shooter, xg, goal)
         lev = self.model.shot(self.state(), k, xg, goal, shooter, creator, stopper)
         distance, angle = goal_geometry(xa, ya)
         record = ShotRecord(
@@ -284,6 +299,7 @@ class LiveStats:
             angle_deg=round(math.degrees(angle), 1),
             pressure=e.pressure,
             defender_m=None if defender_m is None else round(defender_m, 1),
+            defender_id=defender_id,
             creator=creator,
             score_before=score_before,
             wp_if_goal=round(lev.wp_actual if goal else lev.wp_opposite, 4),
@@ -306,21 +322,39 @@ class LiveStats:
             )
         return []
 
-    def _defender_distance(self, e: MatchEvent) -> float | None:
-        """Distance from the shooter to the nearest outfield defender: from the shot's freeze frame
-        when the feed sends one, otherwise from the latest tracking frame."""
+    def _defender_distance(self, e: MatchEvent) -> tuple[float | None, str | None]:
+        """Distance from the shooter to the nearest outfield defender, and who it was: from the shot's
+        freeze frame when the feed sends one, otherwise from the latest tracking frame."""
         frozen = e.meta.get("defenders")
+        ids = e.meta.get("defender_ids")
         if frozen:
-            return metrics.nearest_defender(e.x, e.y, frozen)
+            nearest = min(range(len(frozen)), key=lambda i: (frozen[i][0] - e.x) ** 2 + (frozen[i][1] - e.y) ** 2)
+            who = ids[nearest] if ids and len(ids) == len(frozen) else self._nearest_defender_id(e)
+            return metrics.nearest_defender(e.x, e.y, frozen), who
+        f = self._last_frame
+        if f is None:
+            return None, None
+        rivals = [p for p in f.players if p.team != e.team and p.id not in self._keepers]
+        return metrics.nearest_defender(e.x, e.y, [(p.x, p.y) for p in rivals]), self._nearest_defender_id(e)
+
+    def _nearest_defender_id(self, e: MatchEvent) -> str | None:
         f = self._last_frame
         if f is None:
             return None
-        return metrics.nearest_defender(
-            e.x, e.y, [(p.x, p.y) for p in f.players if p.team != e.team and p.id not in self._keepers]
-        )
+        rivals = [p for p in f.players if p.team != e.team and p.id not in self._keepers]
+        if not rivals:
+            return None
+        return min(rivals, key=lambda p: (p.x - e.x) ** 2 + (p.y - e.y) ** 2).id
+
+    def _bucket(self) -> MinuteBucket:
+        minute = int(self.t // 60)
+        while len(self.by_minute) <= minute:
+            self.by_minute.append(empty_bucket())
+        return self.by_minute[minute]
 
     def _goal(self, e: MatchEvent, k: int) -> list[Moment]:
         self.score[k] += 1
+        self._bucket().goals[k] += 1
         if self._pending_goal is None:
             return []
         record, lev = self._pending_goal
@@ -337,6 +371,8 @@ class LiveStats:
     def _tackle(self, e: MatchEvent, k: int) -> list[Moment]:
         if e.outcome != "won":
             return []
+        if e.player_id and e.meta.get("carrier"):
+            self.marking.on_tackle(e.player_id, e.meta["carrier"])
         lev = self.model.turnover(self.state(), k, e.x, e.y, "tackle", e.player_id, e.meta.get("carrier"), 0.5)
         return self._apply(e, lev)
 
@@ -352,6 +388,7 @@ class LiveStats:
             return []
         lev = self.model.red_card(self.state(), k, e.player_id or "")
         self.men[k] -= 1
+        self.sent_off.append((e.team, e.player_id or ""))
         self._credit(lev)
         self.leverage_log[e.event_id] = lev
         return self._moment(
@@ -389,6 +426,8 @@ class LiveStats:
         self._last_frame = frame
         self.kinematics.update(frame)
         possession = self.timeline.current
+        self.gravity.update(frame, possession)
+        self.marking.update(frame, possession)
         for p in frame.players:
             if p.team == possession:
                 acc = self.in_possession_pos.setdefault(p.id, [0.0, 0.0, 0])

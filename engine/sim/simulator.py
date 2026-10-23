@@ -1223,6 +1223,7 @@ class MatchSimulator:
         # A freeze frame of the outfield defenders at the moment of the shot, like StatsBomb 360 data.
         defenders = np.flatnonzero((s.team == defending) & s.active & ~self._gk_mask)
         meta["defenders"] = [[round(float(s.x[i]), 1), round(float(s.y[i]), 1)] for i in defenders]
+        meta["defender_ids"] = [s.pid[i] for i in defenders]
         out.append(
             self._event(t, EventType.SHOT, k, c, sx, sy, end=(ex, ey), outcome=result, pressure=round(pressure, 3),
                         body_part="head" if header else "foot", meta=meta)

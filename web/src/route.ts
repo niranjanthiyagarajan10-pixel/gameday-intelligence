@@ -5,6 +5,7 @@ export type Route =
   | { page: "match" }
   | { page: "shot"; id: string }
   | { page: "player"; id: string }
+  | { page: "blueprint" }
   | { page: "overlay"; bg: boolean; audience: Audience };
 
 function parse(hash: string): Route {
@@ -14,6 +15,7 @@ function parse(hash: string): Route {
     const q = new URLSearchParams(query);
     return { page: "overlay", bg: q.get("bg") === "pitch", audience: q.get("aud") === "analyst" ? "analyst" : "casual" };
   }
+  if (page === "blueprint") return { page: "blueprint" };
   if (page === "shot" && id) return { page: "shot", id: decodeURIComponent(id) };
   if (page === "player" && id) return { page: "player", id: decodeURIComponent(id) };
   return { page: "match" };

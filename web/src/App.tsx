@@ -7,6 +7,7 @@ import { ShotPage } from "./components/ShotPage";
 import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
+import { Blueprint } from "./components/Blueprint";
 import { useChangedSinceMount } from "./tween";
 import { clock } from "./format";
 import { overlayHref, useRoute } from "./route";
@@ -177,6 +178,9 @@ export default function App() {
           >
             Analyst
           </button>
+          <button className={`tab ${route.page === "blueprint" ? "on" : ""}`} onClick={() => (location.hash = "#/blueprint")}>
+            Blueprint
+          </button>
         </div>
         <div className="settings">
           <button className="set" onClick={toggleDepth} title="Switch between casual and analyst depth">
@@ -225,10 +229,11 @@ export default function App() {
         </div>
       </header>
 
-      <Scoreboard state={state} />
+      {route.page !== "blueprint" && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
+      {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>
         <Live state={state} depth={depth} focus={focus || null} />
       </main>

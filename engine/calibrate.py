@@ -25,7 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
-from engine import metrics
+from engine import gravity, metrics
 from engine.league import build_league
 from engine.live import LiveStats
 from engine.models import EventType, MatchEvent, MatchMeta
@@ -300,6 +300,9 @@ def main() -> None:
         "before": _forecast_scores(test, ratings, StateEffects(), xg_model),
         "baseline": _forecast_scores(test, flat, effects, xg_model),
     }
+
+    # Gravity's league-average attention, from its own tracked matches
+    gravity.fit_baseline(_run(gravity._fit_job, range(gravity.FIT_MATCHES))).save()
 
     # Shape detection and physical metrics on held-out tracked matches
     tracked = _run(_shape_job, range(SHAPE_MATCHES))

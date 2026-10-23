@@ -69,6 +69,11 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
             raise HTTPException(404, "no such shot")
         return found
 
+    @app.get("/api/rooms/{room_id}/blueprint")
+    async def blueprint(room_id: str) -> dict[str, Any]:
+        """The Match Blueprint: overview, highlights, performers, shot difficulty, gravity, marking, leverage."""
+        return room_or_404(room_id).blueprint()
+
     @app.get("/api/rooms/{room_id}/players/{player_id}")
     async def player(room_id: str, player_id: str) -> dict[str, Any]:
         """A player's game averages and every shot they took."""
