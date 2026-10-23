@@ -135,6 +135,14 @@ Built with Microsoft Agent Framework on Microsoft Foundry, through one wrapper (
 
 Connect Foundry: `az login`, copy `.env.example` to `.env` and set `FOUNDRY_PROJECT_ENDPOINT` and `MODEL_STRONG`, then run `python -m agents.check_foundry`. Without it the app runs on verified templates and the trace says so.
 
+## Deployment
+
+Live at https://gameday-intelligence.orangecliff-ca1053f4.eastus2.azurecontainerapps.io (MCP at `/mcp`).
+
+- **Azure Container Apps** runs one always-on replica, so the live match never cold-starts.
+- **Microsoft Foundry** serves the models. The app's system-assigned managed identity holds the Foundry User role, so there are no keys anywhere.
+- **GitHub Actions** (`.github/workflows/build.yml`) on every push to `main`: run the tests and the dashboard build, build the image and publish it to GitHub Container Registry, then sign in to Azure with OIDC and roll the Container App onto that image and check it answers. Azure trusts only this repository's `main` branch, and the deploy identity can change only this one Container App. No secret is stored in GitHub; the four `AZURE_*` repository variables are plain IDs.
+
 ## Rules the code enforces
 
 - `engine/` never imports a model or network SDK (`tests/test_engine_rules.py`).

@@ -44,3 +44,32 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+  # Sign in to Azure with OIDC (no stored secret: Azure trusts this repo's main branch only) and
+  # roll the Container App onto the image just built, then check it answers.
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Roll out the new image
+        run: |
+          az extension add --name containerapp --only-show-errors
+          az containerapp update -n gameday-intelligence -g "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "ghcr.io/${{ github.repository }}:${{ github.sha }}" --only-show-errors \
+            --query properties.latestRevisionName -o tsv
+      - name: Check the public app answers
+        run: |
+          url="https://$(az containerapp show -n gameday-intelligence -g "${{ vars.AZURE_RESOURCE_GROUP }}" --query properties.configuration.ingress.fqdn -o tsv)"
+          for i in $(seq 1 30); do
+            if curl -fsS "$url/api/health"; then echo; echo "live at $url"; exit 0; fi
+            sleep 10
+          done
+          echo "the app did not answer within 5 minutes" && exit 1
