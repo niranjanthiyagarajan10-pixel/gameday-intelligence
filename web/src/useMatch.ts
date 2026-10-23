@@ -24,7 +24,7 @@ type Message =
   | (Analyst & { type: "analyst" })
   | { type: "events"; events: Omit<FxEvent, "at">[]; at: number }
   | { type: "trace"; steps: TraceStep[] }
-  | { type: "card_update"; moment_id: string; cues: Card["cues"]; source: string; sources: Record<string, string> }
+  | { type: "card_update"; moment_id: string; cues: Card["cues"]; source: string; sources: Record<string, string>; langs?: Card["langs"] }
   | { type: "control"; status: Status; speed: number; paused: boolean }
   | { type: "error"; message: string };
 
@@ -99,7 +99,7 @@ function reducer(state: MatchState, msg: Action): MatchState {
         ...state,
         cards: state.cards.map((c) =>
           c.moment.moment_id === msg.moment_id
-            ? { ...c, cues: msg.cues as Record<"casual" | "analyst", Cue>, source: msg.source, sources: msg.sources as Card["sources"] }
+            ? { ...c, cues: msg.cues as Record<"casual" | "analyst", Cue>, source: msg.source, sources: msg.sources as Card["sources"], langs: msg.langs ?? c.langs }
             : c,
         ),
       };

@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 import type { Audience, FxEvent, MatchState, Roster } from "../types";
 import { Pitch } from "./Pitch";
 import { Tick } from "../tween";
+import { AskPanel } from "./AskPanel";
+import { METRIC_LABEL, isMine, metricBoard, type Prefs } from "../prefs";
+import { useState } from "react";
 import { WinProbability } from "./WinProbability";
 import { MomentCard } from "./MomentCard";
 import { signed } from "../format";
@@ -11,6 +14,7 @@ interface Props {
   state: MatchState;
   depth: Audience;
   focus: string | null;
+  prefs: Prefs;
 }
 
 const TAG_WINDOW_S = 10;
@@ -41,7 +45,8 @@ function GoalBanner({ fx, roster, score }: { fx: FxEvent[]; roster: Roster; scor
   );
 }
 
-export function Live({ state, depth, focus }: Props) {
+export function Live({ state, depth, focus, prefs }: Props) {
+  const [onlyMine, setOnlyMine] = useState(false);
   const { roster, stats, frame, analyst } = state;
   if (!roster || !stats) return null;
   const home = roster.clubs.home;
@@ -49,7 +54,10 @@ export function Live({ state, depth, focus }: Props) {
 
   const latest = state.cards[state.cards.length - 1];
   const latestT = latest ? Number(latest.moment.state_ref.split("@")[1]) : -Infinity;
-  const tagged = new Set(stats.t - latestT <= TAG_WINDOW_S && latest ? latest.moment.players : []);
+  const tagged = new Set([...(stats.t - latestT <= TAG_WINDOW_S && latest ? latest.moment.players : []), ...prefs.players]);
+  const board = metricBoard(prefs.metric, analyst);
+  const labels: Record<string, string> = {};
+  if (prefs.metric !== "off") for (const r of board) if (tagged.has(r.player)) labels[r.player] = r.text;
 
   const focusInfo = focus ? roster.players[focus] : null;
   const focusRun = focus ? analyst?.runs[focus] : undefined;
@@ -57,7 +65,8 @@ export function Live({ state, depth, focus }: Props) {
   const liveSpeed = focus ? frame?.players.find((p) => p[0] === focus)?.[3] : undefined;
 
   const mom = stats.momentum;
-  const cards = [...state.cards].reverse().slice(0, 12);
+  const hasFavs = prefs.clubs.length + prefs.players.length > 0;
+  const cards = [...state.cards].reverse().filter((c) => !onlyMine || isMine(c, prefs)).slice(0, 12);
 
   return (
     <div className="grid">
@@ -82,7 +91,7 @@ export function Live({ state, depth, focus }: Props) {
             </div>
           </div>
           <div className="pitchwrap">
-            <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} />
+            <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} />
             <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
             {focusInfo && (
               <div className="focusbox" style={{ borderLeftColor: roster.clubs[focusInfo.side].primary }}>
@@ -172,18 +181,49 @@ export function Live({ state, depth, focus }: Props) {
       </div>
 
       <div className="c4 col">
+        {prefs.metric !== "off" && (
+          <div className="panel">
+            <div className="ph">
+              <h3>{METRIC_LABEL[prefs.metric]}</h3>
+              <span className="label">Your metric, live</span>
+            </div>
+            <div className="pb metric-board">
+              {board.slice(0, 5).map((r, i) => {
+                const info = roster.players[r.player];
+                return (
+                  <div key={r.player} className={prefs.players.includes(r.player) ? "mine" : ""}>
+                    <span className="num">{i + 1}</span>
+                    <i className="sw" style={{ background: roster.clubs[info?.side ?? "home"].primary }} />
+                    <span>{info?.name ?? r.player}</span>
+                    <b className="num">{r.text}</b>
+                  </div>
+                );
+              })}
+              {board.length === 0 && <div className="empty">Fills in as the match is played.</div>}
+            </div>
+          </div>
+        )}
         <div className="panel">
           <div className="ph">
             <h3>Key moments</h3>
-            <span className="label">{state.cards.length} so far</span>
+            {hasFavs ? (
+              <div className="filters">
+                <button className={onlyMine ? "" : "on"} onClick={() => setOnlyMine(false)}>All</button>
+                <button className={onlyMine ? "on" : ""} onClick={() => setOnlyMine(true)}>Mine</button>
+              </div>
+            ) : (
+              <span className="label">{state.cards.length} so far</span>
+            )}
           </div>
           <div className="feed">
             {cards.length === 0 && <div className="empty">Key moments appear here as they happen.</div>}
             {cards.map((card, i) => (
-              <MomentCard key={card.moment.moment_id} card={card} roster={roster} depth={depth} open={i === 0 && depth === "analyst"} />
+              <MomentCard key={card.moment.moment_id} card={card} roster={roster} depth={depth} open={i === 0 && depth === "analyst"}
+                lang={prefs.lang} mine={isMine(card, prefs)} />
             ))}
           </div>
         </div>
+        <AskPanel room={state.room} roster={roster} lang={prefs.lang} depth={depth} favourites={prefs.players} />
       </div>
     </div>
   );

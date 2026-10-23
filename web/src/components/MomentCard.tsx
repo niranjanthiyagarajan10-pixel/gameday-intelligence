@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Audience, Card, Roster } from "../types";
 import { KIND_LABEL, evidenceRows, sideColor } from "../format";
 import { shotHref } from "../route";
+import { cardText, type Lang } from "../prefs";
 
 const SHOT_KINDS = new Set(["goal", "low_xg_goal", "big_chance"]);
 
@@ -10,6 +11,8 @@ interface Props {
   roster: Roster;
   depth: Audience;
   open: boolean;
+  lang?: Lang;
+  mine?: "club" | "player" | null;
 }
 
 const FORMULAS: Record<string, string> = {
@@ -23,21 +26,26 @@ const FORMULAS: Record<string, string> = {
   top_speed: "speed = distance between tracking frames / time, smoothed over 3 frames",
 };
 
-export function MomentCard({ card, roster, depth, open: openByDefault }: Props) {
+export function MomentCard({ card, roster, depth, open: openByDefault, lang = "en", mine = null }: Props) {
   const [open, setOpen] = useState(openByDefault);
   const [own, setOwn] = useState<Audience | null>(null);
   const audience = own ?? depth;
   const cue = card.cues[audience];
+  const shown = cardText(card, audience, lang);
   const m = card.moment;
   const heroClass = card.hero.value.startsWith("+") ? "up" : card.hero.value.startsWith("-") ? "down" : "";
 
   return (
-    <div className="card" style={{ borderLeftColor: sideColor(roster, m.team) }}>
+    <div className={`card${mine ? " mine" : ""}`} style={{ borderLeftColor: sideColor(roster, m.team) }}>
       <div className="top">
-        <span className="kind">{KIND_LABEL[m.kind] ?? m.kind}</span>
+        <span className="kind">
+          {KIND_LABEL[m.kind] ?? m.kind}
+          {mine && <em className="mine-tag">{mine === "player" ? "Your player" : "Your club"}</em>}
+        </span>
         <span className="min num">{m.minute}'</span>
       </div>
-      <p>{cue.text}</p>
+      <p lang={shown.lang}>{shown.text}</p>
+      {lang !== "en" && shown.lang === "en" && <span className="written">English until the translation is verified</span>}
       <div className="big">
         <b className={`num ${heroClass}`}>{card.hero.value}</b>
         <span className="label">{card.hero.label}</span>

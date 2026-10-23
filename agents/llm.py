@@ -28,6 +28,7 @@ from typing import Protocol
 log = logging.getLogger("gameday.llm")
 
 MODEL_TIMEOUT_S = 8.0
+ASK_TIMEOUT_S = 25.0  # a whole Ask the match run: several model calls plus tool calls
 CACHE_PATH = Path(__file__).resolve().parent.parent / "data" / "replays" / "agent_cache.json"
 
 
@@ -79,6 +80,21 @@ class FoundryBackend:
                 project_endpoint=self._endpoint, model=model, credential=self._credential
             )
         return self._clients[model]
+
+    async def run_with_tools(self, *, agent: str, instructions: str, prompt: str, model: str,
+                             mcp_url: str) -> tuple[str, list[str]]:
+        """An agent run that may call our MCP server's tools; returns its reply and the tools it called."""
+        from agent_framework import Agent, MCPStreamableHTTPTool
+
+        async with MCPStreamableHTTPTool(name="gameday", url=mcp_url) as mcp:
+            runner = Agent(client=self._client(model), name=agent, instructions=instructions)
+            response = await runner.run(prompt, tools=mcp)
+        called = []
+        for message in getattr(response, "messages", []) or []:
+            for content in getattr(message, "contents", []) or []:
+                if "FunctionCall" in type(content).__name__ and getattr(content, "name", None):
+                    called.append(str(content.name))
+        return response.text, called
 
     async def warm(self, model: str) -> None:
         """One tiny call at startup: the first call on a fresh connection takes about 7 s (auth and
@@ -175,6 +191,26 @@ class LLM:
                 await asyncio.wait_for(warm(self.strong), timeout=30)
             except Exception as e:  # warming is a nicety; the first real call will retry auth
                 log.warning("could not warm the model connection: %s", e)
+
+    async def ask(self, *, agent: str, instructions: str, prompt: str, mcp_url: str,
+                  timeout_s: float = ASK_TIMEOUT_S) -> tuple[LLMResult, list[str]]:
+        """A tool-using agent run. It makes several model calls (plan, tool calls, answer), so it gets a
+        longer overall budget than one call; on failure the caller answers with its fallback."""
+        model = self.strong
+        started = time.perf_counter()
+        took = lambda: round((time.perf_counter() - started) * 1000)  # noqa: E731
+        run = getattr(self.backend, "run_with_tools", None)
+        if run is None:
+            return LLMResult(None, False, self.backend.name, model, 0, "no model with tools configured"), []
+        try:
+            text, called = await asyncio.wait_for(
+                run(agent=agent, instructions=instructions, prompt=prompt, model=model, mcp_url=mcp_url), timeout=timeout_s)
+        except TimeoutError:
+            return LLMResult(None, False, self.backend.name, model, took(), f"timed out after {timeout_s:.0f} s"), []
+        except Exception as e:  # never an error on screen
+            log.warning("%s run failed: %s", agent, e)
+            return LLMResult(None, False, self.backend.name, model, took(), f"{type(e).__name__}: {e}"[:200]), []
+        return LLMResult(text, True, self.backend.name, model, took()), called
 
     @property
     def live(self) -> bool:

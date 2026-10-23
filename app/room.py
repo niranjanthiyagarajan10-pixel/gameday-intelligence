@@ -7,6 +7,7 @@ link, say) start a replay from any minute without changing what anyone else sees
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 import uuid
@@ -17,6 +18,8 @@ from typing import Any
 
 from agents.desk import CardDesk, TraceStep
 from agents.llm import LLM
+from agents import analyst, personalizer, recap
+from agents.personalizer import LANGS
 from app.blueprint import build_blueprint
 from app.payloads import (
     analyst_message,
@@ -33,7 +36,7 @@ from app.payloads import (
 from engine.feed import Feed, SimulatorFeed
 from engine.league import League
 from engine.live import LiveStats
-from engine.models import MatchEvent, MatchMeta, Moment, TrackingFrame
+from engine.models import MatchEvent, MatchMeta, Moment, OverlayEvent, TrackingFrame
 from engine.sim import MatchSimulator, SimConfig, load_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,6 +53,10 @@ MAX_PRIVATE_ROOMS = 20
 CLIP_BEFORE_S = 12.0
 CLIP_AFTER_S = 3.0
 TRACE_MAX = 400
+MCP_URL = os.getenv("ANALYST_MCP_URL", f"http://127.0.0.1:{os.getenv('PORT', '8000')}/mcp")
+ASKS_PER_MINUTE = 12  # the app is public and every question costs model calls
+ASK_FALLBACK = ("I could not check that against the match data just now. "
+                "Try a question about the score, a player or a team.")
 NARRATE_BACKLOG = 4  # at high speed, older cards keep their template rather than queue for the Narrator
 ANIM_MAX = 60  # events held for the next frame message; at high speed older ones are dropped
 
@@ -113,6 +120,9 @@ class MatchRoom:
         self.trace: deque[dict[str, Any]] = deque(maxlen=TRACE_MAX)
         self._to_narrate: deque[dict[str, Any]] = deque()
         self.event_log: dict[str, dict[str, Any]] = {}
+        self.recap: dict[str, Any] | None = None  # the Recap agent's report, when it has written one
+        self._asked: deque[float] = deque()
+        self._recap_lock = asyncio.Lock()
         self.cards: list[dict[str, Any]] = []
         self.history: list[list[float]] = []
         self.last_frame: dict[str, Any] | None = None
@@ -151,7 +161,10 @@ class MatchRoom:
         return {"backend": self.llm.backend.name, "model": self.llm.strong, "live": self.llm.live}
 
     def cues(self) -> list[dict[str, Any]]:
-        return [cue for card in self.cards for cue in card["cues"].values()]
+        """Every cue in every language it exists in, English first."""
+        out = [cue for card in self.cards for cue in card["cues"].values()]
+        out += [cue for card in self.cards for by_aud in card.get("langs", {}).values() for cue in by_aud.values()]
+        return out
 
     def shot(self, event_id: str) -> dict[str, Any] | None:
         record = next((s for s in self.live.shots if s.event_id == event_id), None)
@@ -172,7 +185,135 @@ class MatchRoom:
 
     def blueprint(self) -> dict[str, Any]:
         """The Match Blueprint page: the whole match story so far."""
-        return {**build_blueprint(self.live, self.roster, self.status, self.config.half_s), "roster": self.roster}
+        bp = build_blueprint(self.live, self.roster, self.status, self.config.half_s)
+        bp["overview"].pop("facts", None)
+        bp["overview"]["langs"] = {}
+        if self.recap is not None:
+            bp["overview"].update({k: self.recap[k] for k in ("headline", "text", "source", "langs", "t")})
+        return {**bp, "roster": self.roster}
+
+    async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
+        """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""
+        t = self.live.t
+        now = time.monotonic()
+        while self._asked and now - self._asked[0] > 60:
+            self._asked.popleft()
+        out: dict[str, Any] = {"question": question, "answer": ASK_FALLBACK, "source": "fallback", "lang": "en",
+                               "evidence": [], "tools_used": [], "limits": ""}
+        if len(self._asked) >= ASKS_PER_MINUTE:
+            out["answer"] = "Lots of questions right now. Try again in a minute."
+            return out
+        self._asked.append(now)
+        steps: list[TraceStep] = []
+        feedback: list[str] = []
+        for attempt in range(2):
+            prompt = json.dumps({"question": question}, ensure_ascii=False)
+            if feedback:
+                prompt += "\nYour last answer was rejected because: " + "; ".join(feedback)
+            result, called = await self.llm.ask(agent="Analyst", instructions=analyst.instructions(self.room_id, audience),
+                                                prompt=prompt, mcp_url=MCP_URL)
+            label = f"answer {attempt + 1}"
+            if not result.ok:
+                steps.append(TraceStep("ask", audience, "Analyst", label, self.desk._status(result.error), result.ms,
+                                       result.error or "", t))
+                break
+            out["tools_used"] = sorted(set(out["tools_used"]) | set(called))
+            steps.append(TraceStep("ask", audience, "Analyst", label, "ok", result.ms,
+                                   "MCP tools: " + (", ".join(called) or "none"), t))
+            parsed = analyst.parse(result.text)
+            values: dict[str, str] = {}
+            evidence: list[dict[str, Any]] = []
+            if parsed is None:
+                feedback = ["reply was not usable JSON"]
+            else:
+                feedback = analyst.check(parsed["answer"], parsed["slots"], self.desk.forbidden, question)
+                if not feedback:
+                    values, evidence, feedback = analyst.resolve(self, parsed["slots"])
+            steps.append(TraceStep("ask", audience, "Verifier", f"check {attempt + 1}", "reject" if feedback else "pass",
+                                   0, "; ".join(feedback) or f"{len(values)} values re-read from the tools", t))
+            if feedback or parsed is None:
+                continue
+            template = parsed["answer"]
+            out.update({"answer": template.format(**values), "source": "analyst", "evidence": evidence,
+                        "limits": parsed["limits"], "lang": "en",
+                        "tools_used": sorted(set(out["tools_used"]) | {e["tool"] for e in evidence})})
+            if lang in LANGS:
+                res = await self.llm.complete(agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
+                                              prompt=personalizer.prompt(template, lang, audience), model=self.llm.fast)
+                written = personalizer.parse(res.text) if res.ok else None
+                reasons = ([res.error or "no reply"] if not res.ok else ["reply was not usable JSON"] if written is None
+                           else personalizer.check(template, written, self.desk.forbidden))
+                steps.append(TraceStep("ask", audience, "Personalizer", f"write {lang}", "pass" if not reasons else "reject",
+                                       res.ms, "; ".join(reasons), t))
+                if not reasons:
+                    out.update({"answer": written.format(**values), "lang": lang})
+            break
+        else:
+            steps.append(TraceStep("ask", audience, "Fallback", "answer", "fallback", 0, "the Verifier rejected every answer", t))
+        if out["source"] == "fallback" and not any(s.agent == "Fallback" for s in steps):
+            steps.append(TraceStep("ask", audience, "Fallback", "answer", "fallback", 0, "no verified answer", t))
+        self._log(steps)
+        out["steps"] = [s.to_json() for s in steps]
+        return out
+
+    async def write_recap(self) -> dict[str, Any] | None:
+        """The Recap agent writes the match report over the engine's facts; the Personalizer writes it in
+        Spanish and Hindi. Keeps the word-template overview if anything fails."""
+        async with self._recap_lock:
+            if self.recap is not None and self.live.t - self.recap["t"] < 30:
+                return self.recap
+            t = self.live.t
+            overview = build_blueprint(self.live, self.roster, self.status, self.config.half_s)["overview"]
+            facts = overview["facts"]
+            feedback: list[str] = []
+            steps: list[TraceStep] = []
+            draft = None
+            for attempt in range(2):
+                ask = recap.prompt(facts, overview["text"], self.status == "full_time")
+                if feedback:
+                    ask += "\nYour last draft was rejected because: " + "; ".join(feedback)
+                result = await self.llm.complete(agent="Recap", instructions=recap.INSTRUCTIONS, prompt=ask,
+                                                 model=self.llm.strong)
+                if not result.ok:
+                    steps.append(TraceStep("recap", "both", "Recap", f"draft {attempt + 1}",
+                                           self.desk._status(result.error), result.ms, result.error or "", t))
+                    break
+                parsed = recap.parse(result.text)
+                feedback = ["reply was not usable JSON"] if parsed is None else recap.check(*parsed, facts, self.desk.forbidden)
+                steps.append(TraceStep("recap", "both", "Recap", f"draft {attempt + 1}", "ok", result.ms,
+                                       f"{result.backend} {result.model}", t))
+                steps.append(TraceStep("recap", "both", "Verifier", f"check {attempt + 1}",
+                                       "reject" if feedback else "pass", 0,
+                                       "; ".join(feedback) or f"{len(facts)} facts, every slot from the engine", t))
+                if not feedback:
+                    draft = parsed
+                    break
+            if draft is None:
+                steps.append(TraceStep("recap", "both", "Fallback", "template", "fallback", 0,
+                                       "word-template overview kept", t))
+                self._log(steps)
+                return None
+            head, body = draft
+            fill = lambda tpl: tpl.format(**facts).replace("%%", "%")  # noqa: E731
+            written: dict[str, Any] = {"headline": fill(head), "text": fill(body),
+                                       "source": "recap", "t": t, "langs": {}}
+            for lang in LANGS:
+                parts = []
+                for template in (head, body):
+                    res = await self.llm.complete(agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
+                                                  prompt=personalizer.prompt(template, lang, "fan"), model=self.llm.fast)
+                    out = personalizer.parse(res.text) if res.ok else None
+                    reasons = ([res.error or "no reply"] if not res.ok else ["reply was not usable JSON"] if out is None
+                               else personalizer.check(template, out, self.desk.forbidden))
+                    steps.append(TraceStep("recap", "both", "Personalizer", f"write {lang}",
+                                           "pass" if not reasons else "reject", res.ms, "; ".join(reasons), t))
+                    parts.append(None if reasons else fill(out))
+                if all(parts):
+                    written["langs"][lang] = {"headline": parts[0], "text": parts[1]}
+            self._log(steps)
+            self.recap = written
+            self.publish({"type": "recap", **written})
+            return written
 
     def player(self, player_id: str) -> dict[str, Any] | None:
         if player_id not in self.roster["players"]:
@@ -292,8 +433,20 @@ class MatchRoom:
                     changed = True
             if changed:
                 card["source"] = "narrator"
+            if self.llm.live:  # the Personalizer writes the settled English cues in Spanish and Hindi
+                t = float(moment.state_ref.rsplit("@", 1)[1])
+                cues = [OverlayEvent.model_validate({k: v for k, v in card["cues"][aud].items() if k != "text"})
+                        for aud in ("casual", "analyst")]
+                translated = await asyncio.gather(*(self.desk.translate(c, lang, t) for lang in LANGS for c in cues))
+                for w in translated:
+                    self._log(w.steps)
+                    if w.source == "personalizer":
+                        card["langs"].setdefault(w.cue.lang, {})[w.cue.audience] = {
+                            **w.cue.model_dump(mode="json"), "text": w.cue.text()}
+                        changed = True
+            if changed:
                 self.publish({"type": "card_update", "moment_id": moment.moment_id, "cues": card["cues"],
-                              "source": card["source"], "sources": card["sources"]})
+                              "source": card["source"], "sources": card["sources"], "langs": card["langs"]})
 
     async def run(self) -> None:
         narrating = asyncio.create_task(self._narrate_worker())
@@ -316,6 +469,8 @@ class MatchRoom:
             if self.feed.finished:
                 if self.status != "full_time":
                     self.status = "full_time"
+                    if self.llm.live:
+                        asyncio.create_task(self.write_recap())
                     self.publish(stats_message(self.live.stats()))
                     self.publish(analyst_message(self.live))
                     self.publish(self._control_message())

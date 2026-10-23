@@ -173,6 +173,7 @@ def card_message(m: Moment, names: dict[str, str], teams: dict[Side, str], match
         "hero": {"value": hero.value, "label": hero.label},
         "source": "template",  # until the Narrator's verified draft replaces it
         "sources": {"casual": "template", "analyst": "template"},
+        "langs": {},  # es and hi cues, added by the Personalizer
     }
 
 

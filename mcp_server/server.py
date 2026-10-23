@@ -12,7 +12,7 @@ import inspect
 import os
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
 from mcp_server import tools
@@ -52,15 +52,14 @@ def _bind(fn: Any, hub: Any) -> Any:
     return tool
 
 
-def create_mcp(hub: Any) -> FastMCP:
-    mcp = FastMCP(
-        "gameday-intelligence",
-        instructions=INSTRUCTIONS,
-        stateless_http=True,
-        json_response=True,
-        streamable_http_path="/mcp",
-        transport_security=_security(),
-    )
+def create_mcp(hub: Any) -> MCPServer:
+    mcp = MCPServer("gameday-intelligence", instructions=INSTRUCTIONS)
     for fn in tools.TOOLS:
         mcp.add_tool(_bind(fn, hub), name=fn.__name__, description=inspect.getdoc(fn))
     return mcp
+
+
+def http_app(mcp: MCPServer) -> Any:
+    """Streamable HTTP at /mcp, stateless and JSON, with DNS rebinding protection."""
+    return mcp.streamable_http_app(streamable_http_path="/mcp", stateless_http=True, json_response=True,
+                                   transport_security=_security())

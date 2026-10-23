@@ -20,7 +20,7 @@ load_env()  # before anything reads FOUNDRY_PROJECT_ENDPOINT or the model names
 
 from app.room import SPEEDS, Hub, MatchRoom, RoomConfig  # noqa: E402
 from engine.league import build_league  # noqa: E402
-from mcp_server.server import create_mcp  # noqa: E402
+from mcp_server.server import create_mcp, http_app  # noqa: E402
 
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -28,6 +28,12 @@ DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 class NewRoom(BaseModel):
     start_minute: float = Field(default=0.0, ge=0.0, le=89.0)
     speed: float = 1.0
+
+
+class Question(BaseModel):
+    question: str = Field(min_length=2, max_length=300)
+    lang: Literal["en", "es", "hi"] = "en"
+    audience: Literal["casual", "analyst"] = "casual"
 
 
 class Control(BaseModel):
@@ -38,7 +44,7 @@ class Control(BaseModel):
 def create_app(default: RoomConfig | None = None) -> FastAPI:
     hub = Hub(build_league(), default or RoomConfig.from_env())
     mcp = create_mcp(hub)
-    mcp_app = mcp.streamable_http_app()  # creates the session manager the lifespan runs
+    mcp_app = http_app(mcp)  # creates the session manager the lifespan runs
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -84,6 +90,18 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         """Every agent step so far: Narrator drafts, Verifier verdicts, fallbacks, with timings."""
         room = room_or_404(room_id)
         return {"agents": room.agent_info(), "steps": list(room.trace)}
+
+    @app.post("/api/rooms/{room_id}/ask")
+    async def ask(room_id: str, body: Question) -> dict[str, Any]:
+        """Ask the match: the Analyst agent answers from the MCP tools, every number re-read by code."""
+        return await room_or_404(room_id).ask(body.question, body.lang, body.audience)
+
+    @app.post("/api/rooms/{room_id}/recap")
+    async def write_recap(room_id: str) -> dict[str, Any]:
+        """Ask the Recap agent for the match report so far (it also writes one at full time)."""
+        room = room_or_404(room_id)
+        written = await room.write_recap()
+        return {"recap": written, "agents": room.agent_info()}
 
     @app.get("/api/rooms/{room_id}/blueprint")
     async def blueprint(room_id: str) -> dict[str, Any]:

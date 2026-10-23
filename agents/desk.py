@@ -15,7 +15,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 
-from agents import narrator
+from agents import narrator, personalizer
 from agents.fallback import CUE_KIND, fallback_cue, moment_time, slots_for
 from agents.llm import LLM
 from agents.verifier import verify
@@ -125,3 +125,26 @@ class CardDesk:
             reason = "the Verifier rejected every draft"
         steps.append(TraceStep(moment.moment_id, audience, "Fallback", "template", "fallback", 0, reason, t))
         return Written(fallback_cue(moment, audience, self.names, self.teams, self.match_id), "template", steps)
+
+    async def translate(self, cue: OverlayEvent, lang: str, t: float) -> Written:
+        """The Personalizer writes a verified cue in another language; English is the fallback."""
+        steps: list[TraceStep] = []
+        result = await self.llm.complete(
+            agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
+            prompt=personalizer.prompt(cue.template, lang, cue.audience), model=self.llm.fast,
+        )
+        label = f"write {lang}"
+        mid = cue.evidence_ref or cue.cue_id
+        if not result.ok:
+            steps.append(TraceStep(mid, cue.audience, "Personalizer", label, self._status(result.error), result.ms,
+                                   result.error or "", t))
+            return Written(cue, "template", steps)
+        out = personalizer.parse(result.text)
+        reasons = ["reply was not usable JSON"] if out is None else personalizer.check(cue.template, out, self.forbidden)
+        if reasons:
+            steps.append(TraceStep(mid, cue.audience, "Personalizer", label, "reject", result.ms, "; ".join(reasons), t))
+            return Written(cue, "template", steps)
+        steps.append(TraceStep(mid, cue.audience, "Personalizer", label, "pass", result.ms,
+                               "same slots, no typed numbers or names", t))
+        translated = cue.model_copy(update={"template": out, "lang": lang, "cue_id": f"{cue.cue_id}-{lang}"})
+        return Written(translated, "personalizer", steps)

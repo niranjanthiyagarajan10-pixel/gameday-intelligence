@@ -227,6 +227,8 @@ def test_room_swaps_in_the_narrators_verified_text():
 
         async def complete(self, *, agent, instructions, prompt, model):
             pack = json.loads(prompt)
+            if agent == "Personalizer":  # a pass-through translation keeps every slot
+                return json.dumps({"template": pack["template"]})
             m = Moment(moment_id="x", minute=pack["moment"]["minute"], kind=pack["moment"]["kind"],
                        leverage=pack["moment"]["leverage"], evidence=pack["evidence"], state_ref="x@0")
             audience = "analyst" if "an analyst" in instructions else "casual"
@@ -254,4 +256,5 @@ def test_room_swaps_in_the_narrators_verified_text():
     while not queue.empty():
         kinds.append(queue.get_nowait()["type"])
     assert "trace" in kinds and "card_update" in kinds
-    assert {s["agent"] for s in room.trace} == {"Narrator", "Verifier"}
+    assert {s["agent"] for s in room.trace} == {"Narrator", "Verifier", "Personalizer"}
+    assert set(card["langs"]) == {"es", "hi"} and card["langs"]["es"]["casual"]["lang"] == "es"

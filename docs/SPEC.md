@@ -57,20 +57,20 @@ Do not chase: season simulation, prediction games, Event Hubs, Fabric, A2A, Web 
 | (i)(c) Explain why a moment matters | Leverage on every action, key moment cards, evidence drawer with formula | Done, in template words | Narrator agent, Oct 24 |
 | (i)(d) Render on screen, timed and machine-readable for synchronized overlays | Live cards, broadcast overlay page, `GET /api/rooms/{room}/cues` with start time and duration | Done | |
 | (i)(e) Analyst and casual fan as two different experiences | Depth toggle; analyst depth opens the Analyst tab | Done | Personalizer agent, Oct 25 |
-| (i)(e) Favourite club(s) | Club picker exists but does not change anything yet | Gap | Several clubs; cards framed for them, Oct 25 |
-| (i)(e) Favourite player(s) | Player focus follows one player | Partial | Several favourite players, Oct 25 |
+| (i)(e) Favourite club(s) | Several favourite clubs; their cards are marked and filterable | Done Oct 23 | |
+| (i)(e) Favourite player(s) | Several favourite players: always tagged on the pitch, cards marked; player focus follows one | Done Oct 23 | |
 | (i)(e) Player-focused mode throughout the match | Player focus: ring, tag, live speed and distance, trail | Done | |
-| (i)(e) Viewing mode by language | None | Gap | en, es, hi, Oct 25 |
-| (i)(e) Viewing mode by a single performance metric | None | Gap | Metric mode (xG, speed, leverage, gravity or pass quality), Oct 25 |
+| (i)(e) Viewing mode by language | English, Spanish, Hindi for cards, answers and the recap (Personalizer agent) | Done Oct 23 | |
+| (i)(e) Viewing mode by a single performance metric | Metric mode: top speed, distance, xG or leverage, as a live board and on pitch tags | Done Oct 23 | |
 | (ii) Player name tags, speed and distance indicators when thresholds are reached | Tags on the focus player and card players; top speed cards | Partial: no distance milestones, no tag when any player crosses a threshold | Threshold tags and milestones, Oct 25 |
 | (ii) Pass quality: distance, accuracy, difficulty rating | Pass completion model in the engine | Gap: not shown anywhere | Pass quality panel and lines coloured by difficulty, Oct 25 |
 | (ii) Ball speed and shot speed | Shot speed on shot pages, from tracking | Partial: live ball speed not shown | Ball speed on the pitch, Oct 25 |
 | (ii) Auto-eventing from video | No video in a synthetic project; every metric is computed from tracking automatically | Partial | Stretch: detect passes and shots from raw tracking and report recall against the true events |
-| (iii) Key narratives, player-performance context, milestones, match recaps | Template cards, Blueprint overview | Partial: no AI, no milestones | Narrator Oct 24, Recap Oct 25 |
+| (iii) Key narratives, player-performance context, milestones, match recaps | Narrator writes the cards, Recap agent writes the match report, Analyst answers player questions | Done Oct 23; distance milestones still open | |
 | (iv) Control vs chaos, tactical pressure changes, game rhythm | Control and chaos indices, block and press detection, press resistance, spells, momentum | Done | |
 | (v) Create or extend a synthetic dataset | Seeded simulator with hidden truth, tracking, calibration report | Done | Publish a dataset with a data card, Oct 26 |
-| (vi) Multi-language storytelling | None | Gap | Agents write en, es, hi; Azure AI Speech voices, Oct 25 to 26 |
-| Automated match recaps for studio, broadcast or streaming | Match Blueprint overview from templates | Partial | Recap agent, Oct 25 |
+| (vi) Multi-language storytelling | Personalizer writes en, es, hi with slots intact | Done Oct 23 | Azure AI Speech voices, Oct 26 |
+| Automated match recaps for studio, broadcast or streaming | Recap agent at full time and on request, in three languages | Done Oct 23 | |
 | Studio, broadcast and streaming scenarios | Match Blueprint (studio), overlay page (broadcast), live companion (streaming) | Done | |
 | Responsive enough for live play | Room streams frames 10 times a second; agents get an 8 s timeout with a template fallback | Engine done | Agents, Oct 24 |
 | Fans in any market tailor their experience | Depth, focus | Partial | Language, clubs, players, metric mode, Oct 25 |

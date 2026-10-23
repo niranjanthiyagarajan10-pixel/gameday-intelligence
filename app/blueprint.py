@@ -7,9 +7,11 @@ Every number comes from the live engine; every sentence is a word-only template 
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from agents.report import GRAVITY_CATEGORIES, HOW_SCORED, LEVERAGE_PARTS, MISS_WORDS, REPORT, count, say
+from agents.report import say as _say
 from app.payloads import shot_dict
 from engine.gravity import CATEGORIES, GravityRow
 from engine.live import LiveStats, ShotRecord
@@ -23,6 +25,15 @@ MIN_GRAVITY_FRAMES = 1500  # five minutes measured with the ball before a player
 MIN_MARKING_S = 180.0
 MIN_CATEGORY_FRAMES = 25
 MEN_WORDS = {10: "ten", 9: "nine", 8: "eight", 7: "seven"}
+
+
+WORD_NUMBERS = {word: str(n) for n, word in MEN_WORDS.items()}
+
+
+def _as_fact(value: str) -> str:
+    """Facts are bare values ('3', not '3 goals'; '10', not 'ten'), so a writer in any language adds the words."""
+    m = re.fullmatch(r"(\d+) [a-z]+", value)
+    return m.group(1) if m else WORD_NUMBERS.get(value, value)
 
 
 def _fmt_xg(v: float) -> str:
@@ -82,6 +93,16 @@ def _overview(live: LiveStats, n: _Names, finished: bool, gravity: list[dict[str
     score = f"{max(h, a)}-{min(h, a)}" if h != a else f"{h}-{a}"
     home, away = n.team("home"), n.team("away")
     sentences: list[str] = []
+    facts: dict[str, str] = {}
+
+    def say(key: str, **slots: str) -> str:  # noqa: F811  records every value as a fact the Recap agent may use
+        prefix, i = key, 2
+        while any(f.startswith(prefix + "_") for f in facts):
+            prefix, i = f"{key}{i}", i + 1
+        for name, value in slots.items():
+            facts[f"{prefix}_{name}"] = _as_fact(value)
+        return _say(key, **slots)
+
     if h == a:
         headline = say("headline_draw", home=home, away=away) if finished else say("headline_level", home=home, away=away, minute=minute)
         sentences.append(say("result_draw", home=home, away=away, score=score) if finished
@@ -144,7 +165,7 @@ def _overview(live: LiveStats, n: _Names, finished: bool, gravity: list[dict[str
         top_lev = max(table, key=lambda r: abs(r.total))
         sentences.append(say("inside_leverage", player=n.name(top_lev.player_id), leverage=_signed(top_lev.total)))
 
-    return {"headline": headline, "text": " ".join(sentences),
+    return {"headline": headline, "text": " ".join(sentences), "facts": facts, "source": "template",
             "spells": [{"team": s.team, "start": s.start, "end": s.end, "share": s.share, "shots": s.shots,
                         "goals": s.goals, "xg": s.xg} for s in spells]}
 

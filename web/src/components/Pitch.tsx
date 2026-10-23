@@ -9,6 +9,7 @@ interface Props {
   tagged: Set<string>;
   speed: number;
   fx: FxEvent[];
+  labels?: Record<string, string>; // extra text on a player's tag, e.g. their value in metric mode
 }
 
 const LINE = { fill: "none", stroke: "rgba(255,255,255,.25)", strokeWidth: 0.3 } as const;
@@ -286,7 +287,7 @@ export function carrierOf(players: [string, number, number, number][], ball: [nu
 /** How long an effect stays on screen: shorter at high speed so the pitch does not fill with lines. */
 const life = (base: number, speed: number, floor = 0.4) => Math.max(floor, base / Math.sqrt(speed));
 
-export function Pitch({ frame, roster, focus, tagged, speed, fx }: Props) {
+export function Pitch({ frame, roster, focus, tagged, speed, fx, labels = {} }: Props) {
   const glide = useGlide(frame);
   const headings = useHeadings(frame);
   const [focusTrail, setFocusTrail] = useState<[number, number, number][]>([]);
@@ -357,7 +358,8 @@ export function Pitch({ frame, roster, focus, tagged, speed, fx }: Props) {
         const isFocus = id === focus;
         const dim = focus !== null && !isFocus && !tagged.has(id);
         const showTag = isFocus || tagged.has(id);
-        const tag = isFocus ? `${info.short.toUpperCase()}  ${(speedMs * 3.6).toFixed(1)} KM/H` : info.short.toUpperCase();
+        const extra = labels[id] ? `  ${labels[id].toUpperCase()}` : "";
+        const tag = isFocus ? `${info.short.toUpperCase()}  ${(speedMs * 3.6).toFixed(1)} KM/H` : `${info.short.toUpperCase()}${extra}`;
         const tagW = tag.length * 0.95 + 2;
         return (
           <g key={id} ref={glide.bind(id)} style={{ opacity: dim ? 0.3 : 1, transition: "opacity 300ms" }}>

@@ -224,7 +224,7 @@ def test_tools_answer_from_the_live_match(room):
 
 
 def test_mcp_server_lists_and_calls_tools(room):
-    from mcp.shared.memory import create_connected_server_and_client_session
+    from mcp import Client
 
     from mcp_server.server import create_mcp
 
@@ -235,13 +235,13 @@ def test_mcp_server_lists_and_calls_tools(room):
     mcp = create_mcp(OneRoomHub())
 
     async def go():
-        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
-            listed = await session.list_tools()
-            result = await session.call_tool("get_match_state", {})
-            missing = await session.call_tool("get_match_state", {"room": "nope"})
+        async with Client(mcp) as client:
+            listed = await client.list_tools()
+            result = await client.call_tool("get_match_state", {})
+            missing = await client.call_tool("get_match_state", {"room": "nope"})
             return {t.name for t in listed.tools}, result, missing
 
     names, result, missing = run(go())
     assert {"get_match_state", "get_moment_evidence", "verify_claims", "get_gravity"} <= names
-    assert not result.isError and "Kingsport Rovers" in result.content[0].text
-    assert missing.isError
+    assert not result.is_error and "Kingsport Rovers" in result.content[0].text
+    assert missing.is_error

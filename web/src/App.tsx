@@ -9,6 +9,8 @@ import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
 import { Blueprint } from "./components/Blueprint";
 import { TracePanel } from "./components/TracePanel";
+import { Favourites } from "./components/Favourites";
+import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./prefs";
 import { useChangedSinceMount } from "./tween";
 import { clock } from "./format";
 import { overlayHref, useRoute } from "./route";
@@ -110,7 +112,7 @@ export default function App() {
   });
   const [tab, setTab] = useState<"live" | "analyst">("live");
   const [depth, setDepth] = useState<Audience>("casual");
-  const [club, setClub] = useState<Side | "">("");
+  const [prefs, updatePrefs] = usePrefs();
   const [focus, setFocus] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
   const { roster, stats, analyst } = state;
@@ -190,11 +192,24 @@ export default function App() {
             <b>{depth === "casual" ? "Casual" : "Analyst"}</b>
           </button>
           <label className="set">
-            <span className="label">My club</span>
-            <select value={club} onChange={(e) => setClub(e.target.value as Side | "")}>
-              <option value="">None</option>
-              <option value="home">{roster.clubs.home.short}</option>
-              <option value="away">{roster.clubs.away.short}</option>
+            <span className="label">Language</span>
+            <select value={prefs.lang} onChange={(e) => updatePrefs({ lang: e.target.value as Lang })}>
+              {(Object.keys(LANG_LABEL) as Lang[]).map((l) => (
+                <option key={l} value={l}>
+                  {LANG_LABEL[l]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Favourites roster={roster} prefs={prefs} update={updatePrefs} onPitch={onPitch} />
+          <label className={`set ${prefs.metric !== "off" ? "on" : ""}`}>
+            <span className="label">Metric mode</span>
+            <select value={prefs.metric} onChange={(e) => updatePrefs({ metric: e.target.value as Metric })}>
+              {(Object.keys(METRIC_LABEL) as Metric[]).map((m) => (
+                <option key={m} value={m}>
+                  {METRIC_LABEL[m]}
+                </option>
+              ))}
             </select>
           </label>
           <label className={`set ${focus ? "on" : ""}`}>
@@ -238,10 +253,10 @@ export default function App() {
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
-      {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} />}
+      {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
       {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>
-        <Live state={state} depth={depth} focus={focus || null} />
+        <Live state={state} depth={depth} focus={focus || null} prefs={prefs} />
       </main>
       <main className={route.page === "match" && tab === "analyst" ? "" : "hidden"}>
         {analyst && <Analyst analyst={analyst} roster={roster} halfS={state.halfS} now={stats.t} />}

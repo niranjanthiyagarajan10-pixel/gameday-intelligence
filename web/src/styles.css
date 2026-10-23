@@ -475,3 +475,35 @@ table.shots td:first-child { text-align: left; }
 .trace-row .act { color: var(--text-muted); }
 .trace-row .ms { text-align: right; }
 .trace-row .d { grid-column: 2 / -1; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* M4: favourites, metric mode, Ask the match, recap */
+.favs { position: relative; }
+.favs-panel { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; width: 420px; background: #050506; border: 1px solid var(--line); border-radius: 3px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.favs-panel label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.favs-clubs { display: flex; flex-direction: column; gap: 6px; }
+.favs-players { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; max-height: 320px; overflow-y: auto; }
+.favs-players > div { display: flex; flex-direction: column; gap: 4px; }
+.favs-done { align-self: flex-end; background: var(--text); color: #000; border: 0; border-radius: 2px; padding: 5px 14px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; text-transform: uppercase; cursor: pointer; }
+.card.mine { background: #1a1c21; }
+.mine-tag { font-style: normal; margin-left: 8px; color: var(--signal); letter-spacing: 0.06em; }
+.metric-board > div { display: grid; grid-template-columns: 22px 12px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.metric-board > div.mine span:nth-child(3) { color: var(--signal); }
+.metric-board b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; }
+.ask-form { display: flex; gap: 8px; }
+.ask-form input { flex: 1; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px; font-family: Barlow, sans-serif; font-size: 14px; }
+.ask-form button { background: var(--text); color: #000; border: 0; border-radius: 2px; padding: 0 16px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 16px; text-transform: uppercase; cursor: pointer; }
+.ask-form button:disabled { opacity: 0.5; cursor: default; }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.ask-chips button { background: none; border: 1px solid var(--line); border-radius: 2px; color: var(--text-muted); padding: 4px 8px; font-size: 12px; cursor: pointer; text-align: left; }
+.ask-chips button:hover { color: var(--text); border-color: var(--text-muted); }
+.ask-a { border-top: 1px solid var(--line); padding: 10px 0; }
+.ask-q { font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; text-transform: uppercase; color: var(--text-muted); }
+.ask-a p { margin: 4px 0 6px; font-size: 15px; }
+.ask-meta { display: flex; gap: 12px; }
+.ask-meta .verified, .ask-meta .written { margin-left: 0; }
+.ask-ev { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+.ask-ev summary { cursor: pointer; }
+.ask-ev div { padding: 2px 0 2px 12px; font-family: "JetBrains Mono", ui-monospace, monospace; }
+.ask-ev b { color: var(--text); }
+.bp-recap { align-self: center; background: none; border: 1px solid var(--line-dash); border-radius: 2px; color: var(--text); padding: 6px 14px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
+.bp-recap:disabled { opacity: 0.6; cursor: default; }

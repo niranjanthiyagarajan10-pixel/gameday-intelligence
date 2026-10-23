@@ -6,6 +6,7 @@ import { Replay } from "./Replay";
 import { ShotExplorer } from "./ShotExplorer";
 import { GravitySection } from "./GravityMap";
 import { playerHref } from "../route";
+import type { Lang } from "../prefs";
 
 const REFRESH_MS = 5000;
 const POSITION: Record<string, string> = { GK: "GK", DF: "DF", MF: "MF", FW: "FW" };
@@ -242,8 +243,9 @@ function LeverageCards({ items, roster }: { items: LeverageSpot[]; roster: Roste
 }
 
 /** The Match Blueprint: one page that tells the story of the match, after NBA Inside the Game. */
-export function Blueprint({ room, roster, halfS }: { room: string; roster: Roster; halfS: number }) {
+export function Blueprint({ room, roster, halfS, lang = "en" }: { room: string; roster: Roster; halfS: number; lang?: Lang }) {
   const [bp, setBp] = useState<BlueprintData | null>(null);
+  const [writing, setWriting] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -260,15 +262,37 @@ export function Blueprint({ room, roster, halfS }: { room: string; roster: Roste
   }, [room]);
 
   if (!bp) return <div className="empty" style={{ padding: 24 }}>Building the match blueprint.</div>;
+  const translated = lang !== "en" ? bp.overview.langs?.[lang] : undefined;
+  const story = translated ? { ...translated, lang } : { headline: bp.overview.headline, text: bp.overview.text, lang: "en" };
 
   return (
     <div className="bp">
       <Header bp={bp} roster={roster} />
       <section className="bp-overview">
         <span className="label">Match overview</span>
-        <h2>{bp.overview.headline}</h2>
-        <p>{bp.overview.text}</p>
-        <span className="bp-fine">Written from verified match data: every number comes from the tracking and event engine.</span>
+        <h2 lang={story.lang}>{story.headline}</h2>
+        <p lang={story.lang}>{story.text}</p>
+        <span className="bp-fine">
+          {bp.overview.source === "recap"
+            ? "Written by the Recap agent over the engine's facts: every number and name is filled by code and checked."
+            : "Written from verified match data: every number comes from the tracking and event engine."}
+        </span>
+        <button
+          className="bp-recap"
+          disabled={writing}
+          onClick={async () => {
+            setWriting(true);
+            try {
+              await fetch(`/api/rooms/${room}/recap`, { method: "POST" });
+              const r = await fetch(`/api/rooms/${room}/blueprint`);
+              if (r.ok) setBp((await r.json()) as BlueprintData);
+            } finally {
+              setWriting(false);
+            }
+          }}
+        >
+          {writing ? "The Recap agent is writing" : bp.overview.source === "recap" ? "Rewrite the recap" : "Write the recap now"}
+        </button>
       </section>
       <Highlights room={room} items={bp.highlights} roster={roster} />
       <Performers items={bp.performers} roster={roster} />

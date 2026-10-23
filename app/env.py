@@ -23,7 +23,7 @@ def load_env(path: Path = ENV_FILE) -> None:
         os.environ["PATH"] = f"{AZ_CLI_DIR}{os.pathsep}{os.environ.get('PATH', '')}"
     if not path.exists():
         return
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
