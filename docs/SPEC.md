@@ -2,15 +2,22 @@
 
 ## 1. Goal and judging map
 
-Win the Grand Prize. The category label on the submission is Best Multi-Agent System, chosen because our agent pipeline fits it best and fit is 20% of the score. The category prize is not the target. Five criteria, 20% each. Every part of the build should earn points on at least one.
+Win the Grand Prize. In the organisers' words: "Best overall solution with real-world impact and innovative use of Microsoft platform. Awarded to the team that delivers the most complete and compelling solution, demonstrating innovative use of the Microsoft AI platform product stack while transforming synthetic football event data into meaningful, explainable match intelligence. The winning solution will also best demonstrate how AI can turn football events and statistics into engaging narratives, contextual insights, and accessible and personalized experiences for fans, analysts, and broadcasters."
 
-| Criterion | Where we earn it |
-|---|---|
-| Technological implementation | Seeded simulator with tracking frames, deterministic metrics, tests, calibration table, agent eval harness, Foundry, Agent Framework, MCP, Container Apps, Bicep and azd, Copilot Agent Mode with Azure MCP in real use |
-| Agentic design and innovation | Six agents with distinct roles, shared match state, MCP tools, a verifier loop with retries, fallbacks, and a live trace panel |
-| Real-world impact | Broadcast-ready overlay cues plus personalized fan experiences. One engine serves casual fans, analysts and broadcasters |
-| User experience and demo video | One polished Live Match screen, a clear fan storyline, a video under 2 minutes |
-| Fit to category | Covers all five required stages, and the agents collaborate in a way one agent could not |
+Every piece of work is ranked by the phrase of that text it earns. The category label on the submission form (Best Multi-Agent System) is only a form field. It is never the reason to build or cut anything.
+
+| Grand Prize phrase | What earns it | Status on Oct 23 |
+|---|---|---|
+| Innovative use of the Microsoft AI platform | Foundry models, a multi-agent pipeline on Microsoft Agent Framework, MCP tools, Azure AI Speech, Azure Container Apps, GitHub Copilot Agent Mode with the Azure MCP Server | Not started. The biggest gap. |
+| Meaningful, explainable match intelligence | Tracking engine, xG, leverage, Gravity, shape and press, control vs chaos, evidence drawer, held-out validation | Done |
+| Engaging narratives | Narrator writes the live cards, Recap writes the full-time report, milestones | Word templates only |
+| Contextual insights | Ask the match, leverage, spells, Match Blueprint | Numbers done; Ask the match not started |
+| Accessible | English, Spanish and Hindi; voice read-outs; keyboard, contrast and screen-reader pass; Explain simply | Explain simply only |
+| Personalized | Depth, favourite clubs, favourite players, player focus, single-metric mode, language | Depth and player focus done |
+| For fans, analysts and broadcasters | Live Match; Analyst tab and Match Blueprint; broadcast overlay and cue API | Done |
+| Most complete and compelling | Public demo URL, video under 2 minutes, JUDGING.md, published eval pass rate | Not started |
+
+Every submission is also scored on five criteria, 20% each: technological implementation, agentic design and innovation, real-world impact, user experience and demo video, and fit to category. The Grand Prize table above already covers them.
 
 Signature story for judges: "The AI never makes up a number." Every number on screen comes from code, every claim is checked by the Verifier, and every card opens its evidence.
 
@@ -41,22 +48,32 @@ Do not chase: season simulation, prediction games, Event Hubs, Fabric, A2A, Web 
 - Hero tech to use visibly: Microsoft Foundry, Microsoft Agent Framework, MCP, Azure services. Built with GitHub Copilot where practical, and say so in the README.
 - Submit by Oct 27, 2026, 11:59 PM PT.
 
-### Rule coverage
+### Coverage of the full brief
 
-| Required by the rules | Where we cover it |
-|---|---|
-| (a) Ingest events as they happen | Simulator streams events and frames through the async queue |
-| (b) Interpret into stats and patterns | Live stats engine (section 7) |
-| (c) Explain why a moment matters | Moment detector, Narrator, evidence drawer, control vs chaos |
-| (d) Render alongside the match | Timed, machine-readable OverlayEvent cues on the Live Match screen |
-| (e) Personalize for analyst and casual fan | Depth toggle, favourite club, player focus, language, voice |
-| Player identification with speed and distance thresholds | Player tags on the pitch, sprint and distance cues |
-| Pass quality: distance, accuracy, difficulty | Pass difficulty model and pass cards |
-| Ball speed and shot speed | Derived from tracking frames |
-| Narratives, milestones, recaps | Narrator cards, milestone detector, Recap agent |
-| Multi-language storytelling | en, es, hi text (Azure Speech voices as stretch) |
-| Data innovation | Seeded simulator with hidden truth parameters and a calibration report |
-| Control vs chaos, tactical pressure changes | Control and chaos indices, block and press detection, press resistance |
+| The brief asks for | Our feature | Status on Oct 23 | Plan |
+|---|---|---|---|
+| (i)(a) Ingest events as they happen: passes, shots, tackles, possession changes, pressure events, metadata | Simulator streams all of these, plus 5 Hz tracking of all 22 players, through the `Feed` boundary | Done | |
+| (i)(b) Interpret into statistics, patterns and context | Live stats engine, Analyst tab, Match Blueprint | Done | |
+| (i)(c) Explain why a moment matters | Leverage on every action, key moment cards, evidence drawer with formula | Done, in template words | Narrator agent, Oct 24 |
+| (i)(d) Render on screen, timed and machine-readable for synchronized overlays | Live cards, broadcast overlay page, `GET /api/rooms/{room}/cues` with start time and duration | Done | |
+| (i)(e) Analyst and casual fan as two different experiences | Depth toggle; analyst depth opens the Analyst tab | Done | Personalizer agent, Oct 25 |
+| (i)(e) Favourite club(s) | Club picker exists but does not change anything yet | Gap | Several clubs; cards framed for them, Oct 25 |
+| (i)(e) Favourite player(s) | Player focus follows one player | Partial | Several favourite players, Oct 25 |
+| (i)(e) Player-focused mode throughout the match | Player focus: ring, tag, live speed and distance, trail | Done | |
+| (i)(e) Viewing mode by language | None | Gap | en, es, hi, Oct 25 |
+| (i)(e) Viewing mode by a single performance metric | None | Gap | Metric mode (xG, speed, leverage, gravity or pass quality), Oct 25 |
+| (ii) Player name tags, speed and distance indicators when thresholds are reached | Tags on the focus player and card players; top speed cards | Partial: no distance milestones, no tag when any player crosses a threshold | Threshold tags and milestones, Oct 25 |
+| (ii) Pass quality: distance, accuracy, difficulty rating | Pass completion model in the engine | Gap: not shown anywhere | Pass quality panel and lines coloured by difficulty, Oct 25 |
+| (ii) Ball speed and shot speed | Shot speed on shot pages, from tracking | Partial: live ball speed not shown | Ball speed on the pitch, Oct 25 |
+| (ii) Auto-eventing from video | No video in a synthetic project; every metric is computed from tracking automatically | Partial | Stretch: detect passes and shots from raw tracking and report recall against the true events |
+| (iii) Key narratives, player-performance context, milestones, match recaps | Template cards, Blueprint overview | Partial: no AI, no milestones | Narrator Oct 24, Recap Oct 25 |
+| (iv) Control vs chaos, tactical pressure changes, game rhythm | Control and chaos indices, block and press detection, press resistance, spells, momentum | Done | |
+| (v) Create or extend a synthetic dataset | Seeded simulator with hidden truth, tracking, calibration report | Done | Publish a dataset with a data card, Oct 26 |
+| (vi) Multi-language storytelling | None | Gap | Agents write en, es, hi; Azure AI Speech voices, Oct 25 to 26 |
+| Automated match recaps for studio, broadcast or streaming | Match Blueprint overview from templates | Partial | Recap agent, Oct 25 |
+| Studio, broadcast and streaming scenarios | Match Blueprint (studio), overlay page (broadcast), live companion (streaming) | Done | |
+| Responsive enough for live play | Room streams frames 10 times a second; agents get an 8 s timeout with a template fallback | Engine done | Agents, Oct 24 |
+| Fans in any market tailor their experience | Depth, focus | Partial | Language, clubs, players, metric mode, Oct 25 |
 
 ### Benchmark: NBA Inside the Game
 
@@ -98,13 +115,17 @@ Auto-eventing from video is out of scope. Say so in the README.
     - Infrastructure as code: Bicep in `infra/`, deployed with `azd up`.
     - GitHub Actions CI running pytest and the web build on every push.
 
-### Should (Oct 26, if time allows)
+### Should (Oct 25 to 26; the Grand Prize names every one of these)
 
-1. Auto match recap at full time by the Recap agent, verified like every card.
+1. Automated match recap by the Recap agent, verified like every card. The brief asks for recaps twice, so this is never cut.
+2. Voice read-outs of cards and the recap with Azure AI Speech in en, es and hi.
+3. Accessibility pass: keyboard navigation, contrast against the black canvas, screen-reader labels on every chart, reduced motion.
+4. Personalization the brief names: several favourite clubs and players, single-metric mode, threshold-triggered player tags, pass quality, live ball speed.
+5. A published synthetic dataset with a data card.
 
 ### Stretch (only if ahead on Oct 26)
 
-1. Voice commentary with Azure AI Speech in the selected language (section 10).
+1. Auto-eventing from tracking: detect passes and shots from raw frames and report recall against the true events.
 2. Season storylines (drought, upset, comeback, rivalry).
 3. Event Hubs adapter behind the stream interface.
 
@@ -424,13 +445,13 @@ MCP server tools (`mcp_server/`): `get_match_state`, `get_moment_evidence`, `get
 |---|---|---|---|
 | Oct 22 to 23 | M0 | Repo, license, pydantic models, rng, determinism test, Azure and Foundry setup | `pytest` passes, same seed gives same hash, one Foundry call works from a script |
 | Oct 22 to 23 | M1 | Simulator (full and events_only), live stats engine, win probability, counterfactual leverage, block and press detection, press resistance, realism report | Invariants pass, realism table prints, stats and leverage stream from CLI, unit tests for each new metric |
-| Oct 24 | M2 | FastAPI, WebSocket, Live Match screen, Analyst tab, Container Apps deploy | Public URL shows a live match with players moving, numbers updating, and the beeswarm and leverage table filling in |
-| Oct 25 | M3 | MCP server, Editor, Narrator, Verifier, fallbacks, overlay cards, evidence drawer, trace panel | Cards appear live on the URL, a forced failure shows the fallback, evidence opens, a shape change produces a card |
-| Oct 26 | M4 | Personalizer, persona, club, player focus, 3 languages, Ask the match, then Recap if time allows | Switching settings changes cards, questions get verified answers, analyst depth opens the Analyst tab |
-| Oct 26 to 27 | M5 | Replay mode, jump-to-moment links, agent eval harness, calibration report, Copilot setup files, Bicep and azd, CI, README, JUDGING.md, video script | Replay works with Foundry off, eval pass rate published, `azd up` deploys, README has realism, calibration and eval tables |
+| Oct 23 | M2 | FastAPI, WebSocket, Live Match screen, Analyst tab, then shot pages, accuracy work, animation, overlay and Match Blueprint | Done locally; public URL waits on Azure |
+| Oct 24 | M3 | Model wrapper with timeout and fallback, MCP server, Narrator, Verifier, trace panel, Foundry on, Container Apps deploy | Cards are written live by agents on the public URL, a forced failure shows the fallback, the trace shows each agent step |
+| Oct 25 | M4 | Personalizer, favourite clubs and players, metric mode, en, es, hi, Ask the match, Recap agent, threshold tags, pass quality, ball speed | Settings change the cards, questions get verified answers, the Blueprint overview is written by the Recap agent |
+| Oct 26 | M5 | Azure AI Speech voices, accessibility pass, agent eval harness, dataset and data card, replay mode, Copilot setup files, CI, Bicep and azd, README, JUDGING.md, video script | Eval pass rate published, voice works in three languages, JUDGING.md maps every Grand Prize phrase to a screen |
 | Oct 27 | Submit | Feature freeze, polish, record video, submit before 11:59 PM PT | Video under 2 minutes uploaded, repo public, demo URL live, jump links work |
 
-If time is short on Oct 27, cut in this order: Recap, Bicep (keep the manual deploy guide), CI, Copilot prompt file. Never cut the eval harness, JUDGING.md or jump links.
+If time is short, cut in this order: auto-eventing, Bicep (keep the manual deploy guide), CI, Copilot prompt file, dataset release. Never cut the agents on Foundry, the Recap agent, languages, the eval harness, JUDGING.md or jump links.
 
 Stretch storylines only start after M4 passes.
 
