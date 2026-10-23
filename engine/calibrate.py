@@ -15,8 +15,10 @@ Writes data/models/{xt,xg,ratings}.json, docs/realism.md and docs/validation.md.
 from __future__ import annotations
 
 import argparse
+import math
 import itertools
 import statistics as st
+from dataclasses import replace
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -29,7 +31,19 @@ from engine.live import LiveStats
 from engine.models import EventType, MatchEvent, MatchMeta
 from engine.pitch import to_attacking
 from engine.sim import Incident, MatchSimulator, Scenario, SimConfig
-from engine.winprob import GameState, MatchResult, Ratings, fit_ratings, result_probs
+from engine.winprob import (
+    DEFAULT_EFFECTS_PATH,
+    GameState,
+    MatchResult,
+    Ratings,
+    StateEffects,
+    exposure_left,
+    fit_dispersion,
+    fit_ratings,
+    fit_state_effects,
+    live_rates,
+    result_probs,
+)
 from engine.xt import DEFAULT_PATH as XT_PATH
 from engine.xt import fit_xt
 
@@ -144,6 +158,63 @@ def _brier3(probs: tuple[float, float, float], outcome: int) -> float:
     return sum((p - (1.0 if i == outcome else 0.0)) ** 2 for i, p in enumerate(probs))
 
 
+def _rps(probs: tuple[float, float, float], outcome: int) -> float:
+    """Ranked probability score for home, draw, away: partial credit for being one result away."""
+    o = [1.0 if i == outcome else 0.0 for i in range(3)]
+    cp, co = np.cumsum(probs)[:-1], np.cumsum(o)[:-1]
+    return float(np.sum((cp - co) ** 2) / 2)
+
+
+def _log_loss(probs: tuple[float, float, float], outcome: int) -> float:
+    return -math.log(max(probs[outcome], 1e-12))
+
+
+def _state_rows(home: str, away: str, events: list[MatchEvent], ratings: Ratings,
+                model: metrics.XGModel) -> list[tuple[float, list[float], float]]:
+    """Minute-by-minute rows for learning game-state effects: (log expected xG, state, xG that minute)."""
+    prior = ratings.prior(home, away)
+    score, men = [0, 0], [11, 11]
+    snapshots = []
+    i = 0
+    for minute in range(90):
+        while i < len(events) and events[i].t < minute * 60:
+            e = events[i]
+            k = 0 if e.team == "home" else 1
+            if e.type == EventType.GOAL:
+                score[k] += 1
+            elif e.type == EventType.CARD and e.outcome == "red":
+                men[k] -= 1
+            i += 1
+        snapshots.append((list(score), list(men)))
+    xg_minute = np.zeros((2, 90))
+    for e in events:
+        if e.type == EventType.SHOT:
+            xg_minute[0 if e.team == "home" else 1, min(int(e.t // 60), 89)] += _xg(model, e, _defender(e))
+    rows = []
+    for minute, (sc, mn) in enumerate(snapshots):
+        for k in range(2):
+            men_diff, goal_diff = mn[k] - mn[1 - k], sc[k] - sc[1 - k]
+            state = [max(-men_diff, 0), max(men_diff, 0), float(goal_diff < 0), float(goal_diff > 0), float(minute >= 75)]
+            rows.append((math.log(prior[k] / 90.0), state, float(xg_minute[k, minute])))
+    return rows
+
+
+def _forecast_scores(test: list[Played], ratings: Ratings, effects: StateEffects,
+                     model: metrics.XGModel) -> dict[int, dict[str, float]]:
+    out = {}
+    for minute in (0, 45, 75):
+        rps, brier, ll = [], [], []
+        for h, a, evs in test:
+            final = _state_at(evs, 90.0, model).score
+            outcome = 0 if final[0] > final[1] else 1 if final[0] == final[1] else 2
+            probs = result_probs(ratings.prior(h, a), _state_at(evs, minute, model), effects)
+            rps.append(_rps(probs, outcome))
+            brier.append(_brier3(probs, outcome))
+            ll.append(_log_loss(probs, outcome))
+        out[minute] = {"rps": st.mean(rps), "brier": st.mean(brier), "log_loss": st.mean(ll)}
+    return out
+
+
 def _xg_scores(model: metrics.XGModel, shots: list[tuple[MatchEvent, float | None]]) -> dict[str, float]:
     p = np.array([_xg(model, e, d) for e, d in shots])
     y = np.array([1.0 if e.outcome == "goal" else 0.0 for e, _ in shots])
@@ -199,6 +270,19 @@ def main() -> None:
     ratings = fit_ratings(_summary(h, a, evs, xg_model) for h, a, evs in train)
     (MODELS / "ratings.json").write_text(ratings.to_json(), encoding="utf-8")
 
+    # Game-state effects by Poisson regression on minute-by-minute xG, then the forecast's spread
+    effects = fit_state_effects([row for h, a, evs in train for row in _state_rows(h, a, evs, ratings, xg_model)])
+    pairs = []
+    for h, a, evs in train:
+        final = _state_at(evs, 90.0, xg_model).score
+        for minute in (0, 30, 60):
+            now = _state_at(evs, minute, xg_model)
+            rates = live_rates(ratings.prior(h, a), now, effects)
+            left = exposure_left(minute, effects)
+            pairs += [(rates[k] * left, final[k] - now.score[k]) for k in range(2)]
+    effects = replace(effects, dispersion=fit_dispersion(pairs))
+    DEFAULT_EFFECTS_PATH.write_text(effects.to_json(), encoding="utf-8")
+
     # Held-out season 5
     test_shots = _shot_rows(test)
     xg_prior = _xg_scores(metrics.PRIOR_XG, test_shots)
@@ -211,16 +295,11 @@ def main() -> None:
     corr_def = float(np.corrcoef(truth_def, [-ratings.defence[c] for c in clubs])[0, 1])
 
     flat = Ratings(attack={}, defence={}, goals_per_team=ratings.goals_per_team, home_edge=ratings.home_edge)
-    wp_rows = []
-    for minute in (0, 45, 75):
-        ours, base = [], []
-        for h, a, evs in test:
-            final = _state_at(evs, 90.0, xg_model).score
-            outcome = 0 if final[0] > final[1] else 1 if final[0] == final[1] else 2
-            state = _state_at(evs, minute, xg_model)
-            ours.append(_brier3(result_probs(ratings.prior(h, a), state), outcome))
-            base.append(_brier3(result_probs(flat.prior(h, a), state), outcome))
-        wp_rows.append((minute, st.mean(ours), st.mean(base)))
+    forecasts = {
+        "now": _forecast_scores(test, ratings, effects, xg_model),
+        "before": _forecast_scores(test, ratings, StateEffects(), xg_model),
+        "baseline": _forecast_scores(test, flat, effects, xg_model),
+    }
 
     # Shape detection and physical metrics on held-out tracked matches
     tracked = _run(_shape_job, range(SHAPE_MATCHES))
@@ -255,7 +334,7 @@ def main() -> None:
     realism = _realism_md(measured, len(train), SHAPE_MATCHES)
     validation = _validation_md(
         len(train), len(test), len(train_shots), len(test_shots), xg_model, xg_prior, xg_fitted,
-        calibration, corr_att, corr_def, wp_rows, samples,
+        calibration, corr_att, corr_def, forecasts, effects, samples,
     )
     (DOCS / "realism.md").write_text(realism, encoding="utf-8")
     (DOCS / "validation.md").write_text(validation, encoding="utf-8")
@@ -299,7 +378,7 @@ def _realism_md(m: dict[str, float], n: int, tracked: int) -> str:
 
 
 def _validation_md(n_train, n_test, n_train_shots, n_test_shots, model, prior, fitted, calibration,
-                   corr_att, corr_def, wp_rows, samples) -> str:
+                   corr_att, corr_def, forecasts, effects, samples) -> str:
     labels = ["high_press", "mid_block", "low_block"]
     names = {"high_press": "High press", "mid_block": "Mid block", "low_block": "Low block"}
     confusion = Counter(samples)
@@ -348,16 +427,37 @@ def _validation_md(n_train, n_test, n_train_shots, n_test_shots, model, prior, f
         "",
         "Hidden pressing intensity also creates chances, so ratings fitted from results blend attack and press.",
         "",
-        "## Win probability on held-out matches (Brier score, lower is better)",
+        "## Game-state effects on scoring, learned from minute-by-minute xG",
         "",
-        "| Minute | Our model | League-average baseline |",
+        "| Situation | Hand-set before | Learned |",
         "|---|---|---|",
+        f"| Down a man (per player) | {StateEffects().down_a_man:.2f}x | {effects.down_a_man:.2f}x |",
+        f"| Up a man (per player) | {StateEffects().up_a_man:.2f}x | {effects.up_a_man:.2f}x |",
+        f"| Losing | 1.00x | {effects.trailing:.2f}x |",
+        f"| Winning | 1.00x | {effects.leading:.2f}x |",
+        f"| After the 75th minute | 1.00x | {effects.late:.2f}x |",
+        "",
+        "Goals still to come: "
+        + ("Poisson fits as well as a Negative Binomial, so the forecast stays Poisson."
+           if effects.dispersion is None
+           else f"a Negative Binomial with size {effects.dispersion:g} fits better than Poisson, so the forecast uses it."),
+        "",
+        "## Win probability on held-out matches",
+        "",
+        "Ranked probability score (RPS, the standard for home, draw, away forecasts), Brier score and log loss; "
+        "lower is better for all three.",
+        "",
+        "| Minute | Now: RPS | Before: RPS | Baseline: RPS | Now: Brier | Now: log loss |",
+        "|---|---|---|---|---|---|",
     ]
-    for minute, ours, base in wp_rows:
-        lines.append(f"| {minute} | {ours:.3f} | {base:.3f} |")
+    for minute in (0, 45, 75):
+        now, before, base = forecasts["now"][minute], forecasts["before"][minute], forecasts["baseline"][minute]
+        lines.append(f"| {minute} | {now['rps']:.4f} | {before['rps']:.4f} | {base['rps']:.4f} | "
+                     f"{now['brier']:.3f} | {now['log_loss']:.3f} |")
     lines += [
         "",
-        "The baseline is the same live model with every club rated league average.",
+        "Now = learned game-state effects and fitted spread. Before = the hand-set effects. Baseline = the same "
+        "live model with every club rated league average.",
         "",
         "## Shape detection against the block each team really played",
         "",

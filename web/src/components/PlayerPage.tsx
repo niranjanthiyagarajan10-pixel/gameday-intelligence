@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PlayerSummary, Roster } from "../types";
 import { ShotMap } from "./ShotMap";
+import { Heatmap } from "./TrackingViz";
 import { signed } from "../format";
 import { shotHref } from "../route";
 
@@ -99,7 +100,7 @@ export function PlayerPage({ room, id, roster }: Props) {
             ))}
           </div>
 
-          <div className="panel c8">
+          <div className="panel c7" style={{ alignSelf: "start" }}>
             <div className="ph">
               <h3>Every shot</h3>
               <span className="label">Click a shot to watch its replay</span>
@@ -137,12 +138,27 @@ export function PlayerPage({ room, id, roster }: Props) {
               )}
             </div>
           </div>
-          <div className="panel c4">
-            <div className="ph">
-              <h3>Shot map</h3>
+          <div className="c5 col">
+            <div className="panel">
+              <div className="ph">
+                <h3>Heatmap</h3>
+                <span className="label">Every tracking frame, attacking &rarr;</span>
+              </div>
+              <div className="pb">
+                {s.heatmap.length ? (
+                  <Heatmap grid={s.heatmap} side={info.side} roster={roster} />
+                ) : (
+                  <div className="empty">Builds as the player runs.</div>
+                )}
+              </div>
             </div>
-            <div className="pb">
-              <ShotMap shots={s.list} roster={roster} />
+            <div className="panel">
+              <div className="ph">
+                <h3>Shot map</h3>
+              </div>
+              <div className="pb">
+                <ShotMap shots={s.list} roster={roster} />
+              </div>
             </div>
           </div>
         </>

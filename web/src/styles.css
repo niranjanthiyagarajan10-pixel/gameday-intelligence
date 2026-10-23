@@ -47,6 +47,8 @@ button.set { cursor: pointer; }
 .playback { display: flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 3px; padding: 2px; }
 .playback button { background: none; border: 0; font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; padding: 6px 9px; color: var(--text-muted); cursor: pointer; border-radius: 2px; }
 .playback button.on { background: var(--surface-2); color: var(--text); }
+.playback a { font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; padding: 6px 9px; color: var(--text-muted); border-left: 1px solid var(--line); margin-left: 4px; }
+.playback a:hover { color: var(--text); }
 .conn { width: 8px; height: 8px; border-radius: 50%; background: var(--down); margin: 0 6px; }
 .conn.ok { background: var(--up); }
 
@@ -82,7 +84,69 @@ button.set { cursor: pointer; }
 /* Pitch */
 .pitchwrap { position: relative; padding: 12px 16px 16px; }
 .pitch { width: 100%; height: 440px; display: block; background: var(--pitch); }
-.pitch .pl { transition-property: transform; transition-timing-function: linear; }
+
+/* Live pitch effects. Durations are set inline from match speed. */
+.fx-pass { fill: none; stroke-width: 0.45; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: fx-draw linear forwards; }
+.fx-pass.miss { stroke-width: 0.3; opacity: 0.6; }
+.fx-shot { fill: none; stroke-width: 0.8; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: fx-draw ease-out forwards; filter: drop-shadow(0 0 0.6px #fff); }
+.fx-burst { fill: none; stroke-width: 0.5; transform-box: fill-box; transform-origin: center; animation: fx-burst ease-out forwards; }
+.fx-pulse { fill: none; stroke-width: 0.8; opacity: 0; transform-box: fill-box; transform-origin: center; animation: fx-pulse ease-out forwards; }
+.fx-tag { font-family: "Barlow Condensed"; font-weight: 700; font-size: 2.1px; letter-spacing: 0.06em; fill: var(--text); animation: fx-fade ease-out forwards; }
+.fx-card { transform-box: fill-box; transform-origin: center bottom; animation: fx-card ease-out forwards; }
+@keyframes fx-draw { 0% { stroke-dashoffset: 1; opacity: 0.95; } 30% { stroke-dashoffset: 0; opacity: 0.95; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes fx-burst { 0% { transform: scale(0.2); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+@keyframes fx-pulse { 0% { transform: scale(0.1); opacity: 0.9; } 70% { opacity: 0.3; } 100% { transform: scale(1.6); opacity: 0; } }
+@keyframes fx-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fx-card { 0% { transform: scale(0) rotate(-20deg); opacity: 1; } 15% { transform: scale(1.35) rotate(6deg); } 25% { transform: scale(1) rotate(0); } 80% { opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+
+/* Broadcast overlay: a 1920x1080 stage, transparent unless ?bg=pitch */
+html.overlay-mode, html.overlay-mode body { background: transparent; overflow: hidden; }
+.ov-stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+.ov-bg { position: absolute; inset: 0; background: var(--pitch); }
+.ov-bg .pitch { width: 100%; height: 100%; }
+.ov-bug { position: absolute; left: 72px; top: 56px; width: 560px; }
+.ov-row { display: grid; grid-template-columns: 1fr 1fr 132px; background: rgba(0, 0, 0, 0.9); height: 64px; }
+.ov-team { display: flex; align-items: center; gap: 12px; padding-right: 18px; border-right: 1px solid var(--line); }
+.ov-stripe { width: 8px; align-self: stretch; }
+.ov-short { font-family: "Barlow Condensed"; font-weight: 800; font-size: 32px; letter-spacing: 0.04em; }
+.ov-goals { margin-left: auto; font-family: "Barlow Condensed"; font-weight: 800; font-size: 44px; line-height: 1; }
+.ov-clock { display: flex; align-items: baseline; justify-content: center; gap: 8px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 30px; align-self: center; }
+.ov-clock small { font-size: 16px; color: var(--signal); letter-spacing: 0.06em; }
+.ov-wp { background: rgba(0, 0, 0, 0.82); padding: 8px 12px 10px; }
+.ov-bar { display: flex; height: 6px; gap: 2px; }
+.ov-bar i { display: block; transition: width 400ms ease-out; }
+.ov-wpnums { display: flex; justify-content: space-between; margin-top: 6px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.04em; }
+.ov-goal { display: flex; align-items: baseline; gap: 16px; background: var(--club); color: #000; padding: 4px 18px 6px; animation: gb-wipe 380ms cubic-bezier(.2,.8,.2,1) both, ov-out 8s linear forwards; }
+.ov-goal b { font-family: "Barlow Condensed"; font-weight: 800; font-style: italic; font-size: 44px; text-transform: uppercase; line-height: 1; }
+.ov-goal span { font-family: "Barlow Condensed"; font-weight: 700; font-size: 26px; text-transform: uppercase; }
+.ov-third { position: absolute; left: 72px; right: 72px; bottom: 72px; display: grid; grid-template-columns: 200px 1fr auto; background: rgba(0, 0, 0, 0.9); border-top: 4px solid var(--club); animation: gb-wipe 480ms cubic-bezier(.2,.8,.2,1) both; }
+.ov-kind { background: var(--club); color: #000; padding: 18px 20px; display: flex; flex-direction: column; justify-content: space-between; }
+.ov-kind b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 30px; text-transform: uppercase; line-height: 1; }
+.ov-kind span { font-family: "Barlow Condensed"; font-weight: 700; font-size: 26px; }
+.ov-body { padding: 18px 28px; }
+.ov-body p { font-size: 32px; line-height: 1.25; font-weight: 600; }
+.ov-verified { display: inline-block; margin-top: 10px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--up); }
+.ov-hero { padding: 18px 32px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; border-left: 1px solid var(--line); }
+.ov-hero b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 76px; line-height: 0.9; }
+.ov-hero b.up { color: var(--up); }
+.ov-hero b.down { color: var(--down); }
+.ov-hero span { font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); max-width: 220px; text-align: right; }
+.ov-mark { position: absolute; right: 72px; top: 64px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(244, 244, 241, 0.55); text-shadow: 0 1px 2px #000; }
+@keyframes ov-out { 0%, 92% { opacity: 1; } 100% { opacity: 0; } }
+
+/* GOAL banner */
+.goalbanner { position: absolute; left: 16px; right: 16px; bottom: 34px; display: flex; align-items: stretch; pointer-events: none; animation: gb-out 4.2s linear forwards; }
+.gb-slab { background: var(--club); padding: 6px 26px 2px 22px; clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); animation: gb-wipe 420ms cubic-bezier(.2,.8,.2,1) both; }
+.gb-word { font-family: "Barlow Condensed"; font-weight: 800; font-style: italic; font-size: 88px; line-height: 0.95; text-transform: uppercase; color: #000; letter-spacing: 0.01em; }
+.gb-info { background: rgba(0, 0, 0, 0.88); border-top: 3px solid var(--club); padding: 12px 22px; display: flex; flex-direction: column; justify-content: center; gap: 4px; margin-left: -14px; animation: gb-wipe 420ms 160ms cubic-bezier(.2,.8,.2,1) both; }
+.gb-info b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 30px; text-transform: uppercase; line-height: 1; }
+.gb-info span { font-size: 14px; color: var(--text-muted); display: flex; gap: 14px; align-items: baseline; }
+.gb-info em { font-style: normal; font-family: "Barlow Condensed"; font-weight: 700; font-size: 20px; color: var(--text); }
+.gb-info em i { font-style: normal; color: var(--text-dim); padding: 0 4px; }
+@keyframes gb-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes gb-out { 0%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(8px); } }
+.bump { display: inline-block; animation: bump 700ms cubic-bezier(.2,.8,.2,1); }
+@keyframes bump { 0% { transform: scale(1.6); color: var(--signal); } 100% { transform: scale(1); } }
 .legend { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -156,6 +220,8 @@ table.lv tr:hover td { background: var(--surface-2); }
 .shape .strip i { display: block; height: 100%; }
 .shape .axis { display: grid; grid-template-columns: 110px 1fr; gap: 12px; }
 .shape .axis div { display: flex; justify-content: space-between; color: var(--text-dim); font-size: 12px; }
+
+.pitch.mini { height: auto; }
 
 /* Shot hover card (beeswarm) */
 .swarm-wrap { position: relative; }
@@ -231,7 +297,8 @@ table.shots td:first-child { text-align: left; }
 @media (prefers-reduced-motion: reduce) {
   .dot { animation: none; }
   .card { animation: none; }
-  .pitch .pl { transition: none !important; }
+  .fx-pass, .fx-shot, .fx-burst, .fx-pulse, .fx-tag, .fx-card { animation-duration: 1ms !important; }
+  .goalbanner, .gb-slab, .gb-info, .bump, .ov-goal, .ov-third { animation: none; }
   .mom .fill { transition: none; }
 }
 @media (max-width: 1100px) {

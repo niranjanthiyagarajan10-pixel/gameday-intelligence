@@ -146,6 +146,7 @@ export interface PlayerSummary {
   leverage: number;
   press_rate: number | null;
   press_attempts: number;
+  heatmap: number[][]; // frames per 5 m cell, [x cell][y cell]
   list: Shot[];
 }
 
@@ -181,8 +182,21 @@ export interface ShapeInfo {
   window: [number, number, number] | null;
 }
 
+export interface NetworkNode {
+  player: string;
+  x: number;
+  y: number;
+  passes: number;
+}
+
+export interface Network {
+  nodes: NetworkNode[];
+  edges: { a: string; b: string; n: number }[];
+}
+
 export interface Analyst {
   t: number;
+  network: Record<Side, Network>;
   shots: Shot[];
   leverage: LeverageRow[];
   press: PressRow[];
@@ -194,6 +208,21 @@ export interface Analyst {
 }
 
 export type Status = "live" | "catching_up" | "full_time";
+
+/** A match event the live pitch animates, stamped with when it arrived (performance.now()). */
+export interface FxEvent {
+  id: string;
+  t: number;
+  type: "pass" | "shot" | "tackle" | "interception" | "card" | "goal";
+  team: Side;
+  player: string | null;
+  x: number;
+  y: number;
+  end_x: number | null;
+  end_y: number | null;
+  outcome: string | null;
+  at: number;
+}
 
 export interface MatchState {
   connected: boolean;
@@ -208,4 +237,5 @@ export interface MatchState {
   history: number[][]; // [t, home, draw, away]
   cards: Card[];
   analyst: Analyst | null;
+  fx: FxEvent[];
 }

@@ -140,3 +140,41 @@ def test_cues_are_machine_readable_overlays(client):
         time.sleep(0.1)
     for cue in cues:
         OverlayEvent.model_validate({k: v for k, v in cue.items() if k != "text"})
+
+
+def test_stream_sends_events_for_the_pitch_to_animate(client):
+    with client.websocket_connect("/ws/main") as ws:
+        ws.receive_json()
+        batch = None
+        for _ in range(600):
+            msg = ws.receive_json()
+            if msg["type"] == "events":
+                batch = msg["events"]
+                break
+    assert batch
+    for e in batch:
+        assert e["id"] and e["type"] in {"pass", "shot", "tackle", "interception", "card", "goal"}
+        assert e["team"] in ("home", "away") and 0 <= e["x"] <= 105 and 0 <= e["y"] <= 68
+        if e["type"] == "tackle":
+            assert e["outcome"] == "won"
+
+
+def test_tracking_visuals_pass_network_and_heatmap():
+    from app.payloads import analyst_message
+    from app.room import MatchRoom
+    from engine.league import build_league
+    from engine.metrics import HEAT_X, HEAT_Y
+
+    room = MatchRoom("viz", build_league(), CONFIG)
+    while not room.feed.finished:
+        room.advance()
+    network = analyst_message(room.live)["network"]
+    for side in ("home", "away"):
+        nodes = {n["player"] for n in network[side]["nodes"]}
+        assert 0 < len(nodes) <= 11
+        assert all(room.roster["players"][p]["side"] == side for p in nodes)
+        for edge in network[side]["edges"]:
+            assert edge["n"] >= 2 and edge["a"] in nodes and edge["b"] in nodes
+    heat = room.player("KR10")["summary"]["heatmap"]
+    assert len(heat) == HEAT_X and all(len(col) == HEAT_Y for col in heat)
+    assert sum(map(sum, heat)) > 0

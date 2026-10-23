@@ -17,6 +17,7 @@ from typing import Any
 
 from app.payloads import (
     analyst_message,
+    anim_event,
     card_message,
     clip_event,
     frame_message,
@@ -44,6 +45,7 @@ PRIVATE_IDLE_S = 15 * 60
 MAX_PRIVATE_ROOMS = 20
 CLIP_BEFORE_S = 12.0
 CLIP_AFTER_S = 3.0
+ANIM_MAX = 60  # events held for the next frame message; at high speed older ones are dropped
 
 
 @dataclass
@@ -109,6 +111,7 @@ class MatchRoom:
         keep = int(CLIP_BEFORE_S / self.feed.dt) + 1
         self._recent_frames: deque[dict[str, Any]] = deque(maxlen=keep)
         self._recent_events: deque[dict[str, Any]] = deque(maxlen=400)
+        self._anim: deque[dict[str, Any]] = deque(maxlen=ANIM_MAX)
         self._pending_clips: list[_PendingClip] = []
         self._shots_clipped = 0
         self.clips: dict[str, dict[str, Any]] = {}
@@ -188,8 +191,11 @@ class MatchRoom:
                 self._record_history()
             if isinstance(item, TrackingFrame):
                 frame = item
-            elif isinstance(item, MatchEvent) and (ev := clip_event(item)) is not None:
-                self._recent_events.append(ev)
+            elif isinstance(item, MatchEvent):
+                if (ev := clip_event(item)) is not None:
+                    self._recent_events.append(ev)
+                if (anim := anim_event(item)) is not None:
+                    self._anim.append(anim)
         if frame is not None:
             self.last_frame = frame_message(frame)
             self._clip(self.last_frame)
@@ -238,6 +244,7 @@ class MatchRoom:
         if self.config.start_minute > 0:
             self.status = "catching_up"
             await asyncio.to_thread(self.fast_forward, self.config.start_minute * 60)
+            self._anim.clear()
             self.status = "live"
             self.publish(self.hello())
         dt = self.feed.dt
@@ -262,6 +269,9 @@ class MatchRoom:
                 self.publish(card)
             now = time.monotonic()
             if self.last_frame and now - last_frame >= FRAME_INTERVAL_S:
+                if self._anim:
+                    self.publish({"type": "events", "events": list(self._anim)})
+                    self._anim.clear()
                 self.publish(self.last_frame)
                 last_frame = now
             if now - last_stats >= STATS_INTERVAL_S:

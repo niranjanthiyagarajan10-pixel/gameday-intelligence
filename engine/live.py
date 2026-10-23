@@ -134,6 +134,9 @@ class LiveStats:
         self.kinematics = metrics.Kinematics()
 
         self.shots: list[ShotRecord] = []
+        # Pass network: completed passes between pairs, and each player's average position in possession.
+        self.pass_pairs: dict[tuple[str, str], int] = {}
+        self.in_possession_pos: dict[str, list[float]] = {}  # player -> [sum x, sum y, frames]
         self.leverage_rows: dict[str, LeverageRow] = {}
         self.leverage_log: dict[str, Leverage] = {}
         self.moments: list[Moment] = []
@@ -236,6 +239,9 @@ class LiveStats:
             self._threat(k, sx, sy, ex, ey)
             receiver = e.meta.get("receiver", "")
             self._last_complete[e.team] = (e.player_id or "", receiver, e.t, bool(e.meta.get("cross")))
+            if e.player_id and receiver:
+                pair = (e.player_id, receiver)
+                self.pass_pairs[pair] = self.pass_pairs.get(pair, 0) + 1
             lev = self.model.completed_pass(self.state(), k, e.end_x, e.end_y, e.player_id or "", p_complete)
             return self._apply(e, lev)
         self.window.add(e.t, e.team, "pass_fail")
@@ -382,6 +388,13 @@ class LiveStats:
         self.t = max(self.t, frame.t)
         self._last_frame = frame
         self.kinematics.update(frame)
+        possession = self.timeline.current
+        for p in frame.players:
+            if p.team == possession:
+                acc = self.in_possession_pos.setdefault(p.id, [0.0, 0.0, 0])
+                acc[0] += p.x
+                acc[1] += p.y
+                acc[2] += 1
         found: list[Moment] = []
         for change in self.shape.update(frame, self.timeline.current):
             found += self._shape_moment(change)

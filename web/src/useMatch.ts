@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { Analyst, Card, Frame, MatchState, Roster, Stats, Status } from "./types";
+import type { Analyst, Card, Frame, FxEvent, MatchState, Roster, Stats, Status } from "./types";
 
 type Message =
   | {
@@ -20,12 +20,15 @@ type Message =
   | (Stats & { type: "stats" })
   | (Card & { type: "card" })
   | (Analyst & { type: "analyst" })
+  | { type: "events"; events: Omit<FxEvent, "at">[]; at: number }
   | { type: "control"; status: Status; speed: number; paused: boolean }
   | { type: "error"; message: string };
 
 type Action = Message | { type: "connected"; value: boolean };
 
 const HISTORY_STEP_S = 10;
+const FX_KEEP_MS = 6000;
+const FX_MAX = 80;
 
 const initial: MatchState = {
   connected: false,
@@ -40,6 +43,7 @@ const initial: MatchState = {
   history: [],
   cards: [],
   analyst: null,
+  fx: [],
 };
 
 function reducer(state: MatchState, msg: Action): MatchState {
@@ -60,6 +64,7 @@ function reducer(state: MatchState, msg: Action): MatchState {
         history: msg.history,
         cards: msg.cards,
         analyst: msg.analyst,
+        fx: [],
       };
     case "frame":
       return { ...state, frame: msg };
@@ -78,6 +83,10 @@ function reducer(state: MatchState, msg: Action): MatchState {
       return { ...state, cards: [...state.cards, msg] };
     case "analyst":
       return { ...state, analyst: msg };
+    case "events": {
+      const kept = state.fx.filter((e) => msg.at - e.at < FX_KEEP_MS);
+      return { ...state, fx: [...kept, ...msg.events.map((e) => ({ ...e, at: msg.at }))].slice(-FX_MAX) };
+    }
     case "control":
       return { ...state, status: msg.status, speed: msg.speed, paused: msg.paused };
     default:
@@ -105,7 +114,11 @@ export function useMatch(room: string, onGone?: () => void) {
         retry = 0;
         dispatch({ type: "connected", value: true });
       };
-      ws.onmessage = (e) => dispatch(JSON.parse(e.data) as Message);
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data) as Message;
+        // Stamp arrival here so the reducer stays pure; animations time themselves from it.
+        dispatch(msg.type === "events" ? { ...msg, at: performance.now() } : msg);
+      };
       ws.onclose = (e) => {
         dispatch({ type: "connected", value: false });
         if (e.code === 4404) {

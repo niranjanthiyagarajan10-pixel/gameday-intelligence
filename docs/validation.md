@@ -43,15 +43,29 @@ Calibration of the fitted model on held-out shots:
 
 Hidden pressing intensity also creates chances, so ratings fitted from results blend attack and press.
 
-## Win probability on held-out matches (Brier score, lower is better)
+## Game-state effects on scoring, learned from minute-by-minute xG
 
-| Minute | Our model | League-average baseline |
+| Situation | Hand-set before | Learned |
 |---|---|---|
-| 0 | 0.505 | 0.650 |
-| 45 | 0.419 | 0.436 |
-| 75 | 0.226 | 0.225 |
+| Down a man (per player) | 0.72x | 0.78x |
+| Up a man (per player) | 1.25x | 1.14x |
+| Losing | 1.00x | 1.09x |
+| Winning | 1.00x | 0.95x |
+| After the 75th minute | 1.00x | 1.01x |
 
-The baseline is the same live model with every club rated league average.
+Goals still to come: a Negative Binomial with size 20 fits better than Poisson, so the forecast uses it.
+
+## Win probability on held-out matches
+
+Ranked probability score (RPS, the standard for home, draw, away forecasts), Brier score and log loss; lower is better for all three.
+
+| Minute | Now: RPS | Before: RPS | Baseline: RPS | Now: Brier | Now: log loss |
+|---|---|---|---|---|---|
+| 0 | 0.1709 | 0.1707 | 0.2402 | 0.506 | 0.860 |
+| 45 | 0.1301 | 0.1314 | 0.1375 | 0.417 | 0.777 |
+| 75 | 0.0616 | 0.0620 | 0.0616 | 0.225 | 0.423 |
+
+Now = learned game-state effects and fitted spread. Before = the hand-set effects. Baseline = the same live model with every club rated league average.
 
 ## Shape detection against the block each team really played
 

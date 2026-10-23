@@ -137,38 +137,139 @@ class GameState:
         return replace(self, men=(m[0], m[1]))
 
 
-def live_rates(prior: tuple[float, float], state: GameState) -> tuple[float, float]:
-    """Scoring rates per 90 minutes from now on."""
+LATE_MINUTE = 75.0
+DEFAULT_EFFECTS_PATH = Path(__file__).resolve().parent.parent / "data" / "models" / "state_effects.json"
+
+
+@dataclass(frozen=True)
+class StateEffects:
+    """How the game state changes a team's scoring rate from now on, learned from simulated seasons.
+
+    The defaults are the hand-set starting point; engine/calibrate.py fits them by Poisson regression
+    on minute-by-minute xG, the way Lasso learns its game-state effects.
+    """
+
+    down_a_man: float = RED_ATTACK  # multiplier per player fewer
+    up_a_man: float = RED_CONCEDE  # multiplier per player more
+    trailing: float = 1.0
+    leading: float = 1.0
+    late: float = 1.0  # after the 75th minute
+    dispersion: float | None = None  # Negative Binomial size for goals still to come; None = Poisson
+
+    def to_json(self) -> str:
+        return json.dumps({k: (None if v is None else round(v, 4)) for k, v in self.__dict__.items()}, indent=2)
+
+    @classmethod
+    def from_json(cls, text: str) -> StateEffects:
+        return cls(**json.loads(text))
+
+    @classmethod
+    def load(cls, path: Path = DEFAULT_EFFECTS_PATH) -> StateEffects:
+        return cls.from_json(path.read_text(encoding="utf-8")) if path.exists() else cls()
+
+
+EFFECTS = StateEffects.load()
+
+
+def live_rates(prior: tuple[float, float], state: GameState, effects: StateEffects | None = None) -> tuple[float, float]:
+    """Scoring rates per 90 minutes from now on, before the late-game effect.
+
+    The blend w * prior + (1 - w) * observed is the posterior mean of a Gamma prior worth k minutes
+    of play updated with the xG seen so far, the same update Lasso uses.
+    """
+    fx = effects or EFFECTS
     minutes = max(state.minute, 0.0)
     w = PRIOR_WEIGHT_K / (PRIOR_WEIGHT_K + minutes)
     rates = []
     for k in range(2):
         observed = state.xg[k] * MATCH_MINUTES / minutes if minutes > 0 else prior[k]
-        rates.append(w * prior[k] + (1 - w) * observed)
-    missing = (11 - state.men[0], 11 - state.men[1])
-    home = rates[0] * RED_ATTACK ** missing[0] * RED_CONCEDE ** missing[1]
-    away = rates[1] * RED_ATTACK ** missing[1] * RED_CONCEDE ** missing[0]
-    return home, away
+        rate = w * prior[k] + (1 - w) * observed
+        men_diff = state.men[k] - state.men[1 - k]
+        rate *= fx.down_a_man ** max(-men_diff, 0) * fx.up_a_man ** max(men_diff, 0)
+        goal_diff = state.score[k] - state.score[1 - k]
+        rate *= fx.trailing if goal_diff < 0 else fx.leading if goal_diff > 0 else 1.0
+        rates.append(rate)
+    return rates[0], rates[1]
 
 
-def _pmf(mu: float) -> np.ndarray:
+def exposure_left(minute: float, effects: StateEffects | None = None) -> float:
+    """Matches' worth of play still to come, with minutes after 75 scaled by the late-game effect."""
+    fx = effects or EFFECTS
+    before = max(min(LATE_MINUTE, MATCH_MINUTES) - minute, 0.0)
+    after = max(MATCH_MINUTES - max(minute, LATE_MINUTE), 0.0)
+    return (before + fx.late * after) / MATCH_MINUTES
+
+
+def goals_pmf(mu: float, dispersion: float | None = None) -> np.ndarray:
+    """Distribution of goals still to come: Poisson, or Negative Binomial with the given size."""
     if mu <= 0:
         p = np.zeros(MAX_GOALS + 1)
         p[0] = 1.0
         return p
-    p = np.exp(-mu + _N * math.log(mu) - _LOG_FACT)
+    if dispersion is None:
+        p = np.exp(-mu + _N * math.log(mu) - _LOG_FACT)
+    else:
+        r = dispersion
+        q = r / (r + mu)
+        log_p = (
+            np.array([math.lgamma(n + r) for n in _N]) - math.lgamma(r) - _LOG_FACT
+            + r * math.log(q) + _N * math.log(1.0 - q)
+        )
+        p = np.exp(log_p)
     return p / p.sum()
 
 
-def result_probs(prior: tuple[float, float], state: GameState) -> Probs:
+def result_probs(prior: tuple[float, float], state: GameState, effects: StateEffects | None = None) -> Probs:
     """(home win, draw, away win) at full time, given the state now."""
-    left = max(MATCH_MINUTES - state.minute, 0.0) / MATCH_MINUTES
-    lam_h, lam_a = live_rates(prior, state)
-    joint = np.outer(_pmf(lam_h * left), _pmf(lam_a * left))
+    fx = effects or EFFECTS
+    left = exposure_left(state.minute, fx)
+    lam_h, lam_a = live_rates(prior, state, fx)
+    joint = np.outer(goals_pmf(lam_h * left, fx.dispersion), goals_pmf(lam_a * left, fx.dispersion))
     final = _DIFF + (state.score[0] - state.score[1])
     home = float(joint[final > 0].sum())
     draw = float(joint[final == 0].sum())
     return home, draw, max(1.0 - home - draw, 0.0)
+
+
+def fit_state_effects(rows: list[tuple[float, list[float], float]], ridge: float = 1.0, iterations: int = 40) -> StateEffects:
+    """Poisson regression of xG per minute on game state, with the pre-match rate as an offset.
+
+    Each row is (offset = log of the expected xG that minute, [down, up, trailing, leading, late], xG).
+    An intercept absorbs any overall scale difference and is not kept.
+    """
+    offset = np.array([r[0] for r in rows])
+    X = np.column_stack([np.ones(len(rows)), np.array([r[1] for r in rows], dtype=float)])
+    y = np.array([r[2] for r in rows])
+    beta = np.zeros(X.shape[1])
+    penalty = ridge * np.eye(X.shape[1])
+    penalty[0, 0] = 0.0
+    for _ in range(iterations):
+        mu = np.exp(offset + X @ beta)
+        gradient = X.T @ (y - mu) - penalty @ beta
+        hessian = (X * mu[:, None]).T @ X + penalty
+        step = np.linalg.solve(hessian, gradient)
+        beta += step
+        if np.max(np.abs(step)) < 1e-8:
+            break
+    down, up, trailing, leading, late = (float(math.exp(b)) for b in beta[1:])
+    return StateEffects(down_a_man=down, up_a_man=up, trailing=trailing, leading=leading, late=late)
+
+
+def fit_dispersion(pairs: list[tuple[float, int]], grid: Iterable[float] = (1, 2, 3, 5, 8, 12, 20, 35, 60, 100)) -> float | None:
+    """Pick the Negative Binomial size that best explains goals still to come; None if Poisson does best.
+
+    Each pair is (forecast mean of remaining goals, goals actually scored after that point).
+    """
+    def loglik(r: float | None) -> float:
+        return sum(math.log(max(goals_pmf(mu, r)[min(n, MAX_GOALS)], 1e-12)) for mu, n in pairs)
+
+    best: float | None = None
+    best_ll = loglik(None)
+    for r in grid:
+        ll = loglik(float(r))
+        if ll > best_ll + 1.0:  # demand real evidence over Poisson, not noise
+            best, best_ll = float(r), ll
+    return best
 
 
 def win_prob(probs: Probs, team: int) -> float:

@@ -179,6 +179,11 @@ BALL_MAX_MS = 45.0
 SMOOTHING_FRAMES = 3
 
 
+HEAT_CELL_M = 5.0
+HEAT_X = 21  # 105 m / 5 m
+HEAT_Y = 14  # 68 m / 5 m, last row a little short
+
+
 @dataclass
 class RunStats:
     distance_m: float = 0.0
@@ -186,6 +191,7 @@ class RunStats:
     top_speed_ms: float = 0.0
     sprints: int = 0
     speed_ms: float = 0.0
+    heat: np.ndarray = field(default_factory=lambda: np.zeros((HEAT_X, HEAT_Y), dtype=np.int32))  # frames per 5 m cell
     _sprint_s: float = 0.0
     _sprint_counted: bool = False
     _recent: deque = field(default_factory=lambda: deque(maxlen=SMOOTHING_FRAMES))
@@ -206,6 +212,7 @@ class Kinematics:
         dt = None if self._prev_t is None else frame.t - self._prev_t
         for p in frame.players:
             run = self.runs.setdefault(p.id, RunStats())
+            run.heat[min(int(p.x / HEAT_CELL_M), HEAT_X - 1), min(int(p.y / HEAT_CELL_M), HEAT_Y - 1)] += 1
             prev = self._prev.get(p.id)
             if dt and dt > 0 and prev is not None:
                 step = math.hypot(p.x - prev[0], p.y - prev[1])

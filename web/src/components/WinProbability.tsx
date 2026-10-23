@@ -1,5 +1,5 @@
 import type { Card, Roster, Stats } from "../types";
-import { pct } from "../format";
+import { Tick } from "../tween";
 
 interface Props {
   stats: Stats;
@@ -46,21 +46,21 @@ export function WinProbability({ stats, history, cards, roster, halfS }: Props) 
       <div className="wpnums">
         <div>
           <div className="hero num" style={{ color: home.primary }}>
-            {pct(h)}
+            <Tick value={h} scale={100} />
             <small>%</small>
           </div>
           <div className="label">{home.short} win</div>
         </div>
         <div>
           <div className="hero num" style={{ color: "var(--text-muted)" }}>
-            {pct(d)}
+            <Tick value={d} scale={100} />
             <small>%</small>
           </div>
           <div className="label">Draw</div>
         </div>
         <div>
           <div className="hero num" style={{ color: away.primary }}>
-            {pct(a)}
+            <Tick value={a} scale={100} />
             <small>%</small>
           </div>
           <div className="label">{away.short} win</div>

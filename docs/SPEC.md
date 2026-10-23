@@ -121,6 +121,7 @@ One main screen, Live Match, with an Analyst tab beside it. The fan story happen
 Layout:
 - Top bar: scoreboard, minute, viewer settings (depth, club, player focus, language, voice on or off).
 - Centre: 2D pitch with moving players, ball, and player name tags. Player focus mode highlights one player and shows their live speed, distance and actions.
+- Pitch animation: players and ball glide between tracking frames on requestAnimationFrame, timed by the measured gap between frames. The room streams a compact `events` message with each frame batch (passes, shots, won tackles, interceptions, cards, goals); the pitch draws pass lines, shot trails, tackle bursts, card pops and goal pulse rings from it, shorter at high speed. A goal shows a broadcast GOAL banner. Numbers tick to each new value over 300 ms. Reduced motion turns all of it off.
 - Under the pitch: momentum bar and win probability line.
 - Right rail: overlay cards as they arrive. Each card has "Show evidence" and "Explain simply" or "Go deeper".
 - Bottom drawer: Ask the match chat.
@@ -133,6 +134,12 @@ Analyst tab (updates live):
 - Press resistance: players ranked by retention under pressure, with attempts shown so small samples are obvious.
 - Match leaderboards: hardest shots scored (lowest xG goals), top leverage moments, top speeds.
 - Team shape strip: a timeline showing when each side was in a low block, mid block or high press.
+- xG race: cumulative xG for both teams over the match, goals marked with the scorer.
+- Pass network: each player's average position while their team has the ball, from tracking, joined by lines for pairs with 2 or more completed passes. Line width is the pass count, node size the passes a player made or received.
+
+Player page: adds a heatmap from every tracking frame on 5 m cells, drawn attacking left to right.
+
+Broadcast overlay (`#/overlay`): a 1920x1080 stage on a transparent page for OBS or a vision mixer. Score bug with clock and a win probability strip, a GOAL flash in the scoring club's colour, and the newest verified cue as a lower third, held at least 6 s. `?bg=pitch` previews it over the live pitch, `aud=analyst` switches the cue depth.
 
 Personas: casual and analyst. Casual uses short plain sentences. Analyst shows metrics, formulas and comparisons. The facts are the same, only the wording and depth change.
 
@@ -300,9 +307,12 @@ pass difficulty = 1 - P(complete)
 Win probability:
 ```
 lambda_live = w*lambda_prior + (1-w)*xg_per_90_observed,   w = k/(k + minutes_played), k = 30
-remaining goals per team ~ Poisson(lambda_live * minutes_left / 90)
-P(win/draw/loss) from the Poisson difference, truncated at 10 goals
+lambda_state = lambda_live * men_effect * score_effect     (a man down or up; trailing or leading)
+exposure = (minutes left before 75 + late_effect * minutes left after 75) / 90
+remaining goals per team ~ NegBin(mean lambda_state * exposure, size r), or Poisson if it fits as well
+P(win/draw/loss) from the difference, truncated at 10 goals
 ```
+Game-state effects are fitted by a Poisson regression of each minute's xG on the game state, with the pre-match rate as offset (ridge, intercept dropped). The size r is chosen on held-out remaining goals and kept only when it beats Poisson by more than 1 log-likelihood point. Learned on five seasons: losing 1.09x, winning 0.95x, a man down 0.78x per player, a man up 1.14x, after minute 75 1.01x, size 20. Lasso reports 1.08x and 0.94x for losing and winning, learned on its own simulator.
 
 ```
 WPA = P_after - P_before        (win probability added)
@@ -352,7 +362,7 @@ Player thresholds: sprint above 7 m/s, high-speed running above 5.5 m/s. Emit a 
 
 Moment detector: emit a moment when |leverage| is above threshold, or for goal, red card, shot with xG above 0.3 or a goal with xG below 0.1, a top speed record, a control to chaos flip, or a shape change. Debounce within 20 seconds.
 
-Calibration (`docs/validation.md`): simulate 200 matches in `events_only` mode, report the xG calibration table, win probability Brier score against a league-average baseline, and a reliability plot. If we do not beat the baseline, say so.
+Calibration (`docs/validation.md`): fit on four simulated seasons, score on a fifth. Report the xG calibration table, the learned game-state effects, and win probability RPS, Brier and log loss at minutes 0, 45 and 75 for the current model, the hand-set effects and a league-average baseline. If we do not beat the baseline, say so.
 
 ## 9. Agents (`agents/`)
 

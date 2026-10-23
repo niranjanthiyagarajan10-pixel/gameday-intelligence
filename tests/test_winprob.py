@@ -57,6 +57,58 @@ def test_fit_ratings_recovers_known_strengths():
     assert np.mean(list(r.attack.values())) == pytest.approx(1.0)
 
 
+def test_negative_binomial_keeps_the_mean_and_widens_the_spread():
+    from engine.winprob import goals_pmf
+
+    poisson, nb = goals_pmf(1.4), goals_pmf(1.4, dispersion=3.0)
+    n = np.arange(len(poisson))
+    assert poisson.sum() == pytest.approx(1.0) and nb.sum() == pytest.approx(1.0)
+    assert (nb * n).sum() == pytest.approx(1.4, abs=0.02)
+    assert (nb * (n - 1.4) ** 2).sum() > (poisson * (n - 1.4) ** 2).sum()
+
+
+def test_game_state_effects_change_the_forecast():
+    from engine.winprob import StateEffects, exposure_left
+
+    state = GameState(minute=60, score=(0, 1))
+    neutral = StateEffects()
+    pushing = StateEffects(trailing=1.4)
+    assert result_probs(EVEN, state, pushing)[0] > result_probs(EVEN, state, neutral)[0]
+    assert exposure_left(60, StateEffects(late=1.2)) == pytest.approx((15 + 1.2 * 15) / 90)
+    assert StateEffects.from_json(pushing.to_json()) == pushing
+
+
+def test_fit_state_effects_recovers_multipliers():
+    import math
+
+    from engine.winprob import fit_state_effects
+
+    gen = SeedTree(9).generator("state-effects-test")
+    truth = {"down": 0.6, "up": 1.4, "trailing": 1.15, "leading": 0.9, "late": 1.1}
+    rows = []
+    for _ in range(60000):
+        state = [float(gen.random() < 0.05), float(gen.random() < 0.05), float(gen.random() < 0.3),
+                 float(gen.random() < 0.3), float(gen.random() < 0.17)]
+        rate = 0.015
+        for flag, mult in zip(state, truth.values()):
+            rate *= mult if flag else 1.0
+        rows.append((math.log(0.015), state, float(gen.poisson(rate * 10)) / 10))
+    fx = fit_state_effects(rows, ridge=0.0)
+    assert fx.down_a_man == pytest.approx(0.6, abs=0.12)
+    assert fx.trailing == pytest.approx(1.15, abs=0.08)
+    assert fx.late == pytest.approx(1.1, abs=0.08)
+
+
+def test_fit_dispersion_prefers_poisson_for_poisson_data():
+    from engine.winprob import fit_dispersion
+
+    gen = SeedTree(4).generator("dispersion-test")
+    poisson_pairs = [(1.3, int(gen.poisson(1.3))) for _ in range(3000)]
+    assert fit_dispersion(poisson_pairs) is None
+    spread = [(1.3, int(gen.poisson(gen.gamma(2.0, 1.3 / 2.0)))) for _ in range(3000)]
+    assert fit_dispersion(spread) is not None
+
+
 def test_ratings_round_trip_and_default():
     r = Ratings(attack={"KR": 1.2}, defence={"KR": 0.9}, goals_per_team=1.4, home_edge=1.05)
     assert Ratings.from_json(r.to_json()) == r

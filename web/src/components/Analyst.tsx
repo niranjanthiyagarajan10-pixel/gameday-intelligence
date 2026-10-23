@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Analyst as AnalystData, LeverageRow, Roster, Shot, Side } from "../types";
 import { SHAPE_LABEL, clock, playerName, signed } from "../format";
 import { playerHref, shotHref } from "../route";
+import { PassNetwork, XGRace } from "./TrackingViz";
 
 interface Props {
   analyst: AnalystData;
@@ -338,6 +339,19 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
         <div className="swarm">
           <ShotQuality shots={analyst.shots} roster={roster} />
         </div>
+      </div>
+
+      <div className="panel c7">
+        <div className="ph">
+          <h3>xG race</h3>
+          <span className="label">Cumulative expected goals, goals marked</span>
+        </div>
+        <div className="pb">
+          <XGRace shots={analyst.shots} roster={roster} now={now} halfS={halfS} />
+        </div>
+      </div>
+      <div className="c5">
+        <PassNetwork network={analyst.network} roster={roster} />
       </div>
 
       <div className="c7">

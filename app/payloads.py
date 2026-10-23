@@ -54,13 +54,27 @@ def frame_message(frame: TrackingFrame) -> dict[str, Any]:
 CLIP_EVENT_TYPES = {"pass", "carry", "shot", "tackle", "interception", "goal"}
 
 
-def clip_event(e: MatchEvent) -> dict[str, Any] | None:
-    if e.type.value not in CLIP_EVENT_TYPES:
-        return None
+def _event_dict(e: MatchEvent) -> dict[str, Any]:
     return {
         "t": e.t, "type": e.type.value, "team": e.team, "player": e.player_id,
         "x": e.x, "y": e.y, "end_x": e.end_x, "end_y": e.end_y, "outcome": e.outcome,
     }
+
+
+def clip_event(e: MatchEvent) -> dict[str, Any] | None:
+    if e.type.value not in CLIP_EVENT_TYPES:
+        return None
+    return _event_dict(e)
+
+
+# What the live pitch draws: pass and shot lines, won tackles, interceptions, cards, goals.
+ANIM_EVENT_TYPES = {"pass", "shot", "tackle", "interception", "card", "goal"}
+
+
+def anim_event(e: MatchEvent) -> dict[str, Any] | None:
+    if e.type.value not in ANIM_EVENT_TYPES or (e.type.value == "tackle" and e.outcome != "won"):
+        return None
+    return {"id": e.event_id, **_event_dict(e)}
 
 
 def shot_dict(s: ShotRecord) -> dict[str, Any]:
@@ -72,6 +86,39 @@ def shot_dict(s: ShotRecord) -> dict[str, Any]:
         "pressure": round(s.pressure, 2), "defender_m": s.defender_m, "creator": s.creator,
         "score_before": s.score_before, "wp_if_goal": s.wp_if_goal, "wp_if_miss": s.wp_if_miss,
     }
+
+
+MIN_NETWORK_PASSES = 2
+MIN_NETWORK_FRAMES = 25  # 5 seconds in possession before a player gets a node
+
+
+def pass_network(live: LiveStats) -> dict[str, Any]:
+    """Per team: average positions in possession (from tracking) and completed passes between pairs."""
+    side_of = {pid: ("home" if pid.startswith(live.meta.home) else "away") for pid in live.in_possession_pos}
+    out: dict[str, Any] = {}
+    for side in SIDES:
+        nodes = []
+        involvement: dict[str, int] = {}
+        for (a, b), n in live.pass_pairs.items():
+            if side_of.get(a, "home" if a.startswith(live.meta.home) else "away") == side:
+                involvement[a] = involvement.get(a, 0) + n
+                involvement[b] = involvement.get(b, 0) + n
+        for pid, (sx, sy, frames) in live.in_possession_pos.items():
+            if side_of[pid] == side and frames >= MIN_NETWORK_FRAMES:
+                nodes.append({"player": pid, "x": round(sx / frames, 1), "y": round(sy / frames, 1),
+                              "passes": involvement.get(pid, 0)})
+        placed = {n["player"] for n in nodes}
+        combined: dict[tuple[str, str], int] = {}
+        for (a, b), n in live.pass_pairs.items():
+            if a in placed and b in placed and side_of[a] == side:
+                key = (a, b) if a < b else (b, a)
+                combined[key] = combined.get(key, 0) + n
+        edges = sorted(
+            ({"a": a, "b": b, "n": n} for (a, b), n in combined.items() if n >= MIN_NETWORK_PASSES),
+            key=lambda e: -e["n"],
+        )[:40]
+        out[side] = {"nodes": nodes, "edges": edges}
+    return out
 
 
 def _avg(values: list[float]) -> float | None:
@@ -102,6 +149,7 @@ def player_summary(live: LiveStats, player_id: str) -> dict[str, Any]:
         "leverage": round(lev.total, 3) if lev else 0.0,
         "press_rate": press.rate if press else None,
         "press_attempts": press.attempts if press else 0,
+        "heatmap": run.heat.tolist() if run else [],
         "list": [shot_dict(s) for s in shots],
     }
 
@@ -154,6 +202,7 @@ def analyst_message(live: LiveStats) -> dict[str, Any]:
     return {
         "type": "analyst",
         "t": live.t,
+        "network": pass_network(live),
         "shots": shots,
         "leverage": leverage,
         "press": press,

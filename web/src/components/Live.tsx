@@ -1,5 +1,7 @@
-import type { Audience, MatchState } from "../types";
+import type { CSSProperties } from "react";
+import type { Audience, FxEvent, MatchState, Roster } from "../types";
 import { Pitch } from "./Pitch";
+import { Tick } from "../tween";
 import { WinProbability } from "./WinProbability";
 import { MomentCard } from "./MomentCard";
 import { signed } from "../format";
@@ -12,6 +14,32 @@ interface Props {
 }
 
 const TAG_WINDOW_S = 10;
+const GOAL_BANNER_MS = 4200;
+
+/** Broadcast GOAL slab over the pitch: club colour wipe, scorer, minute and the new score. */
+function GoalBanner({ fx, roster, score }: { fx: FxEvent[]; roster: Roster; score: [number, number] }) {
+  const now = performance.now();
+  const goal = [...fx].reverse().find((e) => e.type === "goal" && now - e.at < GOAL_BANNER_MS);
+  if (!goal) return null;
+  const club = roster.clubs[goal.team];
+  const scorer = goal.player ? roster.players[goal.player] : undefined;
+  return (
+    <div key={goal.id} className="goalbanner" style={{ "--club": club.primary } as CSSProperties} role="status">
+      <div className="gb-slab">
+        <span className="gb-word">Goal</span>
+      </div>
+      <div className="gb-info">
+        <b>{scorer ? `#${scorer.number} ${scorer.name}` : club.name}</b>
+        <span>
+          {club.name} {Math.floor(goal.t / 60)}&prime;
+          <em className="num">
+            {roster.clubs.home.short} {score[0]} <i>:</i> {score[1]} {roster.clubs.away.short}
+          </em>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function Live({ state, depth, focus }: Props) {
   const { roster, stats, frame, analyst } = state;
@@ -22,7 +50,6 @@ export function Live({ state, depth, focus }: Props) {
   const latest = state.cards[state.cards.length - 1];
   const latestT = latest ? Number(latest.moment.state_ref.split("@")[1]) : -Infinity;
   const tagged = new Set(stats.t - latestT <= TAG_WINDOW_S && latest ? latest.moment.players : []);
-  const frameMs = Math.round(Math.max(100, 200 / state.speed));
 
   const focusInfo = focus ? roster.players[focus] : null;
   const focusRun = focus ? analyst?.runs[focus] : undefined;
@@ -55,7 +82,8 @@ export function Live({ state, depth, focus }: Props) {
             </div>
           </div>
           <div className="pitchwrap">
-            <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} frameMs={frameMs} />
+            <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} />
+            <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
             {focusInfo && (
               <div className="focusbox" style={{ borderLeftColor: roster.clubs[focusInfo.side].primary }}>
                 <div className="label">Player focus</div>
@@ -64,7 +92,7 @@ export function Live({ state, depth, focus }: Props) {
                 </a>
                 <div className="fstats">
                   <div>
-                    <b className="num">{focusRun ? (focusRun.distance_m / 1000).toFixed(1) : "0.0"}</b>
+                    <b className="num"><Tick value={focusRun ? focusRun.distance_m / 1000 : 0} digits={1} /></b>
                     <span className="label">km run</span>
                   </div>
                   <div>
@@ -119,22 +147,22 @@ export function Live({ state, depth, focus }: Props) {
               <div className="kv">
                 <div className="k">
                   <span className="label">Control index</span>
-                  <b className="num">{stats.control_index.toFixed(2)}</b>
+                  <b className="num"><Tick value={stats.control_index} digits={2} /></b>
                 </div>
                 <div className="k">
                   <span className="label">Chaos index</span>
-                  <b className="num">{stats.chaos_index.toFixed(2)}</b>
+                  <b className="num"><Tick value={stats.chaos_index} digits={2} /></b>
                 </div>
                 <div className="k">
                   <span className="label">xG</span>
                   <b className="num">
-                    {stats.xg[0].toFixed(2)} <i>/</i> {stats.xg[1].toFixed(2)}
+                    <Tick value={stats.xg[0]} digits={2} /> <i>/</i> <Tick value={stats.xg[1]} digits={2} />
                   </b>
                 </div>
                 <div className="k">
                   <span className="label">Possession</span>
                   <b className="num">
-                    {Math.round(stats.possession[0] * 100)} <i>/</i> {Math.round(stats.possession[1] * 100)}
+                    <Tick value={stats.possession[0]} scale={100} /> <i>/</i> <Tick value={stats.possession[1]} scale={100} />
                   </b>
                 </div>
               </div>

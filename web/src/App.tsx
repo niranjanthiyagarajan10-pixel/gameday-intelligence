@@ -5,8 +5,9 @@ import { Live } from "./components/Live";
 import { Analyst } from "./components/Analyst";
 import { ShotPage } from "./components/ShotPage";
 import { PlayerPage } from "./components/PlayerPage";
+import { Overlay } from "./components/Overlay";
 import { clock } from "./format";
-import { useRoute } from "./route";
+import { overlayHref, useRoute } from "./route";
 
 const SPEEDS = [1, 4, 10, 30];
 
@@ -28,7 +29,7 @@ function useRoom(): [string | null, (room: string) => void] {
       .then((body) => {
         p.delete("t");
         p.set("room", body.room_id);
-        history.replaceState(null, "", `?${p.toString()}`);
+        history.replaceState(null, "", `?${p.toString()}${location.hash}`);
         setRoom(body.room_id);
       })
       .catch(() => setRoom("main"));
@@ -66,9 +67,9 @@ function Scoreboard({ state }: { state: MatchState }) {
       </div>
       <div className="mid">
         <div className="sc num">
-          {stats.score[0]}
+          <span key={`h${stats.score[0]}`} className="bump">{stats.score[0]}</span>
           <i>:</i>
-          {stats.score[1]}
+          <span key={`a${stats.score[1]}`} className="bump">{stats.score[1]}</span>
         </div>
         <div className="live">
           <span className={`dot ${status === "live" && !state.paused ? "" : "off"}`} />
@@ -121,11 +122,19 @@ export default function App() {
     [state.frame, roster],
   );
 
+  const overlay = route.page === "overlay";
+  useEffect(() => {
+    // The overlay page is composited over video, so the page itself must be see-through.
+    document.documentElement.classList.toggle("overlay-mode", overlay);
+  }, [overlay]);
+
   const toggleDepth = () => {
     const next = depth === "casual" ? "analyst" : "casual";
     setDepth(next);
     setTab(next === "analyst" ? "analyst" : "live");
   };
+
+  if (route.page === "overlay") return <Overlay state={state} bg={route.bg} audience={route.audience} />;
 
   if (!room || !roster || !stats) {
     return (
@@ -210,6 +219,9 @@ export default function App() {
             ))}
             <button onClick={() => control(state.paused ? "resume" : "pause")}>{state.paused ? "Play" : "Pause"}</button>
             <button onClick={() => control("restart")}>Restart</button>
+            <a href={overlayHref(true)} target="_blank" rel="noreferrer" title="Broadcast graphics, 1920x1080, transparent without ?bg=pitch">
+              Overlay &#8599;
+            </a>
           </div>
         </div>
       </header>
