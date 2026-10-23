@@ -32,6 +32,9 @@ Rules:
    {"template": "...", "claims": [{"metric": "...", "subject": "...", "direction": "up", "slot": "..."}]}
    Claim metrics: win_probability, score, xg, minute, leverage, speed, shape, control, red_card.
    direction is up, down or level. slot names the slot that carries the claim's number, if any.
+   Meanings: win_probability is the win chance of the moment's team (subject "team"), up or down.
+   score up means the team scored, level means the scores are level after, down means the team trails.
+   xg up means a big chance (0.30 or more), down means a low chance. List only claims your text makes.
 """
 
 AUDIENCE = {

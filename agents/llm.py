@@ -80,11 +80,20 @@ class FoundryBackend:
             )
         return self._clients[model]
 
+    async def warm(self, model: str) -> None:
+        """One tiny call at startup: the first call on a fresh connection takes about 7 s (auth and
+        connection setup), later ones about 2 s, so the first real card must not pay for it."""
+        await self._credential.get_token("https://ai.azure.com/.default")
+        await self.complete(agent="Warmup", instructions="Reply with one word.", prompt="Say ok", model=model)
+
     async def complete(self, *, agent: str, instructions: str, prompt: str, model: str) -> str:
         from agent_framework import Agent
 
         runner = Agent(client=self._client(model), name=agent, instructions=instructions)
-        response = await runner.run(prompt)
+        # gpt-5-mini at its default reasoning effort takes about 19 s on a Narrator prompt; low takes about 6 s.
+        # Only reasoning models (gpt-5, o-series) accept an effort; gpt-4.1 models would reject it.
+        effort = os.getenv("REASONING_EFFORT", "low") if model.startswith(("gpt-5", "o")) else ""
+        response = await runner.run(prompt, options={"reasoning": {"effort": effort}} if effort else None)
         return response.text
 
 
@@ -158,6 +167,14 @@ class LLM:
             record = ReplayCache() if os.getenv("RECORD_REPLAY", "0") == "1" else None
             return cls(backend, fast=fast, strong=strong, record=record)
         return cls(OfflineBackend(), fast=fast, strong=strong)
+
+    async def warm(self) -> None:
+        warm = getattr(self.backend, "warm", None)
+        if warm is not None:
+            try:
+                await asyncio.wait_for(warm(self.strong), timeout=30)
+            except Exception as e:  # warming is a nicety; the first real call will retry auth
+                log.warning("could not warm the model connection: %s", e)
 
     @property
     def live(self) -> bool:

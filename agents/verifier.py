@@ -106,16 +106,17 @@ IMPLIED: list[tuple[str, str, Any]] = [
 ]
 
 
-def _check_claim(c: Claim, m: Moment, used: set[str]) -> str | None:
+def _check_claim(c: Claim, m: Moment, used: set[str], team_name: str = "", rival_name: str = "") -> str | None:
+    # A claim tied to a slot the text leaves out is checked on its facts all the same.
     ev = m.evidence
-    if c.slot and c.slot not in used:
-        return f"claim {c.claim_id} points at slot {{{c.slot}}}, which the template does not use"
     metric = c.metric.lower()
     if metric == "win_probability":
         if "wp_after" in ev and "wp_before" in ev and c.direction in ("up", "down"):
             moved_up = float(ev["wp_after"]) > float(ev["wp_before"])
-            team_view = c.subject in ("", m.team, "team")
-            up = moved_up if team_view else not moved_up
+            # Win chance is the moment's team's unless the claim names the other side.
+            rival = {"home", "away"} - {str(m.team)}
+            about_rival = c.subject.strip().lower() in rival | ({rival_name.lower()} if rival_name else set())
+            up = not moved_up if about_rival else moved_up
             if (c.direction == "up") != up:
                 return f"claim {c.claim_id}: win chance did not go {c.direction}"
         return None
@@ -123,6 +124,9 @@ def _check_claim(c: Claim, m: Moment, used: set[str]) -> str | None:
         margin = _margin(m)
         if margin is None:
             return f"claim {c.claim_id}: no score in the evidence"
+        # "up" on a goal means the team scored; otherwise it means the team leads.
+        if c.direction == "up" and m.kind in GOAL_KINDS:
+            return None
         expect = "up" if margin > 0 else "level" if margin == 0 else "down"
         return None if c.direction in (None, expect) else f"claim {c.claim_id}: the team is not {c.direction}"
     if metric == "xg":
@@ -198,7 +202,7 @@ def verify(
                 reasons.append(f"the wording implies {meaning}, but the evidence says otherwise")
 
     for c in claims:
-        problem = _check_claim(c, moment, set(used))
+        problem = _check_claim(c, moment, set(used), allowed.get("team", ""), allowed.get("rival", ""))
         if problem:
             reasons.append(problem)
 

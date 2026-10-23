@@ -32,6 +32,7 @@ async def main() -> int:
     print(f"backend: {llm.backend.name}, model: {llm.strong}")
     if not llm.live:
         print("No Foundry endpoint: set FOUNDRY_PROJECT_ENDPOINT (and run az login) first.")
+    await llm.warm()
     desk = CardDesk(llm, {"AV08": "Callum Hale"}, {"home": "Kingsport Rovers", "away": "Ashford Vale"}, "check")
     ok = True
     for audience in ("casual", "analyst"):

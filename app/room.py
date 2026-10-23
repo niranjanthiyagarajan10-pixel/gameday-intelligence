@@ -387,6 +387,7 @@ class Hub:
         self.llm = LLM.from_env()  # one model client for every room
 
     async def start(self) -> None:
+        self._warming = asyncio.create_task(self.llm.warm())
         self._launch("main", self.default)
         self._reaper = asyncio.create_task(self._reap())
 
