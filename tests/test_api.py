@@ -1,5 +1,6 @@
 """The API and WebSocket stream, on a short fast match."""
 
+import json
 import time
 
 import pytest
@@ -16,6 +17,11 @@ CONFIG = RoomConfig(half_s=60.0, speed=30.0, scenario=None)
 def client():
     with TestClient(create_app(CONFIG)) as c:
         yield c
+
+
+def restart(client):
+    client.post("/api/rooms/main/control", json={"action": "restart"})
+    client.post("/api/rooms/main/control", json={"action": "resume"})
 
 
 def test_health(client):
@@ -37,6 +43,7 @@ def test_unknown_room_is_404(client):
 
 def test_stream_sends_hello_then_frames_and_stats(client):
     seen = set()
+    restart(client)  # the test match lasts seconds; make sure it is still being played
     with client.websocket_connect("/ws/main") as ws:
         assert ws.receive_json()["type"] == "hello"
         frame = None
@@ -143,6 +150,7 @@ def test_cues_are_machine_readable_overlays(client):
 
 
 def test_stream_sends_events_for_the_pitch_to_animate(client):
+    restart(client)  # the test match lasts seconds; make sure it is still being played
     with client.websocket_connect("/ws/main") as ws:
         ws.receive_json()
         batch = None
@@ -178,3 +186,72 @@ def test_tracking_visuals_pass_network_and_heatmap():
     heat = room.player("KR10")["summary"]["heatmap"]
     assert len(heat) == HEAT_X and all(len(col) == HEAT_Y for col in heat)
     assert sum(map(sum, heat)) > 0
+
+
+def test_trace_endpoint_reports_the_agent_backend(client):
+    body = client.get("/api/rooms/main/trace").json()
+    assert body["agents"]["backend"] in ("offline", "foundry", "replay")
+    assert isinstance(body["steps"], list)
+
+
+def test_mcp_endpoint_answers_json_rpc():
+    headers = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
+    with TestClient(create_app(CONFIG), base_url="http://localhost:8000") as c:
+        init = c.post("/mcp", headers=headers, json={
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                       "clientInfo": {"name": "test", "version": "1"}}})
+        assert init.status_code == 200, init.text
+        listed = c.post("/mcp", headers=headers, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+        names = {t["name"] for t in listed.json()["result"]["tools"]}
+        assert {"get_match_state", "get_player_live", "verify_claims"} <= names
+        called = c.post("/mcp", headers=headers, json={
+            "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+            "params": {"name": "get_match_state", "arguments": {}}})
+        assert "Kingsport Rovers" in json.dumps(called.json())
+
+
+def test_room_swaps_in_the_narrators_verified_text():
+    import asyncio
+
+    from agents.fallback import TEMPLATES, template_key
+    from agents.llm import LLM
+    from app.room import MatchRoom
+    from engine.league import build_league
+    from engine.models import Moment
+
+    class EchoNarrator:
+        """Answers with the trusted template for the moment, so every draft should pass."""
+
+        name = "foundry"
+
+        async def complete(self, *, agent, instructions, prompt, model):
+            pack = json.loads(prompt)
+            m = Moment(moment_id="x", minute=pack["moment"]["minute"], kind=pack["moment"]["kind"],
+                       leverage=pack["moment"]["leverage"], evidence=pack["evidence"], state_ref="x@0")
+            audience = "analyst" if "an analyst" in instructions else "casual"
+            return json.dumps({"template": TEMPLATES[template_key(m)][audience], "claims": []})
+
+    room = MatchRoom("narrate", build_league(), CONFIG, LLM(EchoNarrator()))
+    while not room.cards and not room.feed.finished:
+        room.advance()
+    assert room.cards, "expected a key moment in two halves of a minute"
+    queue = room.subscribe()
+    room._to_narrate.append(room.cards[0])
+
+    async def drain():
+        task = asyncio.create_task(room._narrate_worker())
+        for _ in range(100):
+            await asyncio.sleep(0.02)
+            if not room._to_narrate and room.cards[0]["source"] == "narrator":
+                break
+        task.cancel()
+
+    asyncio.run(drain())
+    card = room.cards[0]
+    assert card["source"] == "narrator" and card["sources"] == {"casual": "narrator", "analyst": "narrator"}
+    kinds = []
+    while not queue.empty():
+        kinds.append(queue.get_nowait()["type"])
+    assert "trace" in kinds and "card_update" in kinds
+    assert {s["agent"] for s in room.trace} == {"Narrator", "Verifier"}

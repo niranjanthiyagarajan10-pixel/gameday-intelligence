@@ -15,12 +15,15 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from agents.desk import CardDesk, TraceStep
+from agents.llm import LLM
 from app.blueprint import build_blueprint
 from app.payloads import (
     analyst_message,
     anim_event,
     card_message,
     clip_event,
+    event_record,
     frame_message,
     player_summary,
     roster,
@@ -30,7 +33,7 @@ from app.payloads import (
 from engine.feed import Feed, SimulatorFeed
 from engine.league import League
 from engine.live import LiveStats
-from engine.models import MatchEvent, MatchMeta, TrackingFrame
+from engine.models import MatchEvent, MatchMeta, Moment, TrackingFrame
 from engine.sim import MatchSimulator, SimConfig, load_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,6 +49,8 @@ PRIVATE_IDLE_S = 15 * 60
 MAX_PRIVATE_ROOMS = 20
 CLIP_BEFORE_S = 12.0
 CLIP_AFTER_S = 3.0
+TRACE_MAX = 400
+NARRATE_BACKLOG = 4  # at high speed, older cards keep their template rather than queue for the Narrator
 ANIM_MAX = 60  # events held for the next frame message; at high speed older ones are dropped
 
 
@@ -79,8 +84,9 @@ class RoomConfig:
 
 
 class MatchRoom:
-    def __init__(self, room_id: str, league: League, config: RoomConfig) -> None:
+    def __init__(self, room_id: str, league: League, config: RoomConfig, llm: LLM | None = None) -> None:
         self.room_id = room_id
+        self.llm = llm or LLM()
         self.league = league
         self.config = config
         self.speed = config.speed
@@ -103,6 +109,10 @@ class MatchRoom:
         self.roster = roster(self.feed, self.league)
         self.names = {pid: p["name"] for pid, p in self.roster["players"].items()}
         self.teams = {side: club["name"] for side, club in self.roster["clubs"].items()}
+        self.desk = CardDesk(self.llm, self.names, self.teams, meta.match_id)
+        self.trace: deque[dict[str, Any]] = deque(maxlen=TRACE_MAX)
+        self._to_narrate: deque[dict[str, Any]] = deque()
+        self.event_log: dict[str, dict[str, Any]] = {}
         self.cards: list[dict[str, Any]] = []
         self.history: list[list[float]] = []
         self.last_frame: dict[str, Any] | None = None
@@ -133,7 +143,12 @@ class MatchRoom:
             "history": self.history,
             "cards": self.cards,
             "analyst": analyst_message(self.live),
+            "trace": list(self.trace)[-150:],
+            "agents": self.agent_info(),
         }
+
+    def agent_info(self) -> dict[str, Any]:
+        return {"backend": self.llm.backend.name, "model": self.llm.strong, "live": self.llm.live}
 
     def cues(self) -> list[dict[str, Any]]:
         return [cue for card in self.cards for cue in card["cues"].values()]
@@ -197,6 +212,7 @@ class MatchRoom:
             if isinstance(item, TrackingFrame):
                 frame = item
             elif isinstance(item, MatchEvent):
+                self.event_log[item.event_id] = event_record(item)
                 if (ev := clip_event(item)) is not None:
                     self._recent_events.append(ev)
                 if (anim := anim_event(item)) is not None:
@@ -245,7 +261,48 @@ class MatchRoom:
         while not self.feed.finished and self.feed.t < until_t:
             self.advance()
 
+    def _log(self, steps: list[TraceStep]) -> None:
+        rows = [s.to_json() for s in steps]
+        self.trace.extend(rows)
+        self.publish({"type": "trace", "steps": rows})
+
+    async def _narrate_worker(self) -> None:
+        """Hands each new card to the card desk; swaps in the Narrator's text once it passes the Verifier."""
+        while True:
+            if not self._to_narrate:
+                await asyncio.sleep(0.05)
+                continue
+            while len(self._to_narrate) > NARRATE_BACKLOG:
+                skipped = self._to_narrate.popleft()
+                m = skipped["moment"]
+                self._log([TraceStep(m["moment_id"], "both", "Desk", "skip", "skipped", 0,
+                                     "backlog at high speed, template kept", float(m["state_ref"].rsplit("@", 1)[1]))])
+            card = self._to_narrate.popleft()
+            moment = Moment.model_validate(card["moment"])
+            written = await asyncio.gather(*(self.desk.write(moment, aud) for aud in ("casual", "analyst")))
+            for w in written:
+                self._log(w.steps)
+            if not any(c is card for c in self.cards):  # the match restarted while the Narrator worked
+                continue
+            changed = False
+            for w in written:
+                if w.source == "narrator":
+                    card["cues"][w.cue.audience] = {**w.cue.model_dump(mode="json"), "text": w.cue.text()}
+                    card["sources"][w.cue.audience] = "narrator"
+                    changed = True
+            if changed:
+                card["source"] = "narrator"
+                self.publish({"type": "card_update", "moment_id": moment.moment_id, "cues": card["cues"],
+                              "source": card["source"], "sources": card["sources"]})
+
     async def run(self) -> None:
+        narrating = asyncio.create_task(self._narrate_worker())
+        try:
+            await self._run()
+        finally:
+            narrating.cancel()
+
+    async def _run(self) -> None:
         if self.config.start_minute > 0:
             self.status = "catching_up"
             await asyncio.to_thread(self.fast_forward, self.config.start_minute * 60)
@@ -272,6 +329,7 @@ class MatchRoom:
 
             for card in self.advance():
                 self.publish(card)
+                self._to_narrate.append(card)
             now = time.monotonic()
             if self.last_frame and now - last_frame >= FRAME_INTERVAL_S:
                 if self._anim:
@@ -326,6 +384,7 @@ class Hub:
         self.default = default
         self.rooms: dict[str, MatchRoom] = {}
         self._reaper: asyncio.Task | None = None
+        self.llm = LLM.from_env()  # one model client for every room
 
     async def start(self) -> None:
         self._launch("main", self.default)
@@ -347,7 +406,7 @@ class Hub:
         return self._launch(room_id, replace(self.default, start_minute=start_minute, speed=speed))
 
     def _launch(self, room_id: str, config: RoomConfig) -> MatchRoom:
-        room = MatchRoom(room_id, self.league, config)
+        room = MatchRoom(room_id, self.league, config, self.llm)
         room.task = asyncio.create_task(room.run())
         self.rooms[room_id] = room
         return room

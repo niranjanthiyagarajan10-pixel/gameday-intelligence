@@ -8,6 +8,7 @@ import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
 import { Blueprint } from "./components/Blueprint";
+import { TracePanel } from "./components/TracePanel";
 import { useChangedSinceMount } from "./tween";
 import { clock } from "./format";
 import { overlayHref, useRoute } from "./route";
@@ -111,6 +112,7 @@ export default function App() {
   const [depth, setDepth] = useState<Audience>("casual");
   const [club, setClub] = useState<Side | "">("");
   const [focus, setFocus] = useState<string | null>(null);
+  const [trace, setTrace] = useState(false);
   const { roster, stats, analyst } = state;
 
   useEffect(() => {
@@ -225,6 +227,9 @@ export default function App() {
             <a href={overlayHref(true)} target="_blank" rel="noreferrer" title="Broadcast graphics, 1920x1080, transparent without ?bg=pitch">
               Overlay &#8599;
             </a>
+            <button className={trace ? "on" : ""} onClick={() => setTrace(!trace)} title="Every agent step, live">
+              Trace
+            </button>
           </div>
         </div>
       </header>
@@ -234,6 +239,7 @@ export default function App() {
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} />}
+      {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>
         <Live state={state} depth={depth} focus={focus || null} />
       </main>

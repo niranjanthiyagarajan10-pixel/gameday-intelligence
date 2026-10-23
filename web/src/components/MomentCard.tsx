@@ -52,6 +52,9 @@ export function MomentCard({ card, roster, depth, open: openByDefault }: Props) 
             Watch replay
           </a>
         )}
+        <span className="written" title={card.sources?.[audience] === "narrator" ? "Written by the Narrator agent, checked by the Verifier" : "Template text, filled from the evidence"}>
+          {card.sources?.[audience] === "narrator" ? "Narrator" : "Template"}
+        </span>
         {cue.verified && <span className="verified">Verified</span>}
       </div>
       {open && (

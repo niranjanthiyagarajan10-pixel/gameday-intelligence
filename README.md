@@ -123,6 +123,18 @@ Our validation also caught a flaw in our own simulator: an early version let one
 - **Streaming.** `app/` runs each match live in a room and streams frames, stats, cards and analyst data over WebSocket. The main room is the shared broadcast; `?t=55` opens a private replay of the same match from minute 55. Timed, machine-readable overlay cues for a broadcast renderer are at `GET /api/rooms/{room}/cues`.
 - **Cards before agents.** Until the agents land in M3, cards come from `agents/fallback.py`: templates that contain only words, with every number and name filled from the moment's evidence. A test fails if any template contains a digit. These stay as the agents' fallback.
 
+## The agents
+
+Built with Microsoft Agent Framework on Microsoft Foundry, through one wrapper (`agents/llm.py`) that gives every model call an 8 second timeout, timing for the trace and a replay cache.
+
+- **Narrator** (`agents/narrator.py`) turns a key moment into a card. It writes a template with slots like `{player}` and `{xg}` plus the claims it makes; it never types a number or a name.
+- **Verifier** (`agents/verifier.py`) is deterministic code. It rejects typed numbers and names, unknown slots, details the evidence does not contain, declared claims that contradict the numbers, and wording that implies one ("equaliser" when the score is not level). Rejections go back to the Narrator with reasons, up to two retries; after that, or on a timeout, the card keeps its verified template.
+- **Card desk** (`agents/desk.py`) runs that loop. Cards go out instantly as templates and are swapped for the Narrator's verified text when it lands, so live play never waits.
+- **Trace panel**: the Trace button shows every agent step live, with timings, rejections and fallbacks. `GET /api/rooms/{room}/trace` returns the same.
+- **MCP server** (`mcp_server/`) at `/mcp`: eleven read-only tools over the live match (`get_match_state`, `get_player_live`, `compare_windows`, `verify_claims` and more) for the agents and for GitHub Copilot Agent Mode (`.vscode/mcp.json`).
+
+Connect Foundry: `az login`, copy `.env.example` to `.env` and set `FOUNDRY_PROJECT_ENDPOINT` and `MODEL_STRONG`, then run `python -m agents.check_foundry`. Without it the app runs on verified templates and the trace says so.
+
 ## Rules the code enforces
 
 - `engine/` never imports a model or network SDK (`tests/test_engine_rules.py`).

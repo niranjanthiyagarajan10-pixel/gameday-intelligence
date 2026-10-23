@@ -61,6 +61,11 @@ def _event_dict(e: MatchEvent) -> dict[str, Any]:
     }
 
 
+def event_record(e: MatchEvent) -> dict[str, Any]:
+    """Any event, compactly, for the event log the agents' tools read."""
+    return {"id": e.event_id, "minute": e.minute, **_event_dict(e)}
+
+
 def clip_event(e: MatchEvent) -> dict[str, Any] | None:
     if e.type.value not in CLIP_EVENT_TYPES:
         return None
@@ -166,7 +171,8 @@ def card_message(m: Moment, names: dict[str, str], teams: dict[Side, str], match
         "moment": m.model_dump(mode="json"),
         "cues": {aud: {**cue.model_dump(mode="json"), "text": cue.text()} for aud, cue in cues.items()},
         "hero": {"value": hero.value, "label": hero.label},
-        "source": "fallback",
+        "source": "template",  # until the Narrator's verified draft replaces it
+        "sources": {"casual": "template", "analyst": "template"},
     }
 
 

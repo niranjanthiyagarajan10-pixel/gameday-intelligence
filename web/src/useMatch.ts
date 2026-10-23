@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { Analyst, Card, Frame, FxEvent, MatchState, Roster, Stats, Status } from "./types";
+import type { AgentInfo, Analyst, Card, Cue, Frame, FxEvent, MatchState, Roster, Stats, Status, TraceStep } from "./types";
 
 type Message =
   | {
@@ -15,12 +15,16 @@ type Message =
       history: number[][];
       cards: Card[];
       analyst: Analyst;
+      trace?: TraceStep[];
+      agents?: AgentInfo;
     }
   | (Frame & { type: "frame" })
   | (Stats & { type: "stats" })
   | (Card & { type: "card" })
   | (Analyst & { type: "analyst" })
   | { type: "events"; events: Omit<FxEvent, "at">[]; at: number }
+  | { type: "trace"; steps: TraceStep[] }
+  | { type: "card_update"; moment_id: string; cues: Card["cues"]; source: string; sources: Record<string, string> }
   | { type: "control"; status: Status; speed: number; paused: boolean }
   | { type: "error"; message: string };
 
@@ -29,6 +33,7 @@ type Action = Message | { type: "connected"; value: boolean };
 const HISTORY_STEP_S = 10;
 const FX_KEEP_MS = 6000;
 const FX_MAX = 80;
+const TRACE_KEEP = 400;
 
 const initial: MatchState = {
   connected: false,
@@ -44,6 +49,8 @@ const initial: MatchState = {
   cards: [],
   analyst: null,
   fx: [],
+  trace: [],
+  agents: null,
 };
 
 function reducer(state: MatchState, msg: Action): MatchState {
@@ -65,6 +72,8 @@ function reducer(state: MatchState, msg: Action): MatchState {
         cards: msg.cards,
         analyst: msg.analyst,
         fx: [],
+        trace: msg.trace ?? [],
+        agents: msg.agents ?? null,
       };
     case "frame":
       return { ...state, frame: msg };
@@ -83,6 +92,17 @@ function reducer(state: MatchState, msg: Action): MatchState {
       return { ...state, cards: [...state.cards, msg] };
     case "analyst":
       return { ...state, analyst: msg };
+    case "trace":
+      return { ...state, trace: [...state.trace, ...msg.steps].slice(-TRACE_KEEP) };
+    case "card_update":
+      return {
+        ...state,
+        cards: state.cards.map((c) =>
+          c.moment.moment_id === msg.moment_id
+            ? { ...c, cues: msg.cues as Record<"casual" | "analyst", Cue>, source: msg.source, sources: msg.sources as Card["sources"] }
+            : c,
+        ),
+      };
     case "events": {
       const kept = state.fx.filter((e) => msg.at - e.at < FX_KEEP_MS);
       return { ...state, fx: [...kept, ...msg.events.map((e) => ({ ...e, at: msg.at }))].slice(-FX_MAX) };

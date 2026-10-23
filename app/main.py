@@ -14,8 +14,13 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app.room import SPEEDS, Hub, MatchRoom, RoomConfig
-from engine.league import build_league
+from app.env import load_env
+
+load_env()  # before anything reads FOUNDRY_PROJECT_ENDPOINT or the model names
+
+from app.room import SPEEDS, Hub, MatchRoom, RoomConfig  # noqa: E402
+from engine.league import build_league  # noqa: E402
+from mcp_server.server import create_mcp  # noqa: E402
 
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -32,15 +37,20 @@ class Control(BaseModel):
 
 def create_app(default: RoomConfig | None = None) -> FastAPI:
     hub = Hub(build_league(), default or RoomConfig.from_env())
+    mcp = create_mcp(hub)
+    mcp_app = mcp.streamable_http_app()  # creates the session manager the lifespan runs
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        await hub.start()
-        yield
-        await hub.stop()
+        async with mcp.session_manager.run():
+            await hub.start()
+            yield
+            await hub.stop()
 
     app = FastAPI(title="Gameday Intelligence", lifespan=lifespan)
     app.state.hub = hub
+    # MCP over streamable HTTP at /mcp, for agents and GitHub Copilot Agent Mode
+    app.router.routes.extend(mcp_app.routes)
 
     def room_or_404(room_id: str) -> MatchRoom:
         room = hub.get(room_id)
@@ -68,6 +78,12 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         if found is None:
             raise HTTPException(404, "no such shot")
         return found
+
+    @app.get("/api/rooms/{room_id}/trace")
+    async def trace(room_id: str) -> dict[str, Any]:
+        """Every agent step so far: Narrator drafts, Verifier verdicts, fallbacks, with timings."""
+        room = room_or_404(room_id)
+        return {"agents": room.agent_info(), "steps": list(room.trace)}
 
     @app.get("/api/rooms/{room_id}/blueprint")
     async def blueprint(room_id: str) -> dict[str, Any]:

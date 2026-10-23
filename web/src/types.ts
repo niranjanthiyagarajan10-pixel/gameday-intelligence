@@ -73,7 +73,26 @@ export interface Card {
   moment: Moment;
   cues: Record<Audience, Cue>;
   hero: { value: string; label: string };
-  source: string;
+  source: string; // "narrator" once an agent's verified draft replaced the template
+  sources?: Record<Audience, string>;
+}
+
+/** One agent step for the trace panel (agents/desk.py). */
+export interface TraceStep {
+  moment_id: string;
+  audience: string;
+  agent: string;
+  action: string;
+  status: string;
+  ms: number;
+  detail: string;
+  t: number;
+}
+
+export interface AgentInfo {
+  backend: string;
+  model: string;
+  live: boolean;
 }
 
 export interface Shot {
@@ -328,4 +347,6 @@ export interface MatchState {
   cards: Card[];
   analyst: Analyst | null;
   fx: FxEvent[];
+  trace: TraceStep[];
+  agents: AgentInfo | null;
 }

@@ -414,9 +414,9 @@ Built with Microsoft Agent Framework on Foundry. Fast model for Editor and Perso
 
 | Agent | Input | Output |
 |---|---|---|
-| Editor | Moment, recent cards, viewer profiles | Emit or skip, card kind, priority, personas to render |
-| Narrator | Evidence pack JSON | `template` with slots, plus a `claims` list |
-| Verifier | Template, claims, match state | Pass, or fail with reasons |
+| Editor | Moment, recent cards, viewer profiles | Emit or skip, card kind, priority, personas to render. Today the moment detector and its debounce do this in code; the card desk skips older cards when a backlog builds at high speed |
+| Narrator (built, `agents/narrator.py`) | Evidence pack JSON: moment, evidence, formatted slot values, required slots, and on a retry the rejected draft with reasons | `template` with slots, plus a `claims` list |
+| Verifier (built, `agents/verifier.py`) | Template, claims, moment evidence | Pass, or fail with reasons. Deterministic code, not a model, so it cannot be talked out of a check |
 | Personalizer | Verified template, persona, club, language | Rewritten template with every slot kept exactly once |
 | Analyst | Viewer question, match state via MCP tools | Answer with slots, claims, tools used, limits |
 | Recap | Verified moments and final stats | Recap template with slots and claims |
@@ -430,7 +430,14 @@ Rules:
 - Timeout per model call: 8 seconds. On timeout use fallback or replay cache.
 - All agent steps are logged with timing, retries and fallback used, and shown in the trace panel.
 
-MCP server tools (`mcp_server/`): `get_match_state`, `get_moment_evidence`, `get_player_live`, `compare_windows`, `list_supporting_events`, `get_shot_map`, `get_leverage_table`, `get_team_shape`, `get_press_resistance`, `verify_claims`.
+MCP server tools (`mcp_server/`, served at `/mcp` over streamable HTTP by the same app): `get_match_state`, `get_moment_evidence`, `get_player_live`, `compare_windows`, `list_supporting_events`, `get_shot_map`, `get_leverage_table`, `get_team_shape`, `get_press_resistance`, `get_gravity`, `verify_claims`. All read-only, each takes an optional `room`. `.vscode/mcp.json` points GitHub Copilot Agent Mode at it.
+
+How it runs (built Oct 23):
+- `agents/llm.py` is the one door for model calls: Microsoft Agent Framework `Agent(client=FoundryChatClient(...))` against the Foundry project, `DefaultAzureCredential`, 8 s timeout, timing, and a replay cache (`REPLAY_MODE=1` answers from `data/replays/agent_cache.json`, `RECORD_REPLAY=1` fills it). Without an endpoint it reports offline and every card keeps its template.
+- `agents/desk.py` runs Narrator, then Verifier, then up to 2 retries with the reasons, then the template. Every step is a trace step.
+- The room publishes each card instantly with its template, then swaps in the Narrator's verified text with a `card_update` message, so live play never waits on a model.
+- The Verifier rejects typed digits and names, unknown slots, missing required slots, details the evidence lacks (headers, penalties, assists, careers, injuries, the crowd), declared claims that contradict the numbers, and wording that implies an unsupported claim ("equaliser" at 1-0, "late" in the 12th minute). Every fallback template passes the same checks.
+- `python -m agents.check_foundry` sends one real moment through Foundry and prints the trace.
 
 ## 10. Voice (`app/speech.py`), stretch only
 
