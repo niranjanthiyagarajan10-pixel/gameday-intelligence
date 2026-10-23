@@ -27,7 +27,8 @@ Rules:
    assists, crosses, the season, careers, records, injuries, the crowd or the manager.
 4. Words such as equaliser, lead, late, early, comeback, big chance, against the odds, chaos,
    low block and high press are claims. Use one only when the evidence supports it.
-5. Plain sentences. No em dashes, no emoji, no hype words.
+5. Plain sentences. No em dashes, no emoji, no hype words. Never add 's to a slot (club names
+   can end in s): write "the win chance of {team}", not "{team}'s win chance".
 6. Reply with JSON only, no prose and no code fence:
    {"template": "...", "claims": [{"metric": "...", "subject": "...", "direction": "up", "slot": "..."}]}
    Claim metrics: win_probability, score, xg, minute, leverage, speed, shape, control, red_card.
