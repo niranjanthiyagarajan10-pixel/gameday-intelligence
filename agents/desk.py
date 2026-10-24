@@ -15,7 +15,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 
-from agents import narrator, personalizer
+from agents import commentator, narrator, personalizer
 from agents.fallback import CUE_KIND, fallback_cue, moment_time, slots_for
 from agents.llm import LLM
 from agents.verifier import verify
@@ -70,7 +70,10 @@ class CardDesk:
             return "offline"
         return "timeout" if error and "timed out" in error else "error"
 
-    async def write(self, moment: Moment, audience: Audience) -> Written:
+    async def write(self, moment: Moment, audience: Audience, style: str | None = None) -> Written:
+        """The Narrator's card line, or with a style the Commentator's line, through the same checks."""
+        agent = "Commentator" if style else "Narrator"
+        brief = commentator.instructions(style) if style else narrator.instructions(audience)
         allowed = slots_for(moment, self.names, self.teams)
         t = moment_time(moment)
         steps: list[TraceStep] = []
@@ -79,18 +82,18 @@ class CardDesk:
         reason = ""
         for attempt in range(1 + MAX_RETRIES):
             result = await self.llm.complete(
-                agent="Narrator",
-                instructions=narrator.instructions(audience),
+                agent=agent,
+                instructions=brief,
                 prompt=narrator.prompt(moment, allowed, feedback, previous),
                 model=self.llm.strong,
             )
             label = f"draft {attempt + 1}"
             if not result.ok:
-                steps.append(TraceStep(moment.moment_id, audience, "Narrator", label, self._status(result.error),
+                steps.append(TraceStep(moment.moment_id, audience, agent, label, self._status(result.error),
                                        result.ms, result.error or "", t))
                 reason = result.error or "no reply"
                 break
-            steps.append(TraceStep(moment.moment_id, audience, "Narrator", label, "ok", result.ms,
+            steps.append(TraceStep(moment.moment_id, audience, agent, label, "ok", result.ms,
                                    f"{result.backend} {result.model}", t))
             started = time.perf_counter()
             draft = narrator.parse(result.text)
@@ -104,7 +107,7 @@ class CardDesk:
                                        f"{len(draft.claims)} claims checked against the evidence", t))
                 used = template_slots(draft.template)
                 cue = OverlayEvent(
-                    cue_id=moment.moment_id.replace("-mo-", "-cue-") + f"-{audience}",
+                    cue_id=moment.moment_id.replace("-mo-", "-cue-") + f"-{audience}" + (f"-{style}" if style else ""),
                     match_id=self.match_id,
                     t_start=t + 1.0,
                     duration_s=8.0,

@@ -7,6 +7,7 @@ import { METRIC_LABEL, isMine, metricBoard, type Prefs } from "../prefs";
 import { useState } from "react";
 import { WinProbability } from "./WinProbability";
 import { MomentCard } from "./MomentCard";
+import { Commentator } from "./Commentator";
 import { signed } from "../format";
 import { playerHref } from "../route";
 
@@ -15,6 +16,7 @@ interface Props {
   depth: Audience;
   focus: string | null;
   prefs: Prefs;
+  update: (p: Partial<Prefs>) => void;
 }
 
 const TAG_WINDOW_S = 10;
@@ -45,7 +47,7 @@ function GoalBanner({ fx, roster, score }: { fx: FxEvent[]; roster: Roster; scor
   );
 }
 
-export function Live({ state, depth, focus, prefs }: Props) {
+export function Live({ state, depth, focus, prefs, update }: Props) {
   const [onlyMine, setOnlyMine] = useState(false);
   const { roster, stats, frame, analyst } = state;
   if (!roster || !stats) return null;
@@ -203,6 +205,7 @@ export function Live({ state, depth, focus, prefs }: Props) {
             </div>
           </div>
         )}
+        <Commentator room={state.room} cards={state.cards} roster={roster} prefs={prefs} update={update} />
         <div className="panel">
           <div className="ph">
             <h3>Key moments</h3>

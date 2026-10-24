@@ -22,6 +22,9 @@ from engine.models import Claim, Moment, template_slots
 
 EM_DASH = chr(0x2014)
 MAX_CHARS = {"casual": 240, "analyst": 320}
+# "56 m meters", "74% percent": a unit written after a slot that already has one.
+DOUBLE_UNIT = re.compile(r"\d\s?(m|km/h|%|km)\s+(meters?|metres?|percent|per cent|kilometres?|kilometers?|km/h|kph)\b",
+                         re.IGNORECASE)
 GOAL_KINDS = {"goal", "low_xg_goal"}
 
 REQUIRED_SLOTS: dict[str, set[str]] = {
@@ -185,6 +188,8 @@ def verify(
             break
     if EM_DASH in template:
         reasons.append("no em dashes")
+    if re.search(r"\}['’]s\b", template):
+        reasons.append("never add 's to a slot: write \"the win chance of {team}\"")
     if not literal.strip():
         reasons.append("the template is empty")
 
@@ -210,4 +215,6 @@ def verify(
         rendered = template.format(**{k: allowed[k] for k in used})
         if len(rendered) > MAX_CHARS.get(audience, 240):
             reasons.append(f"too long: keep it under {MAX_CHARS.get(audience, 240)} characters")
+        if DOUBLE_UNIT.search(rendered):
+            reasons.append("a slot already carries its unit; do not write a unit word after it")
     return Verdict(not reasons, reasons)

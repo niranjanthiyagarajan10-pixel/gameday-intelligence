@@ -10,7 +10,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -36,6 +37,12 @@ class Question(BaseModel):
     question: str = Field(min_length=2, max_length=300)
     lang: Literal["en", "es", "hi"] = "en"
     audience: Literal["casual", "analyst"] = "casual"
+
+
+class Speak(BaseModel):
+    moment_id: str = Field(min_length=1, max_length=80)
+    style: Literal["classic", "hype", "stats", "tactician"] = "classic"
+    lang: Literal["en", "es", "hi"] = "en"
 
 
 class Control(BaseModel):
@@ -106,6 +113,30 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
     async def ask(room_id: str, body: Question) -> dict[str, Any]:
         """Ask the match: the Analyst agent answers from the MCP tools, every number re-read by code."""
         return await room_or_404(room_id).ask(body.question, body.lang, body.audience)
+
+    @app.get("/api/rooms/{room_id}/commentary/{moment_id}")
+    async def commentary(
+        room_id: str, moment_id: str,
+        style: Literal["classic", "hype", "stats", "tactician"] = Query("classic"),
+        lang: Literal["en", "es", "hi"] = Query("en"),
+    ) -> dict[str, Any]:
+        """A key moment in the fan's commentator style, written by the Commentator and verified."""
+        said = await room_or_404(room_id).commentary(moment_id, style, lang)
+        if said is None:
+            raise HTTPException(404, "no such moment")
+        return said
+
+    @app.post("/api/rooms/{room_id}/speech")
+    async def speech(room_id: str, body: Speak) -> Response:
+        """The commentator's line as MP3 from Azure AI Speech. 503 with the text means: use the browser voice."""
+        room = room_or_404(room_id)
+        said = await room.commentary(body.moment_id, body.style, body.lang)
+        if said is None:
+            raise HTTPException(404, "no such moment")
+        audio = await room.speak(said, body.moment_id)
+        if audio is None:
+            return JSONResponse(status_code=503, content=said)
+        return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
 
     @app.post("/api/rooms/{room_id}/recap")
     async def write_recap(room_id: str) -> dict[str, Any]:

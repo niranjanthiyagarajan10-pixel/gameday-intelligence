@@ -605,3 +605,37 @@ table.shots td:first-child { text-align: left; }
   .lg-crests { grid-template-columns: repeat(5, 1fr); }
 }
 @media (max-width: 900px) { .lg-two { grid-template-columns: 1fr; } .lg-results { grid-template-columns: 1fr; } .lg-hero h1 { font-size: 52px; } }
+
+/* Commentator */
+.comm .ph { align-items: center; }
+.voice-toggle { display: inline-flex; align-items: center; gap: 8px; background: none; border: 1px solid var(--line); border-radius: 2px; padding: 5px 10px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); cursor: pointer; }
+.voice-toggle .spk { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+.voice-toggle.on { border-color: var(--signal); color: var(--text); }
+.voice-toggle.on .spk { background: var(--signal); }
+.comm-styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 14px 12px; }
+.comm-styles button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; cursor: pointer; color: var(--text-muted); }
+.comm-styles button i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-family: "Barlow Condensed"; font-weight: 800; font-size: 12px; color: #000; opacity: 0.55; }
+.comm-styles button b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
+.comm-styles button.on { border-color: var(--signal); color: var(--text); background: var(--surface-2); }
+.comm-styles button.on i { opacity: 1; }
+.comm-feed { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 14px; }
+.comm-line { display: grid; grid-template-columns: 40px 1fr 36px; gap: 12px; align-items: start; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--line-dash); border-radius: 2px; }
+.comm-line .min { font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; line-height: 1.1; color: var(--text-muted); }
+.comm-line .say p { font-size: 14px; line-height: 1.45; color: #c9ccd1; }
+.comm-line .say p.dim { color: var(--text-dim); }
+.comm-line.big .min { font-size: 30px; color: var(--text); }
+.comm-line.big .say p { font-size: 17px; font-weight: 500; color: var(--text); }
+.comm-line .meta { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+.comm-line .meta .label { font-size: 10px; }
+.comm-line .play { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-dash); background: var(--surface); display: grid; place-items: center; cursor: pointer; }
+.comm-line .play svg { fill: var(--text); }
+.comm-line .play:hover { border-color: var(--text); }
+.comm-line.playing { border-color: var(--line-dash); }
+.comm-line.playing .play { background: var(--signal); border-color: var(--signal); }
+.comm-line.playing .play svg { fill: #000; }
+.wave { display: inline-flex; gap: 2px; align-items: center; height: 14px; }
+.wave i { width: 3px; height: 4px; background: var(--signal); border-radius: 1px; animation: wave 0.9s ease-in-out infinite; }
+.wave i:nth-child(2) { animation-delay: 0.15s; } .wave i:nth-child(3) { animation-delay: 0.3s; } .wave i:nth-child(4) { animation-delay: 0.45s; } .wave i:nth-child(5) { animation-delay: 0.6s; }
+@keyframes wave { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+@media (prefers-reduced-motion: reduce) { .wave i { animation: none; height: 10px; } }
+.comm-line .meta .verified { margin-left: 0; font-size: 10px; }

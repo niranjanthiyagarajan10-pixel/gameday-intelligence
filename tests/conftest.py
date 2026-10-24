@@ -5,3 +5,5 @@ import os
 os.environ["FOUNDRY_PROJECT_ENDPOINT"] = ""
 os.environ["REPLAY_MODE"] = "0"
 os.environ["RECORD_REPLAY"] = "0"
+os.environ["SPEECH_REGION"] = ""
+os.environ["SPEECH_RESOURCE_ID"] = ""

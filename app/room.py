@@ -18,9 +18,10 @@ from typing import Any
 
 from agents.desk import CardDesk, TraceStep
 from agents.llm import LLM
-from agents import analyst, personalizer, recap
+from agents import analyst, commentator, personalizer, recap
 from agents.personalizer import LANGS
 from app.blueprint import build_blueprint
+from app.speech import Speech
 from app.payloads import (
     analyst_message,
     anim_event,
@@ -41,6 +42,11 @@ from engine.scenarios import BY_ID, path_for
 from engine.sim import MatchSimulator, SimConfig, load_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def moment_time_of(moment: Moment) -> float:
+    return float(moment.state_ref.rsplit("@", 1)[1])
+
 DEMO_SCENARIO = str(ROOT / "data" / "scenarios" / "demo.json")
 
 SPEEDS = (1.0, 2.0, 4.0, 10.0, 30.0)
@@ -56,6 +62,7 @@ CLIP_AFTER_S = 3.0
 TRACE_MAX = 400
 MCP_URL = os.getenv("ANALYST_MCP_URL", f"http://127.0.0.1:{os.getenv('PORT', '8000')}/mcp")
 ASKS_PER_MINUTE = 12  # the app is public and every question costs model calls
+SPEECH_PER_MINUTE = 40  # voiced lines per room, to keep the Speech bill small
 ASK_FALLBACK = ("I could not check that against the match data just now. "
                 "Try a question about the score, a player or a team.")
 NARRATE_BACKLOG = 4  # at high speed, older cards keep their template rather than queue for the Narrator
@@ -99,9 +106,11 @@ class RoomConfig:
 
 
 class MatchRoom:
-    def __init__(self, room_id: str, league: League, config: RoomConfig, llm: LLM | None = None) -> None:
+    def __init__(self, room_id: str, league: League, config: RoomConfig, llm: LLM | None = None,
+                 speech: Speech | None = None) -> None:
         self.room_id = room_id
         self.llm = llm or LLM()
+        self.speech = speech
         self.league = league
         self.config = config
         self.speed = config.speed
@@ -130,6 +139,8 @@ class MatchRoom:
         self.event_log: dict[str, dict[str, Any]] = {}
         self.recap: dict[str, Any] | None = None  # the Recap agent's report, when it has written one
         self._asked: deque[float] = deque()
+        self._spoken: deque[float] = deque()
+        self._commentary: dict[tuple[str, str, str], asyncio.Future] = {}
         self._recap_lock = asyncio.Lock()
         self.cards: list[dict[str, Any]] = []
         self.history: list[list[float]] = []
@@ -199,6 +210,63 @@ class MatchRoom:
         if self.recap is not None:
             bp["overview"].update({k: self.recap[k] for k in ("headline", "text", "source", "langs", "t")})
         return {**bp, "roster": self.roster}
+
+    # The commentator
+
+    def _card(self, moment_id: str) -> dict[str, Any] | None:
+        return next((c for c in self.cards if c["moment"]["moment_id"] == moment_id), None)
+
+    @staticmethod
+    def _classic(card: dict[str, Any], lang: str) -> dict[str, Any]:
+        """The Narrator's casual line, in the fan's language when the Personalizer has written it."""
+        cue = card.get("langs", {}).get(lang, {}).get("casual") or card["cues"]["casual"]
+        return {"text": cue["text"], "lang": cue.get("lang", "en"), "style": "classic", "source": "classic"}
+
+    async def commentary(self, moment_id: str, style: str, lang: str = "en") -> dict[str, Any] | None:
+        """One moment in the fan's commentator style. Written once per style and language, then shared."""
+        card = self._card(moment_id)
+        if card is None:
+            return None
+        if style == "classic" or not self.llm.live:
+            return self._classic(card, lang)
+        key = (moment_id, style, lang)
+        if key not in self._commentary:
+            self._commentary[key] = asyncio.ensure_future(self._comment(card, style, lang))
+        return await asyncio.shield(self._commentary[key])
+
+    async def _comment(self, card: dict[str, Any], style: str, lang: str) -> dict[str, Any]:
+        moment = Moment.model_validate(card["moment"])
+        written = await self.desk.write(moment, commentator.audience(style), style)  # type: ignore[arg-type]
+        self._log(written.steps)
+        if written.source != "narrator":
+            return self._classic(card, lang)
+        cue = written.cue
+        if lang != "en":
+            translated = await self.desk.translate(cue, lang, moment_time_of(moment))
+            self._log(translated.steps)
+            if translated.source != "personalizer":
+                return self._classic(card, lang)
+            cue = translated.cue
+        return {"text": cue.text(), "lang": cue.lang, "style": style, "source": "commentator"}
+
+    async def speak(self, said: dict[str, Any], moment_id: str) -> bytes | None:
+        """The line as audio from Azure AI Speech, or None so the browser reads it instead."""
+        if self.speech is None:
+            return None
+        now = time.monotonic()
+        while self._spoken and now - self._spoken[0] > 60:
+            self._spoken.popleft()
+        if len(self._spoken) >= SPEECH_PER_MINUTE:
+            return None
+        self._spoken.append(now)
+        audio, ms, status = await self.speech.speak(said["text"], said["style"], said["lang"])
+        if status != "cached":
+            card = self._card(moment_id)
+            t = moment_time_of(Moment.model_validate(card["moment"])) if card else self.live.t
+            self._log([TraceStep(moment_id, "casual", "Voice", f"speak {said['style']} {said['lang']}",
+                                 "ok" if audio else "fallback", ms,
+                                 "Azure AI Speech" if audio else f"{status}, browser voice instead", t)])
+        return audio
 
     async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
         """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""
@@ -548,6 +616,7 @@ class Hub:
         self.rooms: dict[str, MatchRoom] = {}
         self._reaper: asyncio.Task | None = None
         self.llm = LLM.from_env()  # one model client for every room
+        self.speech = Speech.from_env()  # one voice for every room
 
     async def start(self) -> None:
         self._warming = asyncio.create_task(self.llm.warm())
@@ -576,7 +645,7 @@ class Hub:
         return self._launch(room_id, config)
 
     def _launch(self, room_id: str, config: RoomConfig) -> MatchRoom:
-        room = MatchRoom(room_id, self.league, config, self.llm)
+        room = MatchRoom(room_id, self.league, config, self.llm, self.speech)
         room.task = asyncio.create_task(room.run())
         self.rooms[room_id] = room
         return room

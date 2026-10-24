@@ -259,9 +259,9 @@ def test_room_swaps_in_the_narrators_verified_text():
 
     async def drain():
         task = asyncio.create_task(room._narrate_worker())
-        for _ in range(100):
+        for _ in range(400):  # the update goes out once the translations are in, not when the English lands
             await asyncio.sleep(0.02)
-            if not room._to_narrate and room.cards[0]["source"] == "narrator":
+            if not room._to_narrate and len(room.cards[0]["langs"]) == 2:
                 break
         task.cancel()
 

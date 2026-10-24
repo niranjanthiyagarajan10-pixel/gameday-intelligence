@@ -3,6 +3,7 @@ import type { Analyst, Audience, Card, Side } from "./types";
 
 export type Lang = "en" | "es" | "hi";
 export type Metric = "off" | "speed" | "distance" | "xg" | "leverage";
+export type Voice = "classic" | "hype" | "stats" | "tactician";
 
 /** What a fan has told us about themselves. Kept in this browser only. */
 export interface Prefs {
@@ -10,6 +11,8 @@ export interface Prefs {
   players: string[];
   metric: Metric;
   lang: Lang;
+  voice: Voice;
+  voiceOn: boolean;
 }
 
 export const LANG_LABEL: Record<Lang, string> = { en: "English", es: "Español", hi: "हिन्दी" };
@@ -22,7 +25,7 @@ export const METRIC_LABEL: Record<Metric, string> = {
 };
 
 const KEY = "gameday.prefs";
-const DEFAULT: Prefs = { clubs: [], players: [], metric: "off", lang: "en" };
+const DEFAULT: Prefs = { clubs: [], players: [], metric: "off", lang: "en", voice: "classic", voiceOn: false };
 
 function load(): Prefs {
   try {
