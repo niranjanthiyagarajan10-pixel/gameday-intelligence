@@ -18,9 +18,11 @@ from typing import Any
 
 from agents.desk import CardDesk, TraceStep
 from agents.llm import LLM
-from agents import analyst, commentator, personalizer, recap
+from agents import analyst, commentator, personalizer, postgame, preview, recap
 from agents.personalizer import LANGS
+from app import matchday
 from app.blueprint import build_blueprint
+from app.league import season as league_season
 from app.speech import Speech
 from app.payloads import (
     analyst_message,
@@ -141,6 +143,9 @@ class MatchRoom:
         self._asked: deque[float] = deque()
         self._spoken: deque[float] = deque()
         self._commentary: dict[tuple[str, str, str], asyncio.Future] = {}
+        self._preview: dict[str, Any] | None = None
+        self._postgame: dict[str, Any] | None = None
+        self._story_lock = asyncio.Lock()
         self._recap_lock = asyncio.Lock()
         self.cards: list[dict[str, Any]] = []
         self.history: list[list[float]] = []
@@ -267,6 +272,90 @@ class MatchRoom:
                                  "ok" if audio else "fallback", ms,
                                  "Azure AI Speech" if audio else f"{status}, browser voice instead", t)])
         return audio
+
+    # Before and after the match
+
+    async def _write_story(self, tag: str, agent: str, module: Any, facts: dict[str, str], truths: dict[str, Any],
+                           ask: str) -> tuple[dict[str, Any], str, dict[str, dict[str, Any]]]:
+        """An agent writes a story over facts: draft, check, at most one retry, else the template.
+        Returns the filled parts, the source and the Personalizer's languages."""
+        t = self.live.t
+        steps: list[TraceStep] = []
+        feedback: list[str] = []
+        parts = None
+        if self.llm.live:
+            for attempt in range(2):
+                prompt = ask + ("\nYour last draft was rejected because: " + "; ".join(feedback) if feedback else "")
+                result = await self.llm.complete(agent=agent, instructions=module.INSTRUCTIONS, prompt=prompt,
+                                                 model=self.llm.strong)
+                if not result.ok:
+                    steps.append(TraceStep(tag, "both", agent, f"draft {attempt + 1}", self.desk._status(result.error),
+                                           result.ms, result.error or "", t))
+                    break
+                parsed = module.parse(result.text)
+                feedback = ["reply was not usable JSON"] if parsed is None else module.check(
+                    parsed, facts, self.desk.forbidden, truths)
+                steps.append(TraceStep(tag, "both", agent, f"draft {attempt + 1}", "ok", result.ms,
+                                       f"{result.backend} {result.model}", t))
+                steps.append(TraceStep(tag, "both", "Verifier", f"check {attempt + 1}", "reject" if feedback else "pass",
+                                       0, "; ".join(feedback) or f"{len(facts)} facts, every slot from the engine", t))
+                if not feedback:
+                    parts = parsed
+                    break
+        source = "agent"
+        if parts is None:
+            parts = module.fallback(facts, truths) if module is preview else module.fallback(facts)
+            source = "template"
+            steps.append(TraceStep(tag, "both", "Fallback", "template", "fallback", 0,
+                                   "template story, every value a fact" if self.llm.live else "no model: template story", t))
+        fill = lambda tpl: tpl.format(**facts)  # noqa: E731
+        filled = {k: [fill(x) for x in v] if isinstance(v, list) else fill(v) for k, v in parts.items()}
+        langs: dict[str, dict[str, Any]] = {}
+        if self.llm.live and source == "agent":
+            for lang in LANGS:
+                out: dict[str, Any] = {}
+                for key, value in parts.items():
+                    written = []
+                    for template in value if isinstance(value, list) else [value]:
+                        res = await self.llm.complete(agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
+                                                      prompt=personalizer.prompt(template, lang, "fan"), model=self.llm.fast)
+                        tr = personalizer.parse(res.text) if res.ok else None
+                        reasons = ([res.error or "no reply"] if not res.ok else ["reply was not usable JSON"] if tr is None
+                                   else personalizer.check(template, tr, self.desk.forbidden))
+                        steps.append(TraceStep(tag, "both", "Personalizer", f"write {lang}", "pass" if not reasons else "reject",
+                                               res.ms, "; ".join(reasons), t))
+                        written.append(None if reasons else fill(tr))
+                    out[key] = written if isinstance(value, list) else written[0]
+                if all(x is not None for v in out.values() for x in (v if isinstance(v, list) else [v])):
+                    langs[lang] = out
+        self._log(steps)
+        return filled, source, langs
+
+    async def preview(self) -> dict[str, Any]:
+        """The Preview agent's story for this fixture, with the table, form, head to head and players to watch."""
+        async with self._story_lock:
+            if self._preview is None:
+                c = self.config
+                pack = matchday.preview(self.league, league_season(), c.home, c.away)
+                filled, source, langs = await self._write_story(
+                    "preview", "Preview", preview, pack["facts"], pack["truths"], preview.prompt(pack["facts"], pack["watch"]))
+                self._preview = {**{k: v for k, v in pack.items() if k != "truths"}, **filled,
+                                 "source": source, "langs": langs, "home": c.home, "away": c.away}
+            return self._preview
+
+    async def postgame(self) -> dict[str, Any]:
+        """What decided the match and what each club should watch next time. Rewritten as the match moves on."""
+        async with self._story_lock:
+            stale = self._postgame is None or self._postgame["status"] != self.status or (
+                self.status != "full_time" and self.live.t - self._postgame["t"] > 300)
+            if stale:
+                pack = matchday.postgame(self, self.league)
+                filled, source, langs = await self._write_story(
+                    "postgame", "Post-game", postgame, pack["facts"], pack["truths"], postgame.prompt(pack["facts"]))
+                self._postgame = {"decided": pack["decided"], "next": pack["next"], **filled, "source": source,
+                                  "langs": langs, "status": self.status, "t": self.live.t,
+                                  "home": self.config.home, "away": self.config.away}
+            return self._postgame
 
     async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
         """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""

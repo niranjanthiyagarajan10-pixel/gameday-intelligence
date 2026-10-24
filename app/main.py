@@ -147,6 +147,16 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
             return JSONResponse(status_code=503, content=said)
         return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
 
+    @app.get("/api/rooms/{room_id}/preview")
+    async def match_preview(room_id: str) -> dict[str, Any]:
+        """The Preview agent's story: table, form, head to head, forecast and players to watch."""
+        return await room_or_404(room_id).preview()
+
+    @app.get("/api/rooms/{room_id}/postgame")
+    async def match_postgame(room_id: str) -> dict[str, Any]:
+        """What decided the match, and what each club should watch next time."""
+        return await room_or_404(room_id).postgame()
+
     @app.post("/api/rooms/{room_id}/recap")
     async def write_recap(room_id: str) -> dict[str, Any]:
         """Ask the Recap agent for the match report so far (it also writes one at full time)."""

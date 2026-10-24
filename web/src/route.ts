@@ -8,6 +8,7 @@ export type Route =
   | { page: "blueprint" }
   | { page: "league" }
   | { page: "evals" }
+  | { page: "preview" }
   | { page: "overlay"; bg: boolean; audience: Audience };
 
 function parse(hash: string): Route {
@@ -20,6 +21,7 @@ function parse(hash: string): Route {
   if (page === "blueprint") return { page: "blueprint" };
   if (page === "league") return { page: "league" };
   if (page === "evals") return { page: "evals" };
+  if (page === "preview") return { page: "preview" };
   if (page === "shot" && id) return { page: "shot", id: decodeURIComponent(id) };
   if (page === "player" && id) return { page: "player", id: decodeURIComponent(id) };
   return { page: "match" };

@@ -217,5 +217,69 @@ def verify_claims(room: Any, moment_id: str, template: str, claims: list[dict[st
     return {"pass": verdict.ok, "reasons": verdict.reasons}
 
 
+# The league around the match: the simulated season so far
+
+
+def _club(room: Any, team: str) -> str:
+    """'home', 'away', a club name or a club code to a club code."""
+    t = team.strip().lower()
+    if t in SIDES:
+        return room.roster["clubs"][t]["id"]
+    for club in room.league.clubs.values():
+        if t in (club.club_id.lower(), club.name.lower()) or (len(t) >= 4 and t in club.name.lower()):
+            return club.club_id
+    raise ValueError(f"unknown club {team!r}; use home, away, a club name or a club code")
+
+
+def get_league_table(room: Any) -> dict[str, Any]:
+    """This season's table before this matchday: position, played, won, drawn, lost, goals, xG for and
+    against, points and the last five results (latest first)."""
+    from app.league import season
+
+    s = season()
+    names = {c: room.league.clubs[c].name for c in room.league.clubs}
+    return {"rows": [{**r, "name": names[r["club"]], "form": s.form(r["club"])} for r in s.table("this")]}
+
+
+def get_club_season(room: Any, team: str) -> dict[str, Any]:
+    """A club's season so far: table row, form, results, its top scorers with goals and xG, its style."""
+    from app.league import season
+    from engine.league import PROFILES
+
+    club = _club(room, team)
+    s = season()
+    row = next(r for r in s.table("this") if r["club"] == club)
+    clubs = room.league.clubs
+    results = [{"matchday": r.matchday, "opponent": clubs[r.away if r.home == club else r.home].name,
+                "venue": "home" if r.home == club else "away", "score": list(r.score), "result": r.outcome(club)}
+               for r in s.results_for(club)]
+    return {"club": club, "name": clubs[club].name, "nickname": PROFILES[club].nickname,
+            "style": PROFILES[club].style, "table": row, "form": s.form(club), "results": results,
+            "scorers": [p for p in s.players("this") if p["club"] == club][:5]}
+
+
+def get_head_to_head(room: Any, team: str, opponent: str) -> dict[str, Any]:
+    """Every meeting between two clubs over this season and last, latest first."""
+    from app.league import season
+
+    a, b = _club(room, team), _club(room, opponent)
+    clubs = room.league.clubs
+    return {"meetings": [{**m, "home": clubs[m["home"]].name, "away": clubs[m["away"]].name}
+                         for m in season().head_to_head(a, b)]}
+
+
+def get_fixture_forecast(room: Any, home: str, away: str) -> dict[str, Any]:
+    """Pre-match chances (home win, draw, away win) and expected goals from the fitted team ratings."""
+    from engine.forecast import expected_goals, pre_match
+
+    h, a = _club(room, home), _club(room, away)
+    ph, pd, pa = pre_match(h, a)
+    gh, ga = expected_goals(h, a)
+    return {"home": room.league.clubs[h].name, "away": room.league.clubs[a].name,
+            "win_probability": {"home": round(ph, 3), "draw": round(pd, 3), "away": round(pa, 3)},
+            "expected_goals": [round(gh, 2), round(ga, 2)]}
+
+
 TOOLS = [get_match_state, get_moment_evidence, get_player_live, compare_windows, list_supporting_events,
-         get_shot_map, get_leverage_table, get_team_shape, get_press_resistance, get_gravity, verify_claims]
+         get_shot_map, get_leverage_table, get_team_shape, get_press_resistance, get_gravity,
+         get_league_table, get_club_season, get_head_to_head, get_fixture_forecast, verify_claims]

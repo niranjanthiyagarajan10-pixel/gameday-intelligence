@@ -1,3 +1,4 @@
+import { AfterMatch } from "./AfterMatch";
 import { useEffect, useState } from "react";
 import type { BlueprintData, Highlight, LeverageSpot, MarkingSpot, Performer, Roster, ShotPageData } from "../types";
 import { Crest } from "./Crest";
@@ -294,6 +295,7 @@ export function Blueprint({ room, roster, halfS, lang = "en" }: { room: string; 
           {writing ? "The Recap agent is writing" : bp.overview.source === "recap" ? "Rewrite the recap" : "Write the recap now"}
         </button>
       </section>
+      <AfterMatch room={room} lang={lang} />
       <Highlights room={room} items={bp.highlights} roster={roster} />
       <Performers items={bp.performers} roster={roster} />
       <ShotExplorer shots={bp.shots} roster={roster} finishing={bp.finishing} halfS={halfS} />

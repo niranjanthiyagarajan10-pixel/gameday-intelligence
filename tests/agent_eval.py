@@ -252,7 +252,7 @@ def planted(cases: list[Case]) -> dict[str, Any]:
                 if out is not None:
                     record("Personalizer", category, bool(personalizer.check(trusted, out, forbidden)), out)
 
-    for (agent, category), result, example in _analyst_and_recap_plants():
+    for (agent, category), result, example in _analyst_and_recap_plants() + _story_plants():
         if category.startswith("clean"):  # result means "passed" for a clean line
             clean["other"] += 1
             clean["other_pass"] += int(result)
@@ -365,6 +365,65 @@ def _analyst_and_recap_plants() -> list[tuple[tuple[str, str], bool, str]]:
             plants.append(("types a number", text.replace("{" + numeric + "}", str(facts[numeric]))))
         for category, bad in plants:
             out.append((("Recap", category), bool(recap.check(headline, bad, facts, forbidden)), bad))
+    return out
+
+
+def _story_mutations(text: str, facts: dict[str, str], truths: dict[str, Any], implied: list) -> list[tuple[str, str]]:
+    """Broken versions of a trusted Preview or Post-game line."""
+    slots = SLOT.findall(text)
+    out: list[tuple[str, str]] = []
+    numeric = next((s for s in slots if NUMERIC.search(facts.get(s, ""))), None)
+    if numeric:
+        out.append(("types a number", text.replace("{" + numeric + "}", facts[numeric], 1)))
+    if "{home}" in text:
+        out.append(("types a name", text.replace("{home}", facts["home"], 1)))
+    out += [("unknown fact", text + " The gate was {attendance}."),
+            ("unsupported detail", text + " A key injury could decide it."),
+            ("em dash", text + " " + chr(0x2014) + " watch this."),
+            ("gendered pronoun", text + " His side will be ready."),
+            ("possessive", text + " It is {home}'s moment.")]
+    unit = next((s for s in slots if facts.get(s, "").endswith("%")), None)
+    if unit:
+        out.append(("unit after a fact", text.replace("{" + unit + "}", "{" + unit + "} percent", 1)))
+    for phrase in ("A fierce local derby.", "Both arrive unbeaten.", "The league leaders are here.",
+                   "A side at the bottom of the table.", "The favourites are clear.", "The match was drawn.",
+                   "A deserved victory."):
+        if any(re.search(pattern, phrase.lower()) and not test(truths) for pattern, _, test in implied):
+            out.append(("claim the facts do not support", text + " " + phrase))
+            break
+    return out
+
+
+def _story_plants() -> list[tuple[tuple[str, str], bool, str]]:
+    """The Preview and Post-game checks, on every live fixture's trusted lines."""
+    from agents import postgame, preview
+    from app import matchday
+    from app.league import season
+    from app.room import MatchRoom, RoomConfig
+    from engine.league import build_league
+    from engine.season import MATCHDAY_FIXTURES
+
+    league = build_league()
+    out: list[tuple[tuple[str, str], bool, str]] = []
+    for home, away in MATCHDAY_FIXTURES:
+        pack = matchday.preview(league, season(), home, away)
+        facts, truths = pack["facts"], pack["truths"]
+        names = name_list({p.player_id: p.name for c in (home, away) for p in league.squads[c]},
+                          {"home": facts["home"], "away": facts["away"]})
+        trusted = preview.fallback(facts, truths)
+        out.append((("Preview", "clean preview passes"), not preview.check(trusted, facts, names, truths), trusted["story"]))
+        for category, bad in _story_mutations(trusted["story"], facts, truths, preview.IMPLIED):
+            out.append((("Preview", category), bool(preview.check({**trusted, "story": bad}, facts, names, truths)), bad))
+    room = MatchRoom("eval-pg", league, RoomConfig(half_s=600.0, scenario=None))
+    room.fast_forward(1200.0)
+    pack = matchday.postgame(room, league)
+    facts, truths = pack["facts"], pack["truths"]
+    trusted = postgame.fallback(facts)
+    out.append((("Post-game", "clean lines pass"), not postgame.check(trusted, facts, room.desk.forbidden, truths), trusted["look_ahead"][0]))
+    for line in trusted["look_ahead"]:
+        for category, bad in _story_mutations(line, facts, truths, postgame.IMPLIED):
+            lines = [bad if x == line else x for x in trusted["look_ahead"]]
+            out.append((("Post-game", category), bool(postgame.check({"look_ahead": lines}, facts, room.desk.forbidden, truths)), bad))
     return out
 
 

@@ -10,6 +10,7 @@ import { Crest } from "./components/Crest";
 import { Blueprint } from "./components/Blueprint";
 import { League } from "./components/League";
 import { Evals } from "./components/Evals";
+import { Preview } from "./components/Preview";
 import { TracePanel } from "./components/TracePanel";
 import { Favourites } from "./components/Favourites";
 import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./prefs";
@@ -185,6 +186,9 @@ export default function App() {
           <span>Intelligence</span>
         </div>
         <div className="tabs">
+          <button className={`tab ${route.page === "preview" ? "on" : ""}`} onClick={() => (location.hash = "#/preview")}>
+            Preview
+          </button>
           <button
             className={`tab ${route.page === "match" && tab === "live" ? "on" : ""}`}
             onClick={() => {
@@ -276,12 +280,13 @@ export default function App() {
         </div>
       </header>
 
-      {route.page !== "blueprint" && route.page !== "league" && route.page !== "evals" && <Scoreboard state={state} />}
+      {!["blueprint", "league", "evals", "preview"].includes(route.page) && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "league" && <League onWatch={watch} />}
       {route.page === "evals" && <Evals />}
+      {route.page === "preview" && <Preview room={room} lang={prefs.lang} />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
       {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>

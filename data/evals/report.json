@@ -1,10 +1,10 @@
 {
  "planted": {
   "moments": 130,
-  "planted": 4853,
-  "caught": 4853,
-  "clean": 532,
-  "clean_passed": 532,
+  "planted": 4923,
+  "caught": 4923,
+  "clean": 538,
+  "clean_passed": 538,
   "rows": [
    {
     "check": "Analyst: em dash",
@@ -157,6 +157,96 @@
     "caught": 260
    },
    {
+    "check": "Post-game: claim the facts do not support",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Post-game: em dash",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Post-game: gendered pronoun",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Post-game: possessive",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Post-game: types a name",
+    "planted": 2,
+    "caught": 2
+   },
+   {
+    "check": "Post-game: types a number",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Post-game: unit after a fact",
+    "planted": 2,
+    "caught": 2
+   },
+   {
+    "check": "Post-game: unknown fact",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Post-game: unsupported detail",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Preview: claim the facts do not support",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: em dash",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: gendered pronoun",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: possessive",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: types a name",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: types a number",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: unit after a fact",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: unknown fact",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Preview: unsupported detail",
+    "planted": 5,
+    "caught": 5
+   },
+   {
     "check": "Recap: em dash",
     "planted": 3,
     "caught": 3
@@ -188,7 +278,7 @@
    }
   ],
   "misses": [],
-  "at": "2026-10-24 16:41"
+  "at": "2026-10-24 23:06"
  },
  "analyst": {
   "room": "2928b6c3",
