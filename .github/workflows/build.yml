@@ -64,6 +64,8 @@ jobs:
           az extension add --name containerapp --only-show-errors
           az containerapp update -n gameday-intelligence -g "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "ghcr.io/${{ github.repository }}:${{ github.sha }}" --only-show-errors \
+            --set-env-vars SPEECH_REGION=eastus2 \
+              "SPEECH_RESOURCE_ID=/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.AZURE_RESOURCE_GROUP }}/providers/Microsoft.CognitiveServices/accounts/gameday-intelligence-resource" \
             --query properties.latestRevisionName -o tsv
       - name: Check the public app answers
         run: |
