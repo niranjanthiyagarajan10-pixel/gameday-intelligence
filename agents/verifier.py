@@ -26,6 +26,8 @@ MAX_CHARS = {"casual": 240, "analyst": 320}
 DOUBLE_UNIT = re.compile(r"\d\s?(m|km/h|%|km)\s+(meters?|metres?|percent|per cent|kilometres?|kilometers?|km/h|kph)\b",
                          re.IGNORECASE)
 GOAL_KINDS = {"goal", "low_xg_goal"}
+# Players are fictional and their genders unknown: agents use the player's slot or "they".
+GENDERED = re.compile(r"\b(he|him|his|himself|she|her|hers|herself)\b", re.IGNORECASE)
 
 REQUIRED_SLOTS: dict[str, set[str]] = {
     "goal": {"player", "score"},
@@ -188,6 +190,8 @@ def verify(
             break
     if EM_DASH in template:
         reasons.append("no em dashes")
+    if GENDERED.search(literal):
+        reasons.append("never use he, him, his, she or her for a player: use the player's slot or they")
     if re.search(r"\}['’]s\b", template):
         reasons.append("never add 's to a slot: write \"the win chance of {team}\"")
     if not literal.strip():

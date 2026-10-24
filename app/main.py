@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
@@ -81,6 +82,14 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
     async def league() -> dict[str, Any]:
         """Clubs, table, results, scorers and the live matchday, all from the simulated season."""
         return league_payload(hub.league)
+
+    @app.get("/api/evals")
+    async def evals() -> dict[str, Any]:
+        """The agent eval report: planted errors caught, live agent pass rates, Ask the match accuracy."""
+        path = Path(__file__).resolve().parent.parent / "data" / "evals" / "report.json"
+        if not path.exists():
+            raise HTTPException(404, "no eval report yet: run python -m tests.agent_eval")
+        return json.loads(path.read_text(encoding="utf-8"))
 
     @app.get("/api/scenarios")
     async def scenarios() -> list[dict[str, Any]]:

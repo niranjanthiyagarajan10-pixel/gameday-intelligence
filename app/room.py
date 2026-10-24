@@ -305,6 +305,8 @@ class MatchRoom:
                 feedback = analyst.check(parsed["answer"], parsed["slots"], self.desk.forbidden, question)
                 if not feedback:
                     values, evidence, feedback = analyst.resolve(self, parsed["slots"])
+                if not feedback:
+                    feedback = analyst.check_filled(parsed["answer"].format(**values), question, self.desk.forbidden)
             steps.append(TraceStep("ask", audience, "Verifier", f"check {attempt + 1}", "reject" if feedback else "pass",
                                    0, "; ".join(feedback) or f"{len(values)} values re-read from the tools", t))
             if feedback or parsed is None:

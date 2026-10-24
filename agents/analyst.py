@@ -13,7 +13,7 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
-from agents.verifier import EM_DASH
+from agents.verifier import DOUBLE_UNIT, EM_DASH, GENDERED
 from engine.models import template_slots
 from mcp_server import tools
 
@@ -35,7 +35,10 @@ Rules:
    and say what you can answer instead.
 3. One to three short sentences, plain words, for a {audience} fan. No em dashes. Never use he, him, his, she or her for a player: use the player's slot or they.
    Scores, minutes, percentages and counts are numbers too: read the score from get_match_state "score",
-   never write it yourself.
+   never write it yourself. Expected goals (xG) for each team is get_match_state "xg".
+   Slot values arrive formatted with their units (74%, 29.5 km/h, 8.91): never write a unit or % right after a slot.
+   A list such as xg, possession or men fills as "home / away": write "{s1} (home / away)".
+   When the fan names a player, name that player in the answer with a slot such as get_player_live "name".
 4. limits: one short phrase on what the data does not cover, or "".
 """
 
@@ -86,8 +89,8 @@ def _format(value: Any, path: str) -> str:
             return f"{value[0]}-{value[1]}"
         if keys & PERCENT_KEYS and all(isinstance(v, float) for v in value):
             return " / ".join(f"{round(v * 100)}%" for v in value)
-        return " / ".join(str(v) for v in value)
-    text = str(value)
+        return " / ".join(_format(v, "") if isinstance(v, float) else str(v) for v in value)
+    text = str(value).replace("_", " ")  # mid_block reads as "mid block"
     if len(text) > 120:
         raise ValueError("too long to quote")
     return text
@@ -118,6 +121,17 @@ def resolve(room: Any, slots: dict[str, Any]) -> tuple[dict[str, str], list[dict
     return values, evidence, problems
 
 
+def check_filled(answer: str, question: str, names: Iterable[str]) -> list[str]:
+    """Checks on the answer as the fan will read it, once code has filled the slots."""
+    reasons = []
+    if "%%" in answer or DOUBLE_UNIT.search(answer):
+        reasons.append("a slot already carries its unit; never write a unit or % right after a slot")
+    asked = [n for n in names if len(n) >= 4 and re.search(rf"\b{re.escape(n)}\b", question, re.IGNORECASE)]
+    if asked and not any(re.search(rf"\b{re.escape(n)}\b", answer, re.IGNORECASE) for n in asked):
+        reasons.append(f'the fan asked about {asked[0]}: name them in the answer with a slot read from a tool')
+    return reasons
+
+
 def check(answer: str, slots: dict[str, Any], names: Iterable[str], question: str = "") -> list[str]:
     """Names the fan typed in the question may be repeated; every other name must come from a tool."""
     names = [n for n in names if n.lower() not in question.lower()]
@@ -137,6 +151,8 @@ def check(answer: str, slots: dict[str, Any], names: Iterable[str], question: st
             break
     if EM_DASH in answer:
         reasons.append("no em dashes")
+    if GENDERED.search(literal):
+        reasons.append("never use he, him, his, she or her for a player")
     if len(literal) > MAX_CHARS:
         reasons.append("too long")
     return reasons

@@ -9,6 +9,7 @@ import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
 import { Blueprint } from "./components/Blueprint";
 import { League } from "./components/League";
+import { Evals } from "./components/Evals";
 import { TracePanel } from "./components/TracePanel";
 import { Favourites } from "./components/Favourites";
 import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./prefs";
@@ -208,6 +209,9 @@ export default function App() {
           <button className={`tab ${route.page === "league" ? "on" : ""}`} onClick={() => (location.hash = "#/league")}>
             League
           </button>
+          <button className={`tab ${route.page === "evals" ? "on" : ""}`} onClick={() => (location.hash = "#/evals")}>
+            Evals
+          </button>
         </div>
         <div className="settings">
           <button className="set" onClick={toggleDepth} title="Switch between casual and analyst depth">
@@ -272,11 +276,12 @@ export default function App() {
         </div>
       </header>
 
-      {route.page !== "blueprint" && route.page !== "league" && <Scoreboard state={state} />}
+      {route.page !== "blueprint" && route.page !== "league" && route.page !== "evals" && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "league" && <League onWatch={watch} />}
+      {route.page === "evals" && <Evals />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
       {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>

@@ -1,0 +1,339 @@
+{
+ "planted": {
+  "moments": 130,
+  "planted": 4853,
+  "caught": 4853,
+  "clean": 532,
+  "clean_passed": 532,
+  "rows": [
+   {
+    "check": "Analyst: em dash",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: field that does not exist",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: gendered pronoun",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: leaves out the player asked about",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: slot without a tool",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: tool read never used",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: types a name",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: types a number",
+    "planted": 8,
+    "caught": 8
+   },
+   {
+    "check": "Analyst: unit after a slot",
+    "planted": 2,
+    "caught": 2
+   },
+   {
+    "check": "Analyst: unknown tool",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Analyst: write tool not allowed",
+    "planted": 9,
+    "caught": 9
+   },
+   {
+    "check": "Narrator and Commentator: double unit",
+    "planted": 178,
+    "caught": 178
+   },
+   {
+    "check": "Narrator and Commentator: em dash",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: false claim",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: false wording",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: gendered",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: missing slot",
+    "planted": 184,
+    "caught": 184
+   },
+   {
+    "check": "Narrator and Commentator: possessive",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: too long",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: typed name",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: typed number",
+    "planted": 222,
+    "caught": 222
+   },
+   {
+    "check": "Narrator and Commentator: unknown slot",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Narrator and Commentator: unsupported detail",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: adds a slot",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: drops a slot",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: em dash",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: renames a slot",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: types a Devanagari digit",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: types a digit",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Personalizer: types a name",
+    "planted": 260,
+    "caught": 260
+   },
+   {
+    "check": "Recap: em dash",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Recap: gendered pronoun",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Recap: types a name",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Recap: types a number",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Recap: unknown fact",
+    "planted": 3,
+    "caught": 3
+   },
+   {
+    "check": "Recap: unsupported detail",
+    "planted": 3,
+    "caught": 3
+   }
+  ],
+  "misses": [],
+  "at": "2026-10-24 16:41"
+ },
+ "analyst": {
+  "room": "2928b6c3",
+  "url": "https://gameday-intelligence.orangecliff-ca1053f4.eastus2.azurecontainerapps.io",
+  "questions": [
+   {
+    "question": "What is the score?",
+    "expected": [
+     "1-0"
+    ],
+    "answer": "The score is currently 1 to 0 with Kingsport Rovers leading.",
+    "correct": false,
+    "source": "analyst",
+    "ms": 8451
+   },
+   {
+    "question": "How many expected goals has each team created?",
+    "expected": [
+     "0.971 / 0.0"
+    ],
+    "answer": "The home team has created about 2.16 expected goals, and the away team has created about 0.00 expected goals so far in the match.",
+    "correct": false,
+    "source": "analyst",
+    "ms": 7522
+   },
+   {
+    "question": "What is the home team's chance of winning right now?",
+    "expected": [
+     "100%"
+    ],
+    "answer": "The home team currently has a very high chance of winning, at 99%%.",
+    "correct": false,
+    "source": "analyst",
+    "ms": 7576
+   },
+   {
+    "question": "How is possession split?",
+    "expected": [
+     "49% / 51%"
+    ],
+    "answer": "Possession is quite even with 48%% for the home team and 52%% for the away team.",
+    "correct": false,
+    "source": "analyst",
+    "ms": 7338
+   },
+   {
+    "question": "How many players does each side have on the pitch?",
+    "expected": [
+     "11 / 10"
+    ],
+    "answer": "I could not check that against the match data just now. Try a question about the score, a player or a team.",
+    "correct": false,
+    "source": "fallback",
+    "ms": 5982
+   },
+   {
+    "question": "Who has added the most win value so far?",
+    "expected": [
+     "Dani Mensah"
+    ],
+    "answer": "Dani Mensah has added the most win value in the match so far with a total of 0.57.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 3164
+   },
+   {
+    "question": "Which player has the most gravity?",
+    "expected": [
+     "Pavel Adeyemi"
+    ],
+    "answer": "Pavel Adeyemi has the most gravity in the match so far.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 2455
+   },
+   {
+    "question": "What is Rafael Okafor's top speed?",
+    "expected": [
+     "29.5"
+    ],
+    "answer": "Rafael Okafor's top speed in this match is 29.5 km/h.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 2770
+   },
+   {
+    "question": "How far has Dani Mensah run?",
+    "expected": [
+     "8.91"
+    ],
+    "answer": "8.91 kilometers is how far Dani Mensah has run so far in the match.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 2249
+   },
+   {
+    "question": "What defensive block are Ashford Vale in?",
+    "expected": [
+     "mid_block"
+    ],
+    "answer": "Ashford Vale are currently playing with a mid block defensive shape.",
+    "correct": false,
+    "source": "analyst",
+    "ms": 2533
+   },
+   {
+    "question": "How many shots has Tobias Brandt taken?",
+    "expected": [
+     "0"
+    ],
+    "answer": "0 has not taken any shots so far in the match.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 2418
+   },
+   {
+    "question": "What is the away team's chance of winning?",
+    "expected": [
+     "0%"
+    ],
+    "answer": "I could not check that against the match data just now. Try a question about the score, a player or a team.",
+    "correct": false,
+    "source": "fallback",
+    "ms": 5125
+   }
+  ],
+  "correct": 5,
+  "refusals": [
+   {
+    "question": "Who will win the league this season?",
+    "answer": "I can't predict who will win the league this season. I can provide you with live match stats and probabilities for this game instead.",
+    "honest": true
+   },
+   {
+    "question": "How many fans are in the stadium?",
+    "answer": "Lots of questions right now. Try again in a minute.",
+    "honest": true
+   },
+   {
+    "question": "Which player has the most yellow cards in their career?",
+    "answer": "Lots of questions right now. Try again in a minute.",
+    "honest": true
+   }
+  ],
+  "honest": 3,
+  "p50_ms": 5125
+ }
+}

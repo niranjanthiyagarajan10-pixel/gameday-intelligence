@@ -38,7 +38,7 @@ TEMPLATES: dict[str, dict[Audience, str]] = {
     },
     "leverage_swing.pass": {
         "casual": "{player} finds a difficult pass. {team} win chance is {wp_after}, against {wp_opposite} if it had been cut out.",
-        "analyst": "Pass by {player} worth {leverage} leverage, completed against the odds. {team} win probability {wp_after} against {wp_opposite}.",
+        "analyst": "Pass by {player} worth {leverage} leverage. {team} win probability {wp_after} against {wp_opposite} had it been cut out.",
     },
     "leverage_swing.misplaced_pass": {
         "casual": "{player} gives the ball away. {team} win chance moves to {wp_after}.",

@@ -12,7 +12,7 @@ import json
 import re
 from collections.abc import Iterable
 
-from agents.verifier import EM_DASH, UNVERIFIABLE
+from agents.verifier import EM_DASH, GENDERED, UNVERIFIABLE
 from engine.models import template_slots
 
 MAX_HEADLINE = 90
@@ -79,6 +79,8 @@ def check(headline: str, text: str, facts: dict[str, str], names: Iterable[str])
                 break
         if EM_DASH in template:
             reasons.append(f"{label}: no em dashes")
+        if GENDERED.search(literal):
+            reasons.append(f"{label}: never use he, him, his, she or her for a player")
         if not unknown and len(template.format(**{k: facts[k] for k in slots})) > limit:
             reasons.append(f"{label}: too long")
     return reasons
