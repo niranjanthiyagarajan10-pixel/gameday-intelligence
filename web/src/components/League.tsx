@@ -82,46 +82,123 @@ function Form({ form }: { form: string[] }) {
   );
 }
 
-function FixtureCard({ f, clubs, table, onWatch }: { f: Fixture; clubs: Record<string, LeagueClub>; table: Row[]; onWatch: (id: string) => void }) {
+function Side({ c, pos, away }: { c: LeagueClub; pos?: number; away?: boolean }) {
+  return (
+    <div className={`lg-fx-side ${away ? "away" : ""}`}>
+      <Crest club={c} size={56} />
+      <div>
+        <b>{c.name}</b>
+        <span className="label">
+          {pos}
+          {ord(pos)} in the table
+        </span>
+        <Form form={c.form} />
+      </div>
+    </div>
+  );
+}
+
+function FixtureRow({ f, clubs, table, onWatch }: { f: Fixture; clubs: Record<string, LeagueClub>; table: Row[]; onWatch: (id: string) => void }) {
   const h = clubs[f.home];
   const a = clubs[f.away];
   const pos = (id: string) => table.find((r) => r.club === id)?.position;
   const last = f.h2h[0];
   return (
     <article className="lg-fx" style={{ ["--h" as string]: h.primary, ["--a" as string]: a.primary }}>
-      <div className="lg-fx-kicker">
-        <span className="lg-tag">{f.title}</span>
-        {h.rival === a.id && <span className="lg-derby">Derby</span>}
-      </div>
-      <div className="lg-fx-teams">
-        <div className="lg-fx-side">
-          <Crest club={h} size={64} />
-          <b>{h.name}</b>
-          <span className="label">
-            {pos(h.id)}
-            {ord(pos(h.id))} &middot; {h.ground}
-          </span>
-          <Form form={h.form} />
+      <div className="lg-fx-story">
+        <div className="lg-fx-kicker">
+          <span className="lg-tag">{f.title}</span>
+          {h.rival === a.id && <span className="lg-derby">Derby</span>}
         </div>
-        <div className="lg-fx-vs">V</div>
-        <div className="lg-fx-side">
-          <Crest club={a} size={64} />
-          <b>{a.name}</b>
-          <span className="label">
-            {pos(a.id)}
-            {ord(pos(a.id))} &middot; Away
-          </span>
-          <Form form={a.form} />
-        </div>
+        <p>{f.story}</p>
       </div>
-      <p className="lg-fx-story">{f.story}</p>
+      <Side c={h} pos={pos(h.id)} />
+      <div className="lg-fx-vs">
+        <b>V</b>
+        <span className="label">{h.ground}</span>
+      </div>
+      <Side c={a} pos={pos(a.id)} away />
       <div className="lg-fx-foot">
-        <span className="label">
-          {last ? `Last met: ${clubs[last.home].short} ${last.score[0]}-${last.score[1]} ${clubs[last.away].short}` : "First meeting"}
-        </span>
         <button onClick={() => onWatch(f.scenario)}>Watch live &#9656;</button>
+        <span className="label">
+          {last ? `Last met ${clubs[last.home].short} ${last.score[0]}-${last.score[1]} ${clubs[last.away].short}` : "First meeting"}
+        </span>
       </div>
     </article>
+  );
+}
+
+function ClubDetail({ c, data }: { c: LeagueClub; data: LeagueData }) {
+  const row = data.table.find((r) => r.club === c.id);
+  const scorer = data.players.find((p) => p.club === c.id);
+  const results = data.results.filter((r) => r.home === c.id || r.away === c.id).slice(-3).reverse();
+  const next = data.fixtures.find((f) => f.home === c.id || f.away === c.id);
+  const rival = c.rival ? data.clubs[c.rival] : null;
+  return (
+    <div className="lg-cd" style={{ ["--c" as string]: c.primary }}>
+      <div className="lg-cd-id">
+        <Crest club={c} size={120} />
+        <div>
+          <span className="label">
+            {c.nickname} &middot; Est. {c.founded}
+          </span>
+          <h3>{c.name}</h3>
+          <p>{c.style}.</p>
+          <span className="label dim">
+            {c.ground}, {c.city} &middot; {c.formation}
+            {rival ? ` · Rivals: ${rival.name}` : ""}
+          </span>
+        </div>
+      </div>
+      <div className="lg-cd-stats">
+        <div>
+          <b className="num">
+            {row?.position}
+            <small>{ord(row?.position)}</small>
+          </b>
+          <span className="label">{row?.points} pts</span>
+        </div>
+        <div>
+          <b className="num">{row ? sign(row.gd) : ""}</b>
+          <span className="label">Goal diff</span>
+        </div>
+        <div>
+          <b className="num">{row ? (row.xg_for - row.xg_against).toFixed(1) : ""}</b>
+          <span className="label">xG diff</span>
+        </div>
+        <div>
+          <Form form={c.form} />
+          <span className="label">Form</span>
+        </div>
+      </div>
+      <div className="lg-cd-more">
+        <div>
+          <span className="label">Top scorer</span>
+          <b>{scorer ? `${scorer.name}, ${scorer.goals}` : "No one in the top 20"}</b>
+        </div>
+        <div>
+          <span className="label">Recent results</span>
+          {results.map((r) => {
+            const home = r.home === c.id;
+            const opp = data.clubs[home ? r.away : r.home];
+            return (
+              <b key={r.matchday} className="num">
+                MD{r.matchday} {home ? "v" : "at"} {opp.short} {r.score[0]}-{r.score[1]}
+              </b>
+            );
+          })}
+        </div>
+        {next && (
+          <div>
+            <span className="label">Matchday {data.matchday}</span>
+            <b>{next.title}</b>
+            <a href="#/league" onClick={(e) => (e.preventDefault(), window.scrollTo({ top: 0, behavior: "smooth" }))}>
+              {data.clubs[next.home].short} v {data.clubs[next.away].short} &#8593;
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -132,6 +209,7 @@ const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
   const [data, setData] = useState<LeagueData | null>(null);
   const [md, setMd] = useState<number | null>(null);
+  const [pick, setPick] = useState("KR");
   useEffect(() => {
     fetch("/api/league")
       .then((r) => r.json())
@@ -154,7 +232,7 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
 
       <section className="lg-fixtures">
         {data.fixtures.map((f) => (
-          <FixtureCard key={f.scenario} f={f} clubs={clubs} table={table} onWatch={onWatch} />
+          <FixtureRow key={f.scenario} f={f} clubs={clubs} table={table} onWatch={onWatch} />
         ))}
       </section>
 
@@ -273,25 +351,17 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
         </div>
       </section>
 
-      <section>
-        <h2 className="lg-h" style={{ margin: "8px 0 14px" }}>The clubs</h2>
-        <div className="lg-clubs">
+      <section className="lg-panel">
+        <h2 className="lg-h">The clubs</h2>
+        <div className="lg-crests" role="tablist">
           {Object.values(clubs).map((c) => (
-            <article key={c.id} className="lg-club" style={{ ["--c" as string]: c.primary }}>
-              <Crest club={c} size={76} />
-              <div>
-                <span className="label">
-                  {c.nickname} &middot; Est. {c.founded}
-                </span>
-                <h3>{c.name}</h3>
-                <p>{c.style}.</p>
-                <span className="label dim">
-                  {c.ground}, {c.city} &middot; {c.formation}
-                </span>
-              </div>
-            </article>
+            <button key={c.id} role="tab" aria-selected={pick === c.id} className={pick === c.id ? "on" : ""} onClick={() => setPick(c.id)} title={c.name} style={{ ["--c" as string]: c.primary }}>
+              <Crest club={c} size={44} />
+              <span>{c.short}</span>
+            </button>
           ))}
         </div>
+        <ClubDetail c={clubs[pick]} data={data} />
       </section>
     </div>
   );

@@ -88,7 +88,7 @@ STORIES: list[Story] = [
           "NA", "BF", (Incident(minute=30, kind="red_card", team="home", player_number=4),),
           check=lambda r: _ten_men_win(r, 0, 30)),
     Story("chess", "The chess match",
-          "Two cautious sides cancel each other out: a 0-0 decided by shape, not shots.",
+          "Two cautious sides cancel each other out: a goalless draw decided by shape, not shots.",
           "WH", "SM", (Incident(minute=0, kind="tactic", team="home", press=0.3),
                        Incident(minute=0, kind="tactic", team="away", press=0.3)),
           check=lambda r: r.score == (0, 0) and sum(r.xg) < 1.5),
