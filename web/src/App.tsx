@@ -8,6 +8,7 @@ import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
 import { Blueprint } from "./components/Blueprint";
+import { League } from "./components/League";
 import { TracePanel } from "./components/TracePanel";
 import { Favourites } from "./components/Favourites";
 import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./prefs";
@@ -132,6 +133,25 @@ export default function App() {
     document.documentElement.classList.toggle("overlay-mode", overlay);
   }, [overlay]);
 
+  // Start a private room playing one of the matchday's scenarios, then show it live.
+  const watch = (scenario: string) => {
+    fetch("/api/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start_minute: 0, speed: 1, scenario }),
+    })
+      .then((r) => r.json())
+      .then((body) => {
+        if (!body.room_id) return;
+        const p = new URLSearchParams(location.search);
+        p.set("room", body.room_id);
+        history.replaceState(null, "", `?${p.toString()}${location.hash}`);
+        setTab("live");
+        setRoom(body.room_id);
+        location.hash = "#/";
+      });
+  };
+
   const toggleDepth = () => {
     const next = depth === "casual" ? "analyst" : "casual";
     setDepth(next);
@@ -184,6 +204,9 @@ export default function App() {
           </button>
           <button className={`tab ${route.page === "blueprint" ? "on" : ""}`} onClick={() => (location.hash = "#/blueprint")}>
             Blueprint
+          </button>
+          <button className={`tab ${route.page === "league" ? "on" : ""}`} onClick={() => (location.hash = "#/league")}>
+            League
           </button>
         </div>
         <div className="settings">
@@ -249,10 +272,11 @@ export default function App() {
         </div>
       </header>
 
-      {route.page !== "blueprint" && <Scoreboard state={state} />}
+      {route.page !== "blueprint" && route.page !== "league" && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
+      {route.page === "league" && <League onWatch={watch} />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
       {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>

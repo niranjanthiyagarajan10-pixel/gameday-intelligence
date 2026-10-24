@@ -30,6 +30,42 @@ _CLUBS: list[tuple[str, str, str, str, str, tuple[float, float, float, float] | 
     ("SM", "Saltmoor Athletic", "#2EC4B6", "#FFFFFF", "4-4-2", (0.50, 0.60, 0.50, 0.44)),
 ]
 
+
+@dataclass(frozen=True)
+class ClubProfile:
+    """Who a club is, for previews, articles and the league page. Invented, like the clubs."""
+
+    nickname: str
+    ground: str
+    city: str
+    founded: int
+    style: str
+    rival: str | None = None
+
+
+PROFILES: dict[str, ClubProfile] = {
+    "KR": ClubProfile("The Anchors", "Harbour Park", "Kingsport", 1889,
+                      "Presses high and attacks fast through the middle"),
+    "AV": ClubProfile("The Oaks", "Millbrook Lane", "Ashford", 1902,
+                      "Compact mid block, waits for the counter"),
+    "NA": ClubProfile("The Pines", "The Pinewood", "Northvale", 1894,
+                      "Patient possession, the best defence in the league"),
+    "BF": ClubProfile("The Anvils", "Forge Road", "Bramley", 1911,
+                      "Direct and physical, lives on set pieces"),
+    "CC": ClubProfile("The Towers", "Mere Stadium", "Castlemere", 1898,
+                      "High tempo and a high line"),
+    "EA": ClubProfile("The Swifts", "Eastwick Common", "Eastwick", 1921,
+                      "Back three and quick wing backs"),
+    "RU": ClubProfile("The Marshmen", "Fenside", "Redmarsh", 1886,
+                      "Aggressive press, plenty of shots", rival="TW"),
+    "TW": ClubProfile("The Thorns", "Briar Lane", "Thornwick", 1905,
+                      "Energetic, open and hard to predict", rival="RU"),
+    "WH": ClubProfile("The Embers", "The Kiln Ground", "Westholt", 1919,
+                      "Cautious, sits deep and keeps it tight"),
+    "SM": ClubProfile("The Tide", "Saltmoor Sands", "Saltmoor", 1908,
+                      "Solid defensive shape, slow build-up"),
+}
+
 # Squad numbers by position. The first ones listed start, in formation order.
 _NUMBERS: dict[Position, list[int]] = {
     "GK": [1, 13],

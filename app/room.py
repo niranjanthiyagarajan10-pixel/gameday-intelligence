@@ -37,6 +37,7 @@ from engine.feed import Feed, SimulatorFeed
 from engine.league import League
 from engine.live import LiveStats
 from engine.models import MatchEvent, MatchMeta, Moment, OverlayEvent, TrackingFrame
+from engine.scenarios import BY_ID, path_for
 from engine.sim import MatchSimulator, SimConfig, load_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -78,6 +79,13 @@ class RoomConfig:
     speed: float = 1.0
     start_minute: float = 0.0
     half_s: float = 2700.0
+
+    @classmethod
+    def for_scenario(cls, path: str, **kw: Any) -> RoomConfig:
+        """A library scenario fixes its own fixture and seed."""
+        s = load_scenario(path)
+        return cls(home=s.home or cls.home, away=s.away or cls.away, seed=cls.seed if s.seed is None else s.seed,
+                   scenario=path, **kw)
 
     @classmethod
     def from_env(cls) -> RoomConfig:
@@ -555,11 +563,17 @@ class Hub:
     def get(self, room_id: str) -> MatchRoom | None:
         return self.rooms.get(room_id)
 
-    def private(self, start_minute: float, speed: float) -> MatchRoom:
+    def private(self, start_minute: float, speed: float, scenario: str | None = None) -> MatchRoom:
+        config = replace(self.default, start_minute=start_minute, speed=speed)
+        if scenario:
+            if scenario not in BY_ID:
+                raise KeyError(scenario)
+            config = RoomConfig.for_scenario(str(path_for(scenario)), start_minute=start_minute, speed=speed,
+                                             half_s=self.default.half_s)
         if sum(1 for r in self.rooms if r != "main") >= MAX_PRIVATE_ROOMS:
             raise RuntimeError("too many replays running, try again in a few minutes")
         room_id = uuid.uuid4().hex[:8]
-        return self._launch(room_id, replace(self.default, start_minute=start_minute, speed=speed))
+        return self._launch(room_id, config)
 
     def _launch(self, room_id: str, config: RoomConfig) -> MatchRoom:
         room = MatchRoom(room_id, self.league, config, self.llm)

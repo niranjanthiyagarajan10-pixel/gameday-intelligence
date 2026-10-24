@@ -1,6 +1,18 @@
 {
-  "name": "Demo: Kingsport Rovers v Ashford Vale",
+  "name": "Ten men at Harbour Park: Kingsport Rovers v Ashford Vale",
   "incidents": [
-    {"minute": 55, "kind": "red_card", "team": "away", "player_number": 8}
-  ]
+    {
+      "minute": 55,
+      "kind": "red_card",
+      "team": "away",
+      "player_number": 8
+    }
+  ],
+  "scenario_id": "demo",
+  "title": "Ten men at Harbour Park",
+  "story": "Ashford lose Callum Hale to a red card and spend the rest of the match under siege.",
+  "home": "KR",
+  "away": "AV",
+  "seed": 7,
+  "matchday": 9
 }

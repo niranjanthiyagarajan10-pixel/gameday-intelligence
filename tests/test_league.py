@@ -40,6 +40,18 @@ def test_league_is_reproducible_from_its_seed():
     assert build_league.__wrapped__(1).squads != fresh.squads
 
 
+def test_every_club_has_a_profile_and_derby_rivals_point_at_each_other():
+    from engine.league import PROFILES
+
+    league = build_league()
+    assert set(PROFILES) == set(league.clubs)
+    assert len({p.nickname for p in PROFILES.values()}) == 10
+    assert len({p.ground for p in PROFILES.values()}) == 10
+    for club_id, p in PROFILES.items():
+        if p.rival:
+            assert PROFILES[p.rival].rival == club_id
+
+
 def test_formation_lines():
     assert formation_lines("4-2-3-1") == [4, 2, 3, 1]
     with pytest.raises(ValueError):

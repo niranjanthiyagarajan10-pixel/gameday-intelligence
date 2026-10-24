@@ -29,6 +29,14 @@ class Incident(Contract):
 class Scenario(Contract):
     name: str
     incidents: list[Incident] = Field(default_factory=list)
+    # A scenario in the library also fixes its fixture and seed, so it always plays the same story.
+    scenario_id: str | None = None
+    title: str = ""
+    story: str = ""
+    home: str | None = None
+    away: str | None = None
+    seed: int | None = Field(default=None, ge=0)
+    matchday: int | None = Field(default=None, ge=1, le=38)
 
 
 def load_scenario(path: str | Path) -> Scenario:

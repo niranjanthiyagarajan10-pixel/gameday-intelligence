@@ -1,0 +1,24 @@
+{
+  "name": "The chess match: Westholt v Saltmoor Athletic",
+  "incidents": [
+    {
+      "minute": 0,
+      "kind": "tactic",
+      "team": "home",
+      "press": 0.3
+    },
+    {
+      "minute": 0,
+      "kind": "tactic",
+      "team": "away",
+      "press": 0.3
+    }
+  ],
+  "scenario_id": "chess",
+  "title": "The chess match",
+  "story": "Two cautious sides cancel each other out: a 0-0 decided by shape, not shots.",
+  "home": "WH",
+  "away": "SM",
+  "seed": 37,
+  "matchday": 9
+}

@@ -37,6 +37,22 @@ def test_room_state_has_both_teams_and_lineups(client):
     assert state["roster"]["players"]["KR10"]["name"] == "Rafael Okafor"
 
 
+def test_league_page_data(client):
+    body = client.get("/api/league").json()
+    assert body["matchday"] == 9 and len(body["table"]) == 10 and len(body["fixtures"]) == 5
+    assert body["clubs"]["KR"]["nickname"] and len(body["clubs"]["KR"]["form"]) == 5
+    derby = next(f for f in body["fixtures"] if f["scenario"] == "derby")
+    assert derby["h2h"] and body["clubs"]["RU"]["rival"] == "TW"
+    assert {s["id"] for s in client.get("/api/scenarios").json()} == {"demo", "derby", "upset", "fightback", "chess"}
+
+
+def test_a_scenario_room_plays_its_own_fixture(client):
+    room = client.post("/api/rooms", json={"scenario": "derby", "speed": 1}).json()["room_id"]
+    clubs = client.get(f"/api/rooms/{room}").json()["roster"]["clubs"]
+    assert clubs["home"]["name"] == "Redmarsh United" and clubs["away"]["name"] == "Thornwick Wanderers"
+    assert client.post("/api/rooms", json={"scenario": "nope"}).status_code == 404
+
+
 def test_unknown_room_is_404(client):
     assert client.get("/api/rooms/nope").status_code == 404
 

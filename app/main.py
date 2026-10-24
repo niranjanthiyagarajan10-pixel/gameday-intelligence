@@ -18,6 +18,7 @@ from app.env import load_env
 
 load_env()  # before anything reads FOUNDRY_PROJECT_ENDPOINT or the model names
 
+from app.league import league_payload, scenarios_payload  # noqa: E402
 from app.room import SPEEDS, Hub, MatchRoom, RoomConfig  # noqa: E402
 from engine.league import build_league  # noqa: E402
 from mcp_server.server import create_mcp, http_app  # noqa: E402
@@ -28,6 +29,7 @@ DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 class NewRoom(BaseModel):
     start_minute: float = Field(default=0.0, ge=0.0, le=89.0)
     speed: float = 1.0
+    scenario: str | None = Field(default=None, pattern=r"^[a-z]{2,20}$")
 
 
 class Question(BaseModel):
@@ -67,6 +69,15 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
         return {"status": "ok", "rooms": len(hub.rooms)}
+
+    @app.get("/api/league")
+    async def league() -> dict[str, Any]:
+        """Clubs, table, results, scorers and the live matchday, all from the simulated season."""
+        return league_payload(hub.league)
+
+    @app.get("/api/scenarios")
+    async def scenarios() -> list[dict[str, Any]]:
+        return scenarios_payload()
 
     @app.get("/api/rooms/{room_id}")
     async def room_state(room_id: str) -> dict[str, Any]:
@@ -121,7 +132,9 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         if body.speed not in SPEEDS:
             raise HTTPException(422, f"speed must be one of {SPEEDS}")
         try:
-            room = hub.private(body.start_minute, body.speed)
+            room = hub.private(body.start_minute, body.speed, body.scenario)
+        except KeyError as e:
+            raise HTTPException(404, "no such scenario") from e
         except RuntimeError as e:
             raise HTTPException(429, str(e)) from e
         return {"room_id": room.room_id}

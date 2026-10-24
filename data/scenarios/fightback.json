@@ -1,0 +1,18 @@
+{
+  "name": "Ten-man fight-back: Northvale Athletic v Bramley Forge",
+  "incidents": [
+    {
+      "minute": 30,
+      "kind": "red_card",
+      "team": "home",
+      "player_number": 4
+    }
+  ],
+  "scenario_id": "fightback",
+  "title": "Ten-man fight-back",
+  "story": "Northvale lose a defender to a red card, fall behind, and still win.",
+  "home": "NA",
+  "away": "BF",
+  "seed": 61,
+  "matchday": 9
+}

@@ -1,0 +1,11 @@
+{
+  "name": "The Marsh derby: Redmarsh United v Thornwick Wanderers",
+  "incidents": [],
+  "scenario_id": "derby",
+  "title": "The Marsh derby",
+  "story": "Redmarsh and Thornwick, neighbours and rivals. One of them goes two down and fights back.",
+  "home": "RU",
+  "away": "TW",
+  "seed": 2,
+  "matchday": 9
+}
