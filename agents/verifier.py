@@ -152,7 +152,10 @@ def _check_claim(c: Claim, m: Moment, used: set[str], team_name: str = "", rival
     if metric == "speed":
         return None if m.kind == "top_speed" else f"claim {c.claim_id}: this moment is not a top speed"
     if metric == "shape":
-        return None if c.subject in _shape(m) or not c.subject else f"claim {c.claim_id}: the shape was not {c.subject}"
+        # The subject may name the shape ("low_block") or just the team the claim is about.
+        if not c.subject or c.subject in _shape(m) or c.subject.lower() in ("team", "home", "away", str(m.team)):
+            return None
+        return f"claim {c.claim_id}: the shape was not {c.subject}"
     if metric == "control":
         return None if m.kind == "control_flip" else f"claim {c.claim_id}: this moment is not a control change"
     if metric == "red_card":

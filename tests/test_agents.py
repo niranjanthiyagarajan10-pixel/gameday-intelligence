@@ -247,3 +247,24 @@ def test_mcp_server_lists_and_calls_tools(room):
     assert {"get_match_state", "get_moment_evidence", "verify_claims", "get_gravity"} <= names
     assert not result.is_error and "Kingsport Rovers" in result.content[0].text
     assert missing.is_error
+
+
+class RateLimitedOnce:
+    """Foundry answering 429 the first time, then a clean draft."""
+
+    name = "foundry"
+
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, *, agent, instructions, prompt, model):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("Error code: 429 - rate_limit_exceeded")
+        return reply(GOOD)
+
+
+def test_a_rate_limited_call_is_retried_within_the_time_budget():
+    backend = RateLimitedOnce()
+    out = run(desk(backend).write(GOAL, "casual"))
+    assert backend.calls == 2 and out.source == "narrator"

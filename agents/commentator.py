@@ -50,6 +50,8 @@ Rules:
    Meanings: win_probability is the win chance of the moment's team (subject "team"), up or down.
    score up means the team scored, level means the scores are level after, down means the team trails.
    xg up means a big chance (0.30 or more), down means a low chance. List only claims your text makes.
+   Chaotic, scrappy and end to end need evidence now_in_control "nobody". A chaos index slot is a number,
+   not permission to call the match chaotic. Lead, level and equaliser need a score in the evidence.
 """
 
 

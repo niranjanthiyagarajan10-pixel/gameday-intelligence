@@ -488,7 +488,9 @@ async def live_writers(cases: list[Case]) -> dict[str, Any]:
             row = {"moment": c.moment.moment_id, "kind": c.moment.kind, "verified": w.source == "narrator",
                    "first_draft": first, "drafts": drafts, "ms": ms, "text": text,
                    "untraced": _untraced_numbers(text, list(w.cue.slots.values())),
-                   "rejections": [s.detail for s in w.steps if s.status == "reject"]}
+                   "rejections": [s.detail for s in w.steps if s.status == "reject"],
+                   "failures": [f"{s.status}: {s.detail[:80]}" for s in w.steps
+                                if s.agent in ("Narrator", "Commentator") and s.status not in ("ok",)]}
             if w.source == "narrator" and style is None and audience == "casual":
                 for lang in ("es", "hi"):
                     t = await desk.translate(w.cue, lang, 0.0)
@@ -506,7 +508,8 @@ async def live_writers(cases: list[Case]) -> dict[str, Any]:
     return {"rows": [_summary(label, rs) for label, rs in sorted(runs.items())],
             "rejections": Counter(_reason_kind(r) for rs in runs.values() for row in rs for r in row["rejections"]).most_common(8),
             "examples": {label: rs[0]["text"] for label, rs in runs.items() if rs},
-            "untraced": sum(len(row["untraced"]) for rs in runs.values() for row in rs)}
+            "untraced": sum(len(row["untraced"]) for rs in runs.values() for row in rs),
+            "failures": Counter(f for rs in runs.values() for row in rs for f in row.get("failures", [])).most_common(6)}
 
 
 def _reason_kind(reason: str) -> str:
@@ -552,7 +555,10 @@ def live_analyst(url: str) -> dict[str, Any]:
 
     http = httpx.Client(base_url=url, timeout=60)
     room = http.post("/api/rooms", json={"start_minute": 70, "speed": 1}).json()["room_id"]
-    time.sleep(3)
+    for _ in range(120):  # the room fast-forwards to minute 70 first; read nothing until it has
+        if http.get(f"/api/rooms/{room}").json().get("status") != "catching_up":
+            break
+        time.sleep(1)
     http.post(f"/api/rooms/{room}/control", json={"action": "pause"})
     headers = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
     http.post("/mcp", headers=headers, json={"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
@@ -576,7 +582,11 @@ def live_analyst(url: str) -> dict[str, Any]:
         body, ms = ask(question)
         answer = body.get("answer", "")
         parts = [p for e in expected for p in re.split(r" / |(?<=\d)-(?=\d)", e)]
-        correct = body.get("source") == "analyst" and all(re.search(rf"(?<![\d.]){re.escape(p)}(?![\d])", answer) for p in parts)
+        def said(p: str) -> bool:
+            if re.search(rf"(?<![\d.]){re.escape(p)}(?![\d])", answer):
+                return True
+            return p == "0" and re.search(r"\b(no|not any|none|zero)\b", answer.lower()) is not None
+        correct = body.get("source") == "analyst" and all(said(p) for p in parts)
         rows.append({"question": question, "expected": expected, "answer": answer, "correct": correct,
                      "source": body.get("source"), "ms": ms,
                      "read": [f"{e['tool']}.{e['field']}" for e in body.get("evidence", [])],

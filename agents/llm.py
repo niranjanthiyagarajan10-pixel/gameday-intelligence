@@ -28,7 +28,9 @@ from typing import Protocol
 log = logging.getLogger("gameday.llm")
 
 MODEL_TIMEOUT_S = 8.0
-ASK_TIMEOUT_S = 25.0  # a whole Ask the match run: several model calls plus tool calls
+ASK_TIMEOUT_S = 25.0
+MAX_IN_FLIGHT = 4  # concurrent model calls per process; more only trips the deployment's rate limit
+RATE_LIMIT_BACKOFF_S = (0.6, 1.2, 2.4)  # a whole Ask the match run: several model calls plus tool calls
 CACHE_PATH = Path(__file__).resolve().parent.parent / "data" / "replays" / "agent_cache.json"
 
 
@@ -166,6 +168,7 @@ class LLM:
         self.strong = strong
         self.timeout_s = timeout_s
         self.record = record  # when set, every good Foundry answer is kept for replay mode
+        self._slots = asyncio.Semaphore(MAX_IN_FLIGHT)
 
     @classmethod
     def from_env(cls) -> LLM:
@@ -224,11 +227,22 @@ class LLM:
         def took() -> int:
             return round((time.perf_counter() - started) * 1000)
 
+        async def call() -> str:
+            # At most a few calls in flight, and a short wait and retry when Foundry says 429 (rate limit),
+            # all inside the one time budget: a burst of key moments queues rather than failing.
+            async with self._slots:
+                for wait in RATE_LIMIT_BACKOFF_S:
+                    try:
+                        return await self.backend.complete(agent=agent, instructions=instructions, prompt=prompt, model=model)
+                    except Exception as e:
+                        if "429" not in str(e) and "rate limit" not in str(e).lower():
+                            raise
+                        log.info("%s rate limited, retrying in %.1f s", agent, wait)
+                        await asyncio.sleep(wait)
+                return await self.backend.complete(agent=agent, instructions=instructions, prompt=prompt, model=model)
+
         try:
-            text = await asyncio.wait_for(
-                self.backend.complete(agent=agent, instructions=instructions, prompt=prompt, model=model),
-                timeout=self.timeout_s,
-            )
+            text = await asyncio.wait_for(call(), timeout=self.timeout_s)
         except TimeoutError:
             log.info("%s timed out after %.0f s", agent, self.timeout_s)
             return LLMResult(None, False, self.backend.name, model, took(), f"timed out after {self.timeout_s:.0f} s")
