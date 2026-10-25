@@ -19,6 +19,7 @@ interface Question {
   expected: string[];
   answer: string;
   correct: boolean;
+  source?: string;
   ms: number;
 }
 interface Report {
@@ -82,7 +83,10 @@ export function Evals() {
         {p && <Big value={p.caught} of={p.planted} label="Planted errors caught" note="Typed numbers and names, false claims, made-up details, broken translations, fake tools." />}
         {p && <Big value={p.clean_passed} of={p.clean} label="Clean lines passed" note="A check that rejects good lines is broken too." />}
         {live && <Big value={liveVerified} of={liveTotal} label="Live agent lines verified" note="Narrator, Commentator in three styles, Personalizer, on gpt-4.1-mini." />}
-        {a && <Big value={a.correct} of={a.questions.length} label="Ask the match answers correct" note="Checked against the same MCP tools, on a paused match." />}
+        {a && (
+          <Big value={a.correct} of={a.questions.length} label="Ask the match answers correct"
+            note={`Checked against the same MCP tools. ${a.questions.filter((q) => !q.correct && q.source !== "fallback").length} wrong answers shown; the rest declined honestly.`} />
+        )}
         {live && (
           <div className="ev-big">
             <b className={`num ${live.untraced === 0 ? "up" : "down"}`}>{live.untraced}</b>
@@ -179,8 +183,8 @@ export function Evals() {
           </div>
           <div className="ev-qs">
             {a.questions.map((q) => (
-              <div key={q.question} className={`ev-q ${q.correct ? "ok" : "no"}`}>
-                <span className="mark">{q.correct ? "Right" : "Wrong"}</span>
+              <div key={q.question} className={`ev-q ${q.correct ? "ok" : q.source === "fallback" ? "held" : "no"}`}>
+                <span className="mark">{q.correct ? "Right" : q.source === "fallback" ? "Declined" : "Wrong"}</span>
                 <div>
                   <b>{q.question}</b>
                   <p>{q.answer}</p>

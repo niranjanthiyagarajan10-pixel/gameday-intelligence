@@ -353,152 +353,331 @@
    }
   ],
   "misses": [],
-  "at": "2026-10-25 11:55"
+  "at": "2026-10-25 16:54"
  },
  "analyst": {
-  "room": "2928b6c3",
-  "url": "https://gameday-intelligence.orangecliff-ca1053f4.eastus2.azurecontainerapps.io",
+  "room": "38071a79",
+  "url": "http://127.0.0.1:8000",
   "questions": [
    {
     "question": "What is the score?",
     "expected": [
-     "1-0"
+     "5-0"
     ],
-    "answer": "The score is currently 1 to 0 with Kingsport Rovers leading.",
+    "answer": "I could not check that against the match data just now. Try a question about the score, a player or a team.",
     "correct": false,
-    "source": "analyst",
-    "ms": 8451
+    "source": "fallback",
+    "ms": 8685,
+    "read": [],
+    "rejections": [
+     "every slot in the answer needs exactly one spec in slots, and every spec must be used; numbers must be slots read from a tool",
+     "names must be slots read from a tool: remove \"Kingsport Rovers\""
+    ]
    },
    {
     "question": "How many expected goals has each team created?",
     "expected": [
-     "0.971 / 0.0"
+     "3.09 / 0.26"
     ],
-    "answer": "The home team has created about 2.16 expected goals, and the away team has created about 0.00 expected goals so far in the match.",
-    "correct": false,
+    "answer": "The expected goals created are 3.09 for the home team and 0.26 for the away team.",
+    "correct": true,
     "source": "analyst",
-    "ms": 7522
+    "ms": 8329,
+    "read": [
+     "get_match_state.xg.0",
+     "get_match_state.xg.1"
+    ],
+    "rejections": [
+     "names must be slots read from a tool: remove \"Kingsport Rovers\""
+    ]
    },
    {
     "question": "What is the home team's chance of winning right now?",
     "expected": [
      "100%"
     ],
-    "answer": "The home team currently has a very high chance of winning, at 99%%.",
-    "correct": false,
+    "answer": "The home team's chance of winning right now is 100%.",
+    "correct": true,
     "source": "analyst",
-    "ms": 7576
+    "ms": 11821,
+    "read": [
+     "get_match_state.win_probability.home"
+    ],
+    "rejections": [
+     "every slot in the answer needs exactly one spec in slots, and every spec must be used; numbers must be slots read from a tool; names must be slots read from a tool: remove \"Kingsport Rovers\""
+    ]
    },
    {
     "question": "How is possession split?",
     "expected": [
-     "49% / 51%"
+     "47% / 53%"
     ],
-    "answer": "Possession is quite even with 48%% for the home team and 52%% for the away team.",
-    "correct": false,
+    "answer": "Possession is split 47% between the home team and 53% for the away team.",
+    "correct": true,
     "source": "analyst",
-    "ms": 7338
+    "ms": 11867,
+    "read": [
+     "get_match_state.possession.0",
+     "get_match_state.possession.1"
+    ],
+    "rejections": [
+     "names must be slots read from a tool: remove \"Kingsport Rovers\""
+    ]
    },
    {
     "question": "How many players does each side have on the pitch?",
     "expected": [
      "11 / 10"
     ],
-    "answer": "I could not check that against the match data just now. Try a question about the score, a player or a team.",
-    "correct": false,
-    "source": "fallback",
-    "ms": 5982
+    "answer": "There are 11 players for Kingsport Rovers and 10 players for Ashford Vale on the pitch.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 11645,
+    "read": [
+     "get_match_state.men.0",
+     "get_match_state.home",
+     "get_match_state.men.1",
+     "get_match_state.away"
+    ],
+    "rejections": [
+     "names must be slots read from a tool: remove \"Kingsport Rovers\""
+    ]
    },
    {
     "question": "Who has added the most win value so far?",
     "expected": [
      "Dani Mensah"
     ],
-    "answer": "Dani Mensah has added the most win value in the match so far with a total of 0.57.",
+    "answer": "Dani Mensah has added the most win value so far this match.",
     "correct": true,
     "source": "analyst",
-    "ms": 3164
+    "ms": 6738,
+    "read": [
+     "get_leverage_table.rows.0.name"
+    ],
+    "rejections": []
    },
    {
     "question": "Which player has the most gravity?",
     "expected": [
      "Pavel Adeyemi"
     ],
-    "answer": "Pavel Adeyemi has the most gravity in the match so far.",
+    "answer": "The player with the most gravity in the match is Pavel Adeyemi, pulling defenders towards them significantly.",
     "correct": true,
     "source": "analyst",
-    "ms": 2455
+    "ms": 3823,
+    "read": [
+     "get_gravity.rows.0.name"
+    ],
+    "rejections": []
    },
    {
     "question": "What is Rafael Okafor's top speed?",
     "expected": [
+     "Rafael Okafor",
      "29.5"
     ],
-    "answer": "Rafael Okafor's top speed in this match is 29.5 km/h.",
+    "answer": "Rafael Okafor's top speed is 29.5.",
     "correct": true,
     "source": "analyst",
-    "ms": 2770
+    "ms": 5761,
+    "read": [
+     "get_player_live.top_speed_kmh"
+    ],
+    "rejections": []
    },
    {
     "question": "How far has Dani Mensah run?",
     "expected": [
+     "Dani Mensah",
      "8.91"
     ],
-    "answer": "8.91 kilometers is how far Dani Mensah has run so far in the match.",
+    "answer": "Dani Mensah has run 8.91.",
     "correct": true,
     "source": "analyst",
-    "ms": 2249
+    "ms": 8415,
+    "read": [
+     "get_player_live.distance_km"
+    ],
+    "rejections": []
    },
    {
     "question": "What defensive block are Ashford Vale in?",
     "expected": [
-     "mid_block"
+     "mid block"
     ],
-    "answer": "Ashford Vale are currently playing with a mid block defensive shape.",
+    "answer": "I could not check that against the match data just now. Try a question about the score, a player or a team.",
     "correct": false,
-    "source": "analyst",
-    "ms": 2533
+    "source": "fallback",
+    "ms": 9778,
+    "read": [],
+    "rejections": [
+     "the fan asked about Ashford Vale: name them in the answer with a slot read from a tool",
+     "slot s1: get_club_season.team_name could not be read (KeyError)"
+    ]
    },
    {
     "question": "How many shots has Tobias Brandt taken?",
     "expected": [
+     "Tobias Brandt",
      "0"
     ],
-    "answer": "0 has not taken any shots so far in the match.",
+    "answer": "Tobias Brandt has taken no shots so far in the match.",
     "correct": true,
     "source": "analyst",
-    "ms": 2418
+    "ms": 6322,
+    "read": [
+     "get_player_live.name"
+    ],
+    "rejections": []
    },
    {
     "question": "What is the away team's chance of winning?",
     "expected": [
      "0%"
     ],
-    "answer": "I could not check that against the match data just now. Try a question about the score, a player or a team.",
-    "correct": false,
-    "source": "fallback",
-    "ms": 5125
+    "answer": "The away team's chance of winning is 0%.",
+    "correct": true,
+    "source": "analyst",
+    "ms": 9378,
+    "read": [
+     "get_match_state.win_probability.away"
+    ],
+    "rejections": []
    }
   ],
-  "correct": 5,
+  "correct": 10,
   "refusals": [
    {
     "question": "Who will win the league this season?",
-    "answer": "I can't predict who will win the league this season. I can provide you with live match stats and probabilities for this game instead.",
+    "answer": "I cannot predict the league winner from the current match data. I can provide the current league table or team form if you want.",
     "honest": true
    },
    {
     "question": "How many fans are in the stadium?",
-    "answer": "Lots of questions right now. Try again in a minute.",
+    "answer": "The current attendance number is not available from the data sources I have access to. I can provide information on the score, player stats, team performance, and other match details if you want.",
     "honest": true
    },
    {
     "question": "Which player has the most yellow cards in their career?",
-    "answer": "Lots of questions right now. Try again in a minute.",
+    "answer": "I cannot provide information on career yellow cards for players. I can give you live match stats or current game data instead.",
     "honest": true
    }
   ],
   "honest": 3,
-  "p50_ms": 5125
+  "p50_ms": 8685
+ },
+ "live": {
+  "rows": [
+   {
+    "agent": "Commentator hype",
+    "lines": 30,
+    "verified": 26,
+    "first_draft": 18,
+    "avg_drafts": 1.53,
+    "p50_ms": 2932,
+    "p95_ms": 8293
+   },
+   {
+    "agent": "Commentator stats",
+    "lines": 30,
+    "verified": 29,
+    "first_draft": 22,
+    "avg_drafts": 1.3,
+    "p50_ms": 2563,
+    "p95_ms": 7082
+   },
+   {
+    "agent": "Commentator tactician",
+    "lines": 30,
+    "verified": 30,
+    "first_draft": 22,
+    "avg_drafts": 1.37,
+    "p50_ms": 2848,
+    "p95_ms": 8715
+   },
+   {
+    "agent": "Narrator analyst",
+    "lines": 30,
+    "verified": 30,
+    "first_draft": 21,
+    "avg_drafts": 1.37,
+    "p50_ms": 3153,
+    "p95_ms": 7039
+   },
+   {
+    "agent": "Narrator casual",
+    "lines": 30,
+    "verified": 28,
+    "first_draft": 20,
+    "avg_drafts": 1.47,
+    "p50_ms": 3411,
+    "p95_ms": 8832
+   },
+   {
+    "agent": "Personalizer es",
+    "lines": 28,
+    "verified": 28,
+    "first_draft": 28,
+    "avg_drafts": 1,
+    "p50_ms": 2369,
+    "p95_ms": 3291
+   },
+   {
+    "agent": "Personalizer hi",
+    "lines": 28,
+    "verified": 28,
+    "first_draft": 28,
+    "avg_drafts": 1,
+    "p50_ms": 2517,
+    "p95_ms": 3684
+   }
+  ],
+  "rejections": [
+   [
+    "never add 's to a slot: write",
+    15
+   ],
+   [
+    "names must be slots: remove",
+    15
+   ],
+   [
+    "the wording implies the score is level, which the evidence cannot confirm",
+    11
+   ],
+   [
+    "the wording implies the match turned chaotic, but the evidence says otherwise",
+    11
+   ],
+   [
+    "this moment needs",
+    4
+   ],
+   [
+    "an xG of  is not a low chance",
+    2
+   ],
+   [
+    "is not in the evidence",
+    2
+   ],
+   [
+    "no em dashes",
+    2
+   ]
+  ],
+  "examples": {
+   "Narrator analyst": "Dani Mensah scores at 1' to give Kingsport Rovers a 1-0 lead, increasing the win probability from 87% to 94% and boosting leverage by +0.47. The chance had an xG of 0.22, showing it was a significant scoring opportunity.",
+   "Commentator stats": "At 1', Dani Mensah scores for Kingsport Rovers with an xG of 0.22, increasing win probability from 87% to 94%, leverage +0.47. Score now 1-0.",
+   "Commentator hype": "Boom! Dani Mensah smashes it in, the score is now 1-0 already!",
+   "Personalizer es": "Al 26', el control pasa a Kingsport Rovers en un momento equilibrado del partido con poco cambio en la ventaja.",
+   "Commentator tactician": "At 1', Dani Mensah scored to put the team ahead 1-0, with an xG of 0.22 and leverage of +0.47. This increased the win probability from 87% to 94%. The team maintained structural discipline, optimizing space usage without increasing pressing intensity.",
+   "Personalizer hi": "26' मिनट पर, खेल के संतुलित पल में कब्जा Kingsport Rovers के हाथ में आ जाता है, जहां दबाव में बहुत कम बदलाव होता है।",
+   "Narrator casual": "At 26', control shifts to Kingsport Rovers in a balanced moment of the game with little change in leverage."
+  },
+  "untraced": 0,
+  "failures": [],
+  "at": "2026-10-25 16:57"
  }
 }

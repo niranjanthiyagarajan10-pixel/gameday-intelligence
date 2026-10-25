@@ -671,6 +671,7 @@ table.shots td:first-child { text-align: left; }
 .ev-q .mark { font-family: "Barlow Condensed"; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 0; text-align: center; height: fit-content; border-radius: 2px; }
 .ev-q.ok .mark { background: var(--up); color: #000; }
 .ev-q.no .mark { background: var(--down); color: #000; }
+.ev-q.held .mark { background: var(--line-dash); color: var(--text); }
 .ev-q b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; text-transform: uppercase; display: block; }
 .ev-q p { font-size: 14px; color: #d6d8dc; margin: 4px 0; line-height: 1.45; }
 .ev-q .label { font-size: 10px; }

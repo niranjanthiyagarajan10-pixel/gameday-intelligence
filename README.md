@@ -145,6 +145,16 @@ Built with Microsoft Agent Framework on Microsoft Foundry, through one wrapper (
 
 Connect Foundry: `az login`, copy `.env.example` to `.env` and set `FOUNDRY_PROJECT_ENDPOINT` and `MODEL_STRONG`, then run `python -m agents.check_foundry`. Without it the app runs on verified templates and the trace says so.
 
+## Agent evals
+
+`python -m tests.agent_eval` (results on the Evals tab, `#/evals`, and in `data/evals/report.json`):
+
+- **Planted errors:** 5,119 of 5,119 caught, 556 of 556 clean lines passed. Real key moments, previews, reports and answers from the five scenario matches are broken on purpose (typed numbers and names, false claims, made-up details, broken translations, fake tools) across every agent. Runs in CI.
+- **Live agents on Microsoft Foundry (gpt-4.1-mini):** 199 of 206 lines went live in the agent's own words (Narrator, Commentator in three styles, Personalizer in Spanish and Hindi); the other 7 kept their verified template. 0 numbers in any published line that a slot did not supply.
+- **Ask the match:** 10 of 12 questions answered correctly against the same MCP tools on a paused match, 2 declined honestly, 0 wrong answers shown; 3 of 3 questions the data cannot answer were refused honestly.
+
+The harness has found real bugs: an overclaiming fallback template, missing checks (pronouns, units after slots, "drawn"), a Verifier false reject on shape claims, Foundry rate limits under load (now queued and retried), and scenario matches that replayed differently live.
+
 ## Deployment
 
 Live at https://gameday-intelligence.orangecliff-ca1053f4.eastus2.azurecontainerapps.io (MCP at `/mcp`).
