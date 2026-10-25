@@ -29,6 +29,8 @@ Rules:
 4. Facts carry their units: {spell_share} is already "93%". Never add % or a unit after a slot.
    Each number means only what its key says: {spell_share} is one team's share of the threat in that spell,
    never possession, chances or control; *_possession is the ball; *_xg is chance quality. Never relabel one.
+   Order events only by their minute facts ({goal_1_minute}, {red_1_minute}, {spell_start}): never say one
+   thing came before or after another unless their minutes show it. A comeback belongs to {comeback_team} only.
 5. Headline under 70 characters, punchy. Standfirst one sentence. Each body paragraph 2 to 4 sentences.
    Pull quote one short line a designer would print large. No em dashes. Never use he, him, his,
    she or her: use the player's slot or they. Never add 's to a slot.

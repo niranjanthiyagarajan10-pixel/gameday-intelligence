@@ -97,7 +97,9 @@ MATCH_IMPLIED: Implied = [
      lambda t: bool(t["finished"] and t["leader"])),
     (r"\bdraw(n|s)?\b|\bdrew\b|all square|\blevel\b|\bstalemate\b|share the points", "the scores are level",
      lambda t: t["score"][0] == t["score"][1]),
-    (r"\blead(s|ing)?\b|\bahead\b|\bin front\b", "a side is ahead", lambda t: bool(t["leader"])),
+    # Live, a lead must exist now; in a finished match's story, "led 2-0" is true if anyone ever led.
+    (r"\blead(s|ing)?\b|\bled\b|\bahead\b|\bin front\b", "a side is ahead",
+     lambda t: bool(t["leader"]) or bool(t["finished"] and t.get("ever_led"))),
     (r"comeback|fight(s|ing)? back|fought back|came from behind|from behind|turn(ed|s)? it around",
      "a side came from behind", lambda t: bool(t["comeback"])),
     (r"late (winner|win|goal|strike)|last[- ]gasp|dying minutes|stoppage", "a late winner",

@@ -802,6 +802,10 @@ class Hub:
                                                                   "stats", "goals")},
                                              "score": m["truths"]["score"], "ground": m["facts"]["ground"],
                                              **filled, "source": "template", "langs": {}}
+                done = news_data.written().get(m["scenario"])
+                if done:  # written ahead of time by the Newsdesk agent and verified (python -m app.newsdesk --write)
+                    self._news[m["scenario"]].update({k: done[k] for k in ("headline", "standfirst", "body", "pull", "langs")}
+                                                     | {"source": "agent"})
             self._news_task = asyncio.create_task(self._write_news())
         writing = self._news_task is not None and not self._news_task.done()
         return {"matchday": CURRENT_MATCHDAY, "writing": writing, "articles": list(self._news.values())}
@@ -813,6 +817,8 @@ class Hub:
         if room is None or not self.llm.live:
             return
         for m in news_data.matches():
+            if self._news is not None and self._news[m["scenario"]]["source"] == "agent":
+                continue  # already written and verified
             names = name_list({p.player_id: p.name for c in (m["home"], m["away"]) for p in self.league.squads[c]},
                               {"home": m["facts"]["home"], "away": m["facts"]["away"]})
             try:

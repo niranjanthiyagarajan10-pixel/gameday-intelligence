@@ -85,7 +85,7 @@ def test_api_serves_the_brief_and_every_report():
         news = c.get("/api/newsdesk").json()
         assert news["matchday"] == 9 and len(news["articles"]) == 5
         a = news["articles"][0]
-        assert a["headline"] and a["standfirst"] and a["body"] and a["pull"] and a["source"] == "template"
+        assert a["headline"] and a["standfirst"] and a["body"] and a["pull"] and a["source"] in ("agent", "template")
         json.dumps(news)
 
 

@@ -205,8 +205,15 @@ def match_facts(live: Any, names: dict[str, str], teams: dict[str, str], finishe
         trailed["away"] |= running[1] < running[0]
         goals.append({"minute": shot.minute, "team": shot.team, "player": names.get(shot.player_id, shot.player_id),
                       "xg": round(shot.xg, 2), "score": f"{running[0]}-{running[1]}"})
+    behind = [side for side in ("home", "away") if trailed[side] and s.score[0 if side == "home" else 1]
+              >= s.score[1 if side == "home" else 0]]
+    if behind:  # who came from behind to draw or win, so a story cannot hand the comeback to the wrong side
+        facts["comeback_team"] = teams[behind[0]]
     for i, (side, pid) in enumerate(live.sent_off):
         facts |= {f"red_{i + 1}_player": names.get(pid, pid), f"red_{i + 1}_team": teams[side]}
+        minutes = getattr(live, "red_minutes", [])
+        if i < len(minutes):
+            facts[f"red_{i + 1}_minute"] = f"{minutes[i]}'"
     if live.men[0] < 11 or live.men[1] < 11:
         facts |= {"home_men": str(live.men[0]), "away_men": str(live.men[1])}
     lev = live.leverage_table()
@@ -230,6 +237,7 @@ def match_facts(live: Any, names: dict[str, str], teams: dict[str, str], finishe
     truths = {
         "finished": finished, "score": [s.score[0], s.score[1]], "leader": winner, "derby": derby,
         "reds": len(live.sent_off), "men": [live.men[0], live.men[1]],
+        "ever_led": any(trailed.values()),  # someone was behind at some point, so someone led
         "early_red": any(m <= EARLY_MINUTE for m in getattr(live, "red_minutes", [])),
         "early_goal": bool(goals) and goals[0]["minute"] <= EARLY_MINUTE,
         "comeback": bool(winner and trailed[winner]) or (lead is None and any(trailed.values()) and sum(s.score) > 0),

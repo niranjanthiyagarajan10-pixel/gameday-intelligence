@@ -1,0 +1,172 @@
+{
+ "demo": {
+  "headline": "5-goal rout for Kingsport Rovers at Harbour Park",
+  "standfirst": "Kingsport Rovers overwhelmed Ashford Vale 5-0 despite only 49% possession backed by a clinical finish rate.",
+  "body": [
+   "Dani Mensah opened the scoring for Kingsport Rovers in the opening minute with a 0.22 xG chance, setting the tone for a dominant display.",
+   "After Callum Hale was sent off on 55', Kingsport Rovers intensified pressure, producing a 91% share of the threat in the last ten minutes and piling on 0 goals during a spell from 9' to 19'.",
+   "Additional goals by Ike Salazar, Arlo Brodie and a double by Dani Mensah ensured Kingsport Rovers left Harbour Park with a comprehensive 5-0 win."
+  ],
+  "pull": "Dani Mensah delivered a +0.57 influence for Kingsport Rovers",
+  "langs": {
+   "es": {
+    "headline": "Victoria por 5 goles para Kingsport Rovers en Harbour Park",
+    "standfirst": "Kingsport Rovers dominó a Ashford Vale 5-0 a pesar de tener solo 49% de posesión, apoyado por una tasa de definición clínica.",
+    "body": [
+     "Dani Mensah abrió el marcador para Kingsport Rovers en el primer minuto con una oportunidad de 0.22 xG, marcando el ritmo de una actuación dominante.",
+     "Después de que Callum Hale fue expulsado en el minuto 55', Kingsport Rovers intensificó la presión, generando una cuota de 91% de la amenaza en los últimos diez minutos y anotando 0 goles en una etapa desde 9' hasta 19'.",
+     "Los goles adicionales de Ike Salazar, Arlo Brodie y un doblete de Dani Mensah aseguraron que Kingsport Rovers se marchara de Harbour Park con una victoria contundente por 5-0."
+    ],
+    "pull": "Dani Mensah tuvo una influencia +0.57 para Kingsport Rovers"
+   },
+   "hi": {
+    "headline": "Harbour Park पर Kingsport Rovers के लिए 5 गोलों की बड़ी जीत",
+    "standfirst": "Kingsport Rovers ने केवल 49% कब्जे के बावजूद संगठित फिनिश दर के साथ Ashford Vale को 5-0 से मात दी।",
+    "body": [
+     "Dani Mensah ने पहले मिनट में 0.22 xG चांस के साथ Kingsport Rovers के लिए स्कोरिंग की शुरुआत की, जो एक प्रभावशाली प्रदर्शन की शुरुआत थी।",
+     "55'वें मिनट में Callum Hale के बाहर भेजे जाने के बाद, Kingsport Rovers ने दबाव तेज़ कर दिया, अंतिम दस मिनटों में 91% खतरे का हिस्सा बनाते हुए और 9' से 19' तक के दौरान 0 गोल किए।",
+     "Ike Salazar, Arlo Brodie के अतिरिक्त गोल और Dani Mensah के दोहरे गोल ने सुनिश्चित किया कि Kingsport Rovers में एक व्यापक 5-0 जीत के साथ Harbour Park छोड़ दे।"
+    ],
+    "pull": "Dani Mensah ने Kingsport Rovers के लिए +0.57 प्रभाव डाला"
+   }
+  },
+  "model": "gpt-4.1-mini",
+  "written_at": "2026-10-25 18:35"
+ },
+ "upset": {
+  "headline": "Eastwick Albion hold on to beat Castlemere City despite late pressure",
+  "standfirst": "Eastwick Albion secured all three points at Mere Stadium despite 96% threat by Castlemere City in a full-blooded match.",
+  "body": [
+   "Bruno Amberley put Eastwick Albion ahead early on 8' from a 0.11 xG chance. Lars Varga pulled one back for Castlemere City on 55' during their dominant spell between 52'' and 62''.",
+   "The match-winning goal came from Luca Radley for Eastwick Albion on 70' with a low xG chance. Despite a red card shown to Sami Ingram on 76', Eastwick Albion held firm to complete a win with just 10 men, even as Castlemere City showed clear superiority in chances and threat.",
+   "Luca Radley was instrumental in Eastwick Albion’s victory, producing +3.96 leverage in the match."
+  ],
+  "pull": "Castlemere City held 96% of the threat in that spell",
+  "langs": {
+   "es": {
+    "headline": "Eastwick Albion se mantiene para vencer a Castlemere City a pesar de la presión final",
+    "standfirst": "Eastwick Albion aseguró los tres puntos en Mere Stadium a pesar de la amenaza de Castlemere City durante 96% en un partido muy intenso.",
+    "body": [
+     "Bruno Amberley adelantó a Eastwick Albion temprano en el minuto 8' tras una oportunidad de 0.11 xG. Lars Varga descontó para Castlemere City en el minuto 55' durante su periodo de dominio entre el 52'' y el 62''.",
+     "El gol decisivo fue de Luca Radley para Eastwick Albion en el minuto 70' con una oportunidad xG baja. A pesar de la tarjeta roja a Sami Ingram en el minuto 76', Eastwick Albion resistió para asegurar la victoria con solo 10 jugadores, mientras que Castlemere City mostró claramente superioridad en ocasiones y peligro.",
+     "Luca Radley fue fundamental en la victoria de Eastwick Albion, generando una influencia de +3.96 en el partido."
+    ],
+    "pull": "Castlemere City mantuvo 96% de la amenaza en ese periodo"
+   },
+   "hi": {
+    "headline": "देर से दबाव के बावजूद Eastwick Albion ने Castlemere City को हराया",
+    "standfirst": "Eastwick Albion ने Mere Stadium पर एक पूरी ज़िंदादिल मैच में Castlemere City की 96% चुनौती के बावजूद सभी तीन अंक हासिल किए।",
+    "body": [
+     "Bruno Amberley ने Eastwick Albion को शुरूआत में ही 8' मिनट पर 0.11 xG मौके से बढ़त दिलाई। Lars Varga ने 55' मिनट पर 52'' से 62'' के बीच अपने दबदबे के दौरान Castlemere City के लिए एक गोल वापस बनाया।",
+     "मैच जीतने वाला गोल 70' पर Eastwick Albion के Luca Radley द्वारा एक कम xG अवसर से आया। 76' पर Sami Ingram को रेड कार्ड दिखाए जाने के बावजूद, Eastwick Albion ने केवल 10 खिलाड़ियों के साथ अडिग रहकर जीत हासिल की, जबकि Castlemere City ने मौके और खतरे में स्पष्ट बढ़त दिखाई।",
+     "Luca Radley ने Eastwick Albion की जीत में अहम भूमिका निभाई, मैच में +3.96 का प्रभाव डाला।"
+    ],
+    "pull": "Castlemere City ने उस दौर में 96% खतरे को रोका"
+   }
+  },
+  "model": "gpt-4.1-mini",
+  "written_at": "2026-10-25 18:36"
+ },
+ "fightback": {
+  "headline": "Northvale Athletic rally with two late goals despite red card",
+  "standfirst": "Northvale Athletic came from 0-2 down and a red card to beat Bramley Forge 3-2 at The Pinewood.",
+  "body": [
+   "Bramley Forge started strong with Abel Eastman and Kofi Bellweather scoring in the 3' and 23' minutes respectively, giving them a 0-2 lead. Bramley Forge dominated a ten-minute spell from 22' to 32' with 92% threat share, managing to score once during this period and holding an xG advantage of 1.17 to 0.95 overall.",
+   "Northvale Athletic's Obi Zielinski was sent off in the 30' minute, reducing the team to 10 men. Despite this setback, Rafa Quaresma sparked the comeback with a 46' minute goal. The turning point came from Dario Corrigan, who scored twice after the hour mark to complete the turnaround and secure a 3-2 victory while generating an outstanding leverage rating of +8.60.",
+   "Northvale Athletic finished the match on the front foot, controlling 86% of the threat in the last ten minutes and showing remarkable resilience to overturn the deficit under adversity."
+  ],
+  "pull": "Dario Corrigan carried Northvale Athletic fightback with +8.60 leverage",
+  "langs": {
+   "es": {
+    "headline": "Northvale Athletic se recupera con dos goles tardíos a pesar de la tarjeta roja",
+    "standfirst": "Northvale Athletic remontó un marcador en contra de 0-2 y una tarjeta roja para vencer a Bramley Forge 3-2 en The Pinewood.",
+    "body": [
+     "Bramley Forge comenzó fuerte con Abel Eastman y Kofi Bellweather anotando en los minutos 3' y 23' respectivamente, dándoles una ventaja de 0-2. Bramley Forge dominó un período de diez minutos desde 22' hasta 32' con un 92% de amenaza, logrando anotar una vez durante este lapso y manteniendo una ventaja en xG de 1.17 a 0.95 en general.",
+     "Obi Zielinski de Northvale Athletic fue expulsado en el minuto 30', dejando al equipo con 10 jugadores. A pesar de esta dificultad, Rafa Quaresma inició la remontada con un gol en el minuto 46'. El punto de inflexión llegó de la mano de Dario Corrigan, quien marcó dos veces después de la hora de juego para completar la vuelta y asegurar una victoria por 3-2, generando una excepcional valoración de influencia de +8.60.",
+     "Northvale Athletic terminó el partido con el control, gestionando 86% de la amenaza en los últimos diez minutos y mostrando una resistencia notable para revertir el déficit bajo la adversidad."
+    ],
+    "pull": "Dario Corrigan lideró la remontada de Northvale Athletic con un +8.60 determinante"
+   },
+   "hi": {
+    "headline": "Northvale Athletic ने रेड कार्ड के बावजूद दो देर से गोल करके वापसी की",
+    "standfirst": "Northvale Athletic ने 0-2 की पिछड़त और रेड कार्ड के बावजूद Bramley Forge को 3-2 से हराया The Pinewood में।",
+    "body": [
+     "Bramley Forge ने मजबूत शुरुआत की जब Abel Eastman और Kofi Bellweather ने क्रमशः 3' और 23'वें मिनटों में गोल किए, जिससे उन्हें 0-2 की बढ़त मिली। Bramley Forge ने 22' से 32' तक दस मिनट के दौर में खेल पर कब्ज़ा जमाया, जिसमें 92% खतरे का हिस्सा था, इस अवधि में एक गोल किया और कुल मिलाकर 1.17 से 0.95 के मुकाबले xG बढ़त बनाए रखी।",
+     "Northvale Athletic के Obi Zielinski को 30' मिनट में लाल कार्ड दिखाया गया, जिससे टीम केवल 10 खिलाड़ी रह गई। इस झटके के बावजूद, Rafa Quaresma ने 46' मिनट में गोल करके वापसी की शुरुआत की। मैच का मोड़ Dario Corrigan ने लाया, जिन्होंने एक घंटे के बाद दो गोल किए और 3-2 से जीत सुनिश्चित की, साथ ही +8.60 की शानदार लीवरेज रेटिंग भी हासिल की।",
+     "Northvale Athletic ने मैच की समाप्ति पर दबदबा बनाए रखा, आखिरी दस मिनटों में 86% खतरों पर काबू पाया और मुसीबत के बावजूद घाटे को पलटने में असाधारण धैर्य दिखाया।"
+    ],
+    "pull": "Dario Corrigan ने Northvale Athletic की वापसी में +8.60 लीवरेज के साथ नेतृत्व किया"
+   }
+  },
+  "model": "gpt-4.1-mini",
+  "written_at": "2026-10-25 18:37"
+ },
+ "chess": {
+  "headline": "Westholt and Saltmoor Athletic battle to goalless draw",
+  "standfirst": "Westholt and Saltmoor Athletic played out a 0-0 draw in a tight contest decided by defensive shape rather than shots on goal.",
+  "body": [
+   "Westholt had the better of the chances with a total of 9 shots and an expected goals tally of 0.90, but could not break down a disciplined Saltmoor Athletic defense at The Kiln Ground.",
+   "Saltmoor Athletic, though less prolific in attack with 8 shots and an expected goals total of 0.34, found strength in the shape and resilience of Malik Ingram, who created the greatest impact with a leverage of +2.32.",
+   "Between 13'' and 23'', Westholt controlled 95% of the threat in a period of sustained pressure but neither side could find a breakthrough, finishing with a goalless draw."
+  ],
+  "pull": "95% of the threat in ten minutes for Westholt",
+  "langs": {
+   "es": {
+    "headline": "Westholt y Saltmoor Athletic luchan y terminan sin goles",
+    "standfirst": "Westholt y Saltmoor Athletic empataron 0-0 en un duelo cerrado decidido más por la organización defensiva que por los tiros a puerta.",
+    "body": [
+     "Westholt tuvo las mejores oportunidades con un total de 9 tiros y una expectativa de goles de 0.90, pero no pudo romper la defensa disciplinada de Saltmoor Athletic en The Kiln Ground.",
+     "Saltmoor Athletic, aunque menos prolífico en ataque con 8 disparos y un total de goles esperados de 0.34, encontró fortaleza en la forma y resistencia de Malik Ingram, quien tuvo el mayor impacto con un apalancamiento de +2.32.",
+     "Entre 13' y 23', Westholt dominó 95% de la amenaza en un periodo de presión constante, pero ningún equipo logró abrir el marcador, terminando en un empate sin goles."
+    ],
+    "pull": "95% de la amenaza en diez minutos para Westholt"
+   },
+   "hi": {
+    "headline": "Westholt और Saltmoor Athletic बिना गोल के ड्रॉ के लिए संघर्ष कर रहे हैं",
+    "standfirst": "Westholt और Saltmoor Athletic ने एक कड़े मुकाबले में 0-0 मैच ड्रॉ खेला, जो गोल की कोशिशों के बजाय रक्षा की संरचना द्वारा तय हुआ।",
+    "body": [
+     "Westholt के पास कुल 9 शॉट्स और 0.90 की अपेक्षित गोल संख्या के साथ बेहतर मौके थे, लेकिन The Kiln Ground में एक अनुशासित Saltmoor Athletic रक्षा को तोड़ नहीं सके।",
+     "Saltmoor Athletic, हालांकि 8 शॉट्स और 0.34 की अपेक्षित गोल संख्या के साथ हमला कम प्रभावशाली रहा, ने Malik Ingram के स्वरूप और सहनशीलता में ताकत पाई, जिन्होंने +2.32 के लाभ के साथ सबसे बड़ा प्रभाव बनाया।",
+     "13' से 23' तक, Westholt ने लगातार दबाव के दौरान 95% खतरे का नियंत्रण रखा, लेकिन दोनों टीमों को कोई सफलता नहीं मिली और मैच बिना गोल के समाप्त हुआ।"
+    ],
+    "pull": "Westholt के लिए दस मिनट में खतरे का 95%"
+   }
+  },
+  "model": "gpt-4.1-mini",
+  "written_at": "2026-10-25 18:37"
+ },
+ "derby": {
+  "headline": "Thornwick Wanderers snatch draw after Redmarsh United double lead",
+  "standfirst": "Redmarsh United led 2-0 with goals from Anton Sandoval before Thornwick Wanderers staged a comeback to draw 2-2 at Fenside.",
+  "body": [
+   "Anton Sandoval put Redmarsh United ahead on 44' with a 0.22 xG chance and doubled the lead at 55' with a 0.53 xG finish. Thornwick Wanderers fought back quickly with Santi Navarro scoring on 57' from a 0.10 xG chance and Zane Oduya equalising on 70' with a 0.12 xG shot. Despite the intensity, the game ended in a 2-2 draw.",
+   "The match featured early drama with a red card for Rio Jovanic of Thornwick Wanderers on 15' and a second red for Ivo Okoro of Redmarsh United on 46', leaving both teams to battle with ten men. Thornwick Wanderers dominated the opening spell holding 94% of threat in the first ten minutes and a 63% share of threat in the last ten, outshooting Redmarsh United with 15 shots to 6 despite only 45% possession.",
+   "Anton Sandoval was the standout player, earning a leverage score of +3.73 with match-defining first two goals. The comeback by Thornwick Wanderers underscored resilience after going two down, turning around the contest to secure a draw that reflected balanced chance quality of 1.15 xG for Redmarsh United and 1.38 xG for Thornwick Wanderers."
+  ],
+  "pull": "Anton Sandoval changed the tone with two key goals",
+  "langs": {
+   "es": {
+    "headline": "Thornwick Wanderers remonta para empatar tras una ventaja doble de Redmarsh United",
+    "standfirst": "Redmarsh United dominaba 2-0 con los goles de Anton Sandoval antes de que Thornwick Wanderers lograra una remontada para empatar 2-2 en Fenside.",
+    "body": [
+     "Anton Sandoval adelantó a Redmarsh United en el minuto 44' con una oportunidad de 0.22 xG y duplicó la ventaja en el minuto 55' con una finalización de 0.53 xG. Thornwick Wanderers reaccionó rápidamente con Santi Navarro anotando en el minuto 57' tras una ocasión de 0.10 xG y Zane Oduya igualando en el minuto 70' con un disparo de 0.12 xG. A pesar de la intensidad, el partido terminó en un empate 2-2.",
+     "El partido tuvo drama temprano con una tarjeta roja para Rio Jovanic de Thornwick Wanderers en el minuto 15' y una segunda roja para Ivo Okoro de Redmarsh United en el minuto 46', dejando a ambos equipos con diez jugadores. Thornwick Wanderers dominó el inicio controlando 94% del peligro en los primeros diez minutos y 63% del peligro en los últimos diez, superando en tiros a Redmarsh United con 15 disparos contra 6 a pesar de solo tener 45% de posesión.",
+     "Anton Sandoval fue el jugador destacado, logrando una puntuación de influencia de +3.73 con los dos primeros goles que definieron el partido. La remontada de Thornwick Wanderers destacó la resiliencia tras ir dos goles abajo, dando vuelta al encuentro para asegurar un empate que reflejó una calidad de oportunidad balanceada de 1.15 xG para Redmarsh United y 1.38 xG para Thornwick Wanderers."
+    ],
+    "pull": "Anton Sandoval cambió el ritmo con dos goles clave"
+   },
+   "hi": {
+    "headline": "Thornwick Wanderers ने Redmarsh United की दोहरी बढ़त के बाद ड्रा बचाया",
+    "standfirst": "Redmarsh United ने Anton Sandoval के गोल से 2-0 की बढ़त बनाई, लेकिन Thornwick Wanderers ने वापसी करते हुए Fenside पर मैच को 2-2 से ड्रॉ करा लिया।",
+    "body": [
+     "Anton Sandoval ने 44' मिनट पर 0.22 xG मौके का फायदा उठाकर Redmarsh United को बढ़त दिलाई और 55' मिनट पर 0.53 xG फिनिश से बढ़त दोगुनी कर दी। Thornwick Wanderers ने जल्दी वापसी की, Santi Navarro ने 57' मिनट पर 0.10 xG मौके से गोल किया और Zane Oduya ने 70' मिनट पर 0.12 xG शॉट से बराबरी की। तीव्रता के बावजूद, मैच 2-2 ड्रॉ पर समाप्त हुआ।",
+     "मैच की शुरुआत में ही 15' मिनट पर Thornwick Wanderers के Rio Jovanic को रेड कार्ड मिला और 46' मिनट पर Redmarsh United के Ivo Okoro को दूसरा रेड कार्ड, जिससे दोनों टीमों को दस- दस खिलाड़ी के साथ खेलने पर मजबूर होना पड़ा। पहले दस मिनट में Thornwick Wanderers ने 94% खतरे के साथ दबदबा बनाया और अंतिम दस मिनट में 63% खतरे के साथ, Redmarsh United की तुलना में 15 शॉट्स से 6 शॉट्स पर अधिक किया, जबकि कब्जा केवल 45% था।",
+     "Anton Sandoval सर्वश्रेष्ठ खिलाड़ी थे, जिन्होंने मैच के पहले दो गोल करके +3.73 का लीवरेज स्कोर कमाया। Thornwick Wanderers की वापसी ने दो गोल से पीछे रहने के बाद टीम की मजबूती दिखाई, जिससे मुकाबला पलट गया और Redmarsh United के 1.15 xG और Thornwick Wanderers के 1.38 xG के संतुलित मौके की गुणवत्ता के साथ ड्रॉ सुरक्षित हुआ।"
+    ],
+    "pull": "Anton Sandoval ने दो महत्वपूर्ण गोल करके खेल का रुख बदल दिया"
+   }
+  },
+  "model": "gpt-4.1-mini",
+  "written_at": "2026-10-25 18:41"
+ }
+}
