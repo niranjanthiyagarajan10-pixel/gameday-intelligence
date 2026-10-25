@@ -17,8 +17,9 @@ from pathlib import Path
 from typing import Any
 
 from agents.desk import CardDesk, TraceStep, name_list
+from agents.workflow import card_workflow, run_card
 from agents.llm import LLM
-from agents import analyst, commentator, newsdesk, personalizer, postgame, preview, recap, summarizer
+from agents import analyst, commentator, deep, newsdesk, personalizer, postgame, preview, recap, summarizer
 from agents.personalizer import LANGS
 from app import matchday
 from app.blueprint import build_blueprint
@@ -138,6 +139,7 @@ class MatchRoom:
         self.names = {pid: p["name"] for pid, p in self.roster["players"].items()}
         self.teams = {side: club["name"] for side, club in self.roster["clubs"].items()}
         self.desk = CardDesk(self.llm, self.names, self.teams, meta.match_id)
+        self.workflow = card_workflow(self.desk)
         self.trace: deque[dict[str, Any]] = deque(maxlen=TRACE_MAX)
         self._to_narrate: deque[dict[str, Any]] = deque()
         self.event_log: dict[str, dict[str, Any]] = {}
@@ -148,6 +150,10 @@ class MatchRoom:
         self._preview: dict[str, Any] | None = None
         self._postgame: dict[str, Any] | None = None
         self._brief: dict[str, Any] | None = None
+        self.deep_cards: list[dict[str, Any]] = []
+        self._next_deep = deep.EVERY_MINUTES
+        self._last_deep = -99
+        self._deep_event = False
         self._story_lock = asyncio.Lock()
         self._recap_lock = asyncio.Lock()
         self.cards: list[dict[str, Any]] = []
@@ -179,6 +185,7 @@ class MatchRoom:
             "frame": self.last_frame,
             "history": self.history,
             "cards": self.cards,
+            "deep": self.deep_cards,
             "analyst": analyst_message(self.live),
             "trace": list(self.trace)[-150:],
             "agents": self.agent_info(),
@@ -531,6 +538,8 @@ class MatchRoom:
         frame = None
         for item in self.feed.step():
             for moment in self.live.push(item):
+                if moment.kind in ("goal", "low_xg_goal", "red_card"):
+                    self._deep_event = True
                 card = card_message(moment, self.names, self.teams, self.feed.meta.match_id)
                 self.cards.append(card)
                 produced.append(card)
@@ -605,7 +614,15 @@ class MatchRoom:
                                      "backlog at high speed, template kept", float(m["state_ref"].rsplit("@", 1)[1]))])
             card = self._to_narrate.popleft()
             moment = Moment.model_validate(card["moment"])
-            written = await asyncio.gather(*(self.desk.write(moment, aud) for aud in ("casual", "analyst")))
+            # The card desk is an Agent Framework workflow: two Narrators in parallel, the Verifier
+            # inside each, then the Personalizer. See agents/workflow.py.
+            try:
+                done = await run_card(self.workflow, moment, self.llm.live)
+            except Exception as e:  # the card keeps its verified template; the live match never stops
+                self._log([TraceStep(moment.moment_id, "both", "Desk", "workflow", "error", 0,
+                                     f"{type(e).__name__}: {e}"[:200], moment_time_of(moment))])
+                continue
+            written = done.written
             for w in written:
                 self._log(w.steps)
             if not any(c is card for c in self.cards):  # the match restarted while the Narrator worked
@@ -618,12 +635,8 @@ class MatchRoom:
                     changed = True
             if changed:
                 card["source"] = "narrator"
-            if self.llm.live:  # the Personalizer writes the settled English cues in Spanish and Hindi
-                t = float(moment.state_ref.rsplit("@", 1)[1])
-                cues = [OverlayEvent.model_validate({k: v for k, v in card["cues"][aud].items() if k != "text"})
-                        for aud in ("casual", "analyst")]
-                translated = await asyncio.gather(*(self.desk.translate(c, lang, t) for lang in LANGS for c in cues))
-                for w in translated:
+            if done.translated:  # the Personalizer wrote the settled English cues in Spanish and Hindi
+                for w in done.translated:
                     self._log(w.steps)
                     if w.source == "personalizer":
                         card["langs"].setdefault(w.cue.lang, {})[w.cue.audience] = {
@@ -635,10 +648,37 @@ class MatchRoom:
 
     async def run(self) -> None:
         narrating = asyncio.create_task(self._narrate_worker())
+        analysing = asyncio.create_task(self._deep_worker())
         try:
             await self._run()
         finally:
             narrating.cancel()
+            analysing.cancel()
+
+    async def _deep_worker(self) -> None:
+        """The In-depth Analyst: a card every fifteen minutes, and soon after a goal or a red card."""
+        while True:
+            await asyncio.sleep(0.5)
+            minute = int(self.live.t // 60)
+            due = minute >= self._next_deep or (self._deep_event and minute - self._last_deep >= deep.AFTER_EVENT_GAP_MINUTES)
+            if not due or minute < 10 or self.status != "live":
+                continue
+            self._deep_event = False
+            self._last_deep = minute
+            self._next_deep = (minute // deep.EVERY_MINUTES + 1) * deep.EVERY_MINUTES
+            await self.write_deep()
+
+    async def write_deep(self) -> dict[str, Any]:
+        derby = matchday.PROFILES[self.config.home].rival == self.config.away
+        pack = matchday.deep_facts(self.live, self.names, self.teams, derby)
+        filled, source, langs = await self._write_story("deep", "Deep Analyst", deep, pack["facts"], pack["truths"],
+                                                        deep.prompt(pack["facts"]))
+        card = {"type": "deep", "id": f"deep-{pack['minute']}-{len(self.deep_cards)}", "minute": pack["minute"],
+                "window": [pack["facts"]["window_start"], pack["facts"]["window_end"]], **filled, "source": source,
+                "langs": langs, "chart": pack["chart"]}
+        self.deep_cards.append(card)
+        self.publish(card)
+        return card
 
     async def _run(self) -> None:
         if self.config.start_minute > 0:

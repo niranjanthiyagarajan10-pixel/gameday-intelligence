@@ -1,10 +1,10 @@
 {
  "planted": {
   "moments": 132,
-  "planted": 5119,
-  "caught": 5119,
-  "clean": 556,
-  "clean_passed": 556,
+  "planted": 5130,
+  "caught": 5130,
+  "clean": 557,
+  "clean_passed": 557,
   "rows": [
    {
     "check": "Analyst: em dash",
@@ -60,6 +60,56 @@
     "check": "Analyst: write tool not allowed",
     "planted": 9,
     "caught": 9
+   },
+   {
+    "check": "In-depth Analyst: claim the facts do not support",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: em dash",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: gendered pronoun",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: possessive",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: shape or swing the facts do not show",
+    "planted": 2,
+    "caught": 2
+   },
+   {
+    "check": "In-depth Analyst: types a name",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: types a number",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: unit after a fact",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: unknown fact",
+    "planted": 1,
+    "caught": 1
+   },
+   {
+    "check": "In-depth Analyst: unsupported detail",
+    "planted": 1,
+    "caught": 1
    },
    {
     "check": "Narrator and Commentator: double unit",
@@ -353,7 +403,7 @@
    }
   ],
   "misses": [],
-  "at": "2026-10-25 16:54"
+  "at": "2026-10-25 17:24"
  },
  "analyst": {
   "room": "38071a79",

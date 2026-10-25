@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { AgentInfo, Analyst, Card, Cue, Frame, FxEvent, MatchState, Roster, Stats, Status, TraceStep } from "./types";
+import type { AgentInfo, Analyst, Card, Cue, DeepCard, Frame, FxEvent, MatchState, Roster, Stats, Status, TraceStep } from "./types";
 
 type Message =
   | {
@@ -14,6 +14,7 @@ type Message =
       frame: (Frame & { type: string }) | null;
       history: number[][];
       cards: Card[];
+      deep?: DeepCard[];
       analyst: Analyst;
       trace?: TraceStep[];
       agents?: AgentInfo;
@@ -21,6 +22,7 @@ type Message =
   | (Frame & { type: "frame" })
   | (Stats & { type: "stats" })
   | (Card & { type: "card" })
+  | (DeepCard & { type: "deep" })
   | (Analyst & { type: "analyst" })
   | { type: "events"; events: Omit<FxEvent, "at">[]; at: number }
   | { type: "trace"; steps: TraceStep[] }
@@ -47,6 +49,7 @@ const initial: MatchState = {
   stats: null,
   history: [],
   cards: [],
+  deep: [],
   analyst: null,
   fx: [],
   trace: [],
@@ -70,6 +73,7 @@ function reducer(state: MatchState, msg: Action): MatchState {
         stats: msg.stats,
         history: msg.history,
         cards: msg.cards,
+        deep: msg.deep ?? [],
         analyst: msg.analyst,
         fx: [],
         trace: msg.trace ?? [],
@@ -92,6 +96,9 @@ function reducer(state: MatchState, msg: Action): MatchState {
       return { ...state, cards: [...state.cards, msg] };
     case "analyst":
       return { ...state, analyst: msg };
+    case "deep":
+      if (state.deep.some((d) => d.id === msg.id)) return state;
+      return { ...state, deep: [...state.deep, msg] };
     case "trace":
       return { ...state, trace: [...state.trace, ...msg.steps].slice(-TRACE_KEEP) };
     case "card_update":

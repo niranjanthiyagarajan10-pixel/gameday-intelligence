@@ -139,6 +139,19 @@ Built with Microsoft Agent Framework on Microsoft Foundry, through one wrapper (
 - **Preview** (`agents/preview.py`) writes the story before kickoff on the Preview tab: table positions, form, how the styles meet, the head to head and the pre-match forecast from the fitted team ratings (`engine/forecast.py`). Code picks the facts and the players to watch (`app/matchday.py`); the agent writes a headline and story over them as templates. Wording such as "unbeaten", "derby" or "favourites" passes only when the facts support it.
 - **Post-game** (`agents/postgame.py`) fills "After the match" on the Blueprint. What decided it is code: the three key moments that moved the win probability most, each with its verified line. The agent writes what each club should watch next time, over the next fixture and its forecast, finishing against xG and the styles.
 - **Analyst** (`agents/analyst.py`) answers "Ask the match" questions. It explores the match through our MCP server (Agent Framework's `MCPStreamableHTTPTool`), then answers with slots that each name a tool, its arguments and the field to read; code re-runs those calls and fills the answer, and shows them as evidence. If the data cannot answer, it says so.
+- **In-depth Analyst** (`agents/deep.py`) writes an analyst read every fifteen minutes and soon after a goal or red card: the last fifteen minutes against the fifteen before (share of the threat, chances, shots), each team's defensive shape (block, line height, compactness, pressers) and the player with the most gravity, with a five-minute threat chart. It gets only the facts for that card, because in live runs the model pinned unrelated numbers on the wrong player when more were on offer.
+- **Card desk workflow** (`agents/workflow.py`) is a Microsoft Agent Framework workflow: Dispatch fans each key moment out to two Narrator executors running in parallel (casual and analyst, each with the Verifier and its retries inside), Settle fans them back in, and the Personalizer writes Spanish and Hindi.
+
+```mermaid
+flowchart LR
+  M[Key moment] --> D[Dispatch]
+  D --> NC[Narrator casual] --> V1{Verifier} -->|pass or template| S[Settle]
+  D --> NA[Narrator analyst] --> V2{Verifier} -->|pass or template| S
+  V1 -->|reject, up to 2 retries| NC
+  V2 -->|reject, up to 2 retries| NA
+  S --> P[Personalizer es, hi] --> C[Card on screen]
+```
+- **Tracing** (`agents/tracing.py`): Agent Framework's OpenTelemetry spans for every workflow run, executor and model call (model, tokens in and out, duration) are collected in the app and shown under Trace, Workflow spans (`GET /api/spans`). Set `OTEL_EXPORTER_OTLP_ENDPOINT` to send them to any OTLP backend too. Prompts and replies are never recorded.
 - **Card desk** (`agents/desk.py`) runs that loop. Cards go out instantly as templates and are swapped for the Narrator's verified text when it lands, so live play never waits.
 - **Trace panel**: the Trace button shows every agent step live, with timings, rejections and fallbacks. `GET /api/rooms/{room}/trace` returns the same.
 - **MCP server** (`mcp_server/`) at `/mcp`: fifteen read-only tools over the live match and the league (`get_match_state`, `get_player_live`, `compare_windows`, `get_league_table`, `get_head_to_head`, `get_fixture_forecast`, `verify_claims` and more) for the agents and for GitHub Copilot Agent Mode (`.vscode/mcp.json`).

@@ -19,6 +19,7 @@ dependencies = [
     "azure-identity>=1.26",
     "mcp>=2.2,<3",
     "tenacity>=9.1.4,<9.2",  # Agent Framework's MCP client reconnects with it
+    "opentelemetry-sdk>=1.45,<2",  # collects Agent Framework spans for the trace panel
 ]
 
 [project.optional-dependencies]

@@ -442,6 +442,19 @@ def _story_plants() -> list[tuple[tuple[str, str], bool, str]]:
         for category, bad in _story_mutations(line, facts, truths, postgame.IMPLIED):
             lines = [bad if x == line else x for x in trusted["look_ahead"]]
             out.append((("Post-game", category), bool(postgame.check({"look_ahead": lines}, facts, room.desk.forbidden, truths)), bad))
+    from agents import deep
+
+    room.fast_forward(2000.0)  # past the half hour, so the deep card has a window to compare with
+    pack = matchday.deep_facts(room.live, room.names, room.teams)
+    facts, truths = pack["facts"], pack["truths"]
+    card = deep.fallback(facts, truths)
+    out.append((("In-depth Analyst", "clean card passes"), not deep.check(card, facts, room.desk.forbidden, truths), card["text"]))
+    for category, bad in _story_mutations(card["text"], facts, truths, deep.IMPLIED):
+        out.append((("In-depth Analyst", category), bool(deep.check({**card, "text": bad}, facts, room.desk.forbidden, truths)), bad))
+    for phrase in ("{home} press high.", "{away} sit deep in a low block.", "{home} have turned the tide."):
+        if any(re.search(p, phrase.lower()) and not test(truths) for p, _, test in deep.IMPLIED):
+            out.append((("In-depth Analyst", "shape or swing the facts do not show"),
+                        bool(deep.check({**card, "text": card["text"] + " " + phrase}, facts, room.desk.forbidden, truths)), phrase))
     return out
 
 

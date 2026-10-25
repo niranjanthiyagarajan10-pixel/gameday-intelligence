@@ -12,6 +12,7 @@ import { League } from "./components/League";
 import { Evals } from "./components/Evals";
 import { Preview } from "./components/Preview";
 import { Newsdesk } from "./components/Newsdesk";
+import { DeepCards } from "./components/DeepCard";
 import { TracePanel } from "./components/TracePanel";
 import { Favourites } from "./components/Favourites";
 import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./prefs";
@@ -298,6 +299,7 @@ export default function App() {
         <Live state={state} depth={depth} focus={focus || null} prefs={prefs} update={updatePrefs} />
       </main>
       <main className={route.page === "match" && tab === "analyst" ? "" : "hidden"}>
+        <DeepCards cards={state.deep} roster={roster} lang={prefs.lang} />
         {analyst && <Analyst analyst={analyst} roster={roster} halfS={state.halfS} now={stats.t} />}
       </main>
     </div>

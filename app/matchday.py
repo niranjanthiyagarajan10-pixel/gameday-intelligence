@@ -244,3 +244,67 @@ def match_facts(live: Any, names: dict[str, str], teams: dict[str, str], finishe
                       "top_player": facts.get("top_player"), "top_player_leverage": facts.get("top_player_leverage"),
                       "spell": None if not spell else {"team": spell.team, "start": spell.start, "end": spell.end,
                                                        "share": round(spell.share, 3)}}}
+
+
+# The In-depth Analyst: the last fifteen minutes against the fifteen before, and why
+
+
+def _window(live: Any, k: int, start: int, end: int) -> dict[str, float] | None:
+    rows = live.by_minute[max(start, 0):end]
+    total = sum(b.xt[0] + b.xt[1] for b in rows)
+    if not rows:
+        return None
+    return {"share": (sum(b.xt[k] for b in rows) / total) if total > 0 else 0.5,
+            "xg": sum(b.xg[k] for b in rows), "shots": sum(b.shots[k] for b in rows)}
+
+
+def deep_facts(live: Any, names: dict[str, str], teams: dict[str, str], derby: bool = False) -> dict[str, Any]:
+    """Facts for an in-depth card: threat, chances and shots in the last fifteen minutes and the fifteen
+    before, each team's defensive shape now, and the player pulling defenders around."""
+    from agents.fallback import SHAPES
+    from app.blueprint import MIN_GRAVITY_FRAMES
+
+    base = match_facts(live, names, teams, False, derby)
+    # Only what this card is about. Numbers about other things (the leverage leader, the best spell, each
+    # goal) were borrowed by the model and pinned on the wrong player or the wrong measure in live runs.
+    facts = {k: v for k, v in base["facts"].items()
+             if not k.startswith(("top_player", "spell_", "goal_", "last10_", "red_"))}
+    truths = dict(base["truths"])
+    minute = int(live.t // 60)
+    start = max(minute - 15, 0)
+    facts |= {"window_start": f"{start}'", "window_end": f"{minute}'"}
+    rising = None
+    for k, side in enumerate(("home", "away")):
+        now = _window(live, k, start, minute)
+        before = _window(live, k, start - 15, start) if start >= 15 else None
+        if now:
+            facts |= {f"{side}_threat_now": pct(now["share"]), f"{side}_xg_now": f"{now['xg']:.2f}",
+                      f"{side}_shots_now": str(now["shots"])}
+            truths[f"{side}_share_now"] = now["share"]
+        if before:
+            facts[f"{side}_threat_before"] = pct(before["share"])
+            if now and now["share"] - before["share"] >= 0.15:
+                rising = side
+        tracker = live.shape.teams[side]
+        w = live.shape.window(side)
+        if tracker.state and w:
+            facts |= {f"{side}_shape": SHAPES.get(tracker.state, tracker.state), f"{side}_line": f"{w[0]:.0f} m",
+                      f"{side}_compactness": f"{w[1]:.0f} sq m", f"{side}_pressers": f"{w[2]:.1f}"}
+        truths[f"{side}_shape"] = tracker.state
+    truths["rising"] = rising
+    truths["dominant"] = any(truths.get(f"{s}_share_now", 0) >= 0.6 for s in ("home", "away"))
+    best = None
+    for pid, row in live.gravity.rows.items():
+        if row.total_frames >= MIN_GRAVITY_FRAMES and row.overall is not None and (best is None or row.overall > best[1]):
+            best = (pid, row.overall)
+    if best:
+        side = live.gravity.teams.get(best[0])
+        facts |= {"gravity_player": names.get(best[0], best[0]), "gravity_value": f"{best[1]:+.1f}",
+                  "gravity_team": teams.get(side, "") if side else ""}
+    # Threat share in five-minute buckets over the last half hour, for the card's chart.
+    chart = []
+    for b0 in range(max(minute - 30, 0) // 5 * 5, minute, 5):
+        rows = live.by_minute[b0:min(b0 + 5, minute)]
+        total = sum(r.xt[0] + r.xt[1] for r in rows)
+        chart.append({"start": b0, "home": round(sum(r.xt[0] for r in rows) / total, 3) if total > 0 else 0.5})
+    return {"facts": facts, "truths": truths, "chart": chart, "minute": minute}

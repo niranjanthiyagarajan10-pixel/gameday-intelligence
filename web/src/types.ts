@@ -351,8 +351,21 @@ export interface MatchState {
   stats: Stats | null;
   history: number[][]; // [t, home, draw, away]
   cards: Card[];
+  deep: DeepCard[];
   analyst: Analyst | null;
   fx: FxEvent[];
   trace: TraceStep[];
   agents: AgentInfo | null;
+}
+
+/** The In-depth Analyst's card: every fifteen minutes and after big moments. */
+export interface DeepCard {
+  id: string;
+  minute: number;
+  window: [string, string];
+  headline: string;
+  text: string;
+  source: "agent" | "template";
+  langs: Record<string, { headline: string; text: string }>;
+  chart: { start: number; home: number }[];
 }

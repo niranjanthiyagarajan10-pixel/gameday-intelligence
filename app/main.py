@@ -22,6 +22,7 @@ load_env()  # before anything reads FOUNDRY_PROJECT_ENDPOINT or the model names
 
 from app.league import league_payload, scenarios_payload  # noqa: E402
 from app.room import SPEEDS, Hub, MatchRoom, RoomConfig  # noqa: E402
+from agents import tracing  # noqa: E402
 from engine.league import build_league  # noqa: E402
 from mcp_server.server import create_mcp, http_app  # noqa: E402
 
@@ -52,6 +53,7 @@ class Control(BaseModel):
 
 
 def create_app(default: RoomConfig | None = None) -> FastAPI:
+    tracing.setup()  # OpenTelemetry spans from Agent Framework, when the SDK is installed
     hub = Hub(build_league(), default or RoomConfig.from_env())
     mcp = create_mcp(hub)
     mcp_app = http_app(mcp)  # creates the session manager the lifespan runs
@@ -82,6 +84,11 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
     async def league() -> dict[str, Any]:
         """Clubs, table, results, scorers and the live matchday, all from the simulated season."""
         return league_payload(hub.league)
+
+    @app.get("/api/spans")
+    async def spans(limit: int = Query(200, ge=1, le=600)) -> dict[str, Any]:
+        """Agent Framework's OpenTelemetry spans: workflow runs, executors and model calls."""
+        return tracing.recent(limit)
 
     @app.get("/api/evals")
     async def evals() -> dict[str, Any]:
