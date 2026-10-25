@@ -11,6 +11,7 @@ import { Blueprint } from "./components/Blueprint";
 import { League } from "./components/League";
 import { Evals } from "./components/Evals";
 import { Preview } from "./components/Preview";
+import { Newsdesk } from "./components/Newsdesk";
 import { TracePanel } from "./components/TracePanel";
 import { Favourites } from "./components/Favourites";
 import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./prefs";
@@ -210,6 +211,9 @@ export default function App() {
           <button className={`tab ${route.page === "blueprint" ? "on" : ""}`} onClick={() => (location.hash = "#/blueprint")}>
             Blueprint
           </button>
+          <button className={`tab ${route.page === "news" ? "on" : ""}`} onClick={() => (location.hash = "#/news")}>
+            Newsdesk
+          </button>
           <button className={`tab ${route.page === "league" ? "on" : ""}`} onClick={() => (location.hash = "#/league")}>
             League
           </button>
@@ -280,13 +284,14 @@ export default function App() {
         </div>
       </header>
 
-      {!["blueprint", "league", "evals", "preview"].includes(route.page) && <Scoreboard state={state} />}
+      {!["blueprint", "league", "evals", "preview", "news"].includes(route.page) && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "league" && <League onWatch={watch} />}
       {route.page === "evals" && <Evals />}
       {route.page === "preview" && <Preview room={room} lang={prefs.lang} />}
+      {route.page === "news" && <Newsdesk lang={prefs.lang} />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
       {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>

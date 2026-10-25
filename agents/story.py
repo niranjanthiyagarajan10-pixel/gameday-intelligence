@@ -85,3 +85,25 @@ def check(parts: dict[str, Any], facts: dict[str, str], names: Iterable[str], tr
                 if len(filled) > limits.get(label, 600):
                     reasons.append(f"{where}: too long, keep it under {limits.get(label, 600)} characters")
     return reasons
+
+
+# Wording about one match that is a claim, and the truth that must back it (see app/matchday.match_facts).
+MATCH_IMPLIED: Implied = [
+    (r"\bwon\b|\bwins\b|\bbeat\b|\bbeats\b|\bvictory\b|\bdefeat(ed)?\b|\blost\b|\bloses\b", "the match has a winner",
+     lambda t: bool(t["finished"] and t["leader"])),
+    (r"\bdraw(n|s)?\b|\bdrew\b|all square|\blevel\b|\bstalemate\b|share the points", "the scores are level",
+     lambda t: t["score"][0] == t["score"][1]),
+    (r"\blead(s|ing)?\b|\bahead\b|\bin front\b", "a side is ahead", lambda t: bool(t["leader"])),
+    (r"comeback|fight(s|ing)? back|fought back|came from behind|from behind|turn(ed|s)? it around",
+     "a side came from behind", lambda t: bool(t["comeback"])),
+    (r"late winner|last[- ]gasp|dying minutes|stoppage", "a late winner", lambda t: bool(t["late_winner"])),
+    (r"hat[- ]trick", "a hat-trick", lambda t: bool(t["hat_trick"])),
+    (r"red card|sent off|ten men|down to ten|man down|ten-man", "a red card", lambda t: t["reds"] > 0),
+    (r"clean sheet|shut ?out|\bnil\b", "a side did not score", lambda t: bool(t["clean_sheet"])),
+    (r"dominat|on top|\bsiege\b|camped", "a side dominated", lambda t: bool(t["dominant"])),
+    (r"\bupset\b|\bshock\b|giant[- ]kill", "the underdog won", lambda t: bool(t["upset"])),
+    (r"\bderby\b|\brivals?\b|rivalry", "it is a derby", lambda t: bool(t["derby"])),
+]
+MATCH_BANNED = [r"injur", r"manager", r"\bcoach", r"crowd", r"\bfans\b", r"weather", r"transfer", r"penalt",
+                r"\bhead(s|er|ers|ed)?\b", r"free[- ]kick", r"corner", r"volley", r"assist", r"\bseason\b", r"troph",
+                r"relegat", r"\btitle\b", r"\brecords?\b", r"\bbrace\b", r"career", r"\bvar\b", r"offside"]

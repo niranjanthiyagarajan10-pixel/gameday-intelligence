@@ -8,6 +8,7 @@ import { useState } from "react";
 import { WinProbability } from "./WinProbability";
 import { MomentCard } from "./MomentCard";
 import { Commentator } from "./Commentator";
+import { CatchMeUp } from "./CatchMeUp";
 import { signed } from "../format";
 import { playerHref } from "../route";
 
@@ -205,6 +206,7 @@ export function Live({ state, depth, focus, prefs, update }: Props) {
             </div>
           </div>
         )}
+        <CatchMeUp room={state.room} roster={roster} lang={prefs.lang} />
         <Commentator room={state.room} cards={state.cards} roster={roster} prefs={prefs} update={update} />
         <div className="panel">
           <div className="ph">

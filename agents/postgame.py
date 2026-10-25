@@ -58,7 +58,7 @@ def check(parts: dict[str, Any], facts: dict[str, str], names: list[str] | set[s
     return reasons
 
 
-def fallback(facts: dict[str, str]) -> dict[str, list[str]]:
+def fallback(facts: dict[str, str], truths: dict[str, Any] | None = None) -> dict[str, list[str]]:
     lines = []
     for side in ("home", "away"):
         if f"{side}_next_opponent" in facts:

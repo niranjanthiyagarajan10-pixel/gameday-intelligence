@@ -1,0 +1,697 @@
+{
+ "matchday": 9,
+ "matches": [
+  {
+   "scenario": "demo",
+   "title": "Ten men at Harbour Park",
+   "hint": "Ashford lose Callum Hale to a red card and spend the rest of the match under siege.",
+   "home": "KR",
+   "away": "AV",
+   "forecast": [
+    0.802,
+    0.13,
+    0.068
+   ],
+   "facts": {
+    "home": "Kingsport Rovers",
+    "away": "Ashford Vale",
+    "score": "5-0",
+    "home_goals": "5",
+    "away_goals": "0",
+    "minute": "89'",
+    "home_xg": "3.39",
+    "away_xg": "0.65",
+    "home_possession": "49%",
+    "away_possession": "51%",
+    "home_win": "100%",
+    "draw": "0%",
+    "away_win": "0%",
+    "home_shots": "24",
+    "away_shots": "3",
+    "leader": "Kingsport Rovers",
+    "trailer": "Ashford Vale",
+    "goal_1_player": "Dani Mensah",
+    "goal_1_minute": "1'",
+    "goal_1_team": "Kingsport Rovers",
+    "goal_1_xg": "0.22",
+    "goal_1_score": "1-0",
+    "goal_2_player": "Ike Salazar",
+    "goal_2_minute": "31'",
+    "goal_2_team": "Kingsport Rovers",
+    "goal_2_xg": "0.53",
+    "goal_2_score": "2-0",
+    "goal_3_player": "Dani Mensah",
+    "goal_3_minute": "57'",
+    "goal_3_team": "Kingsport Rovers",
+    "goal_3_xg": "0.46",
+    "goal_3_score": "3-0",
+    "goal_4_player": "Arlo Brodie",
+    "goal_4_minute": "58'",
+    "goal_4_team": "Kingsport Rovers",
+    "goal_4_xg": "0.04",
+    "goal_4_score": "4-0",
+    "goal_5_player": "Dani Mensah",
+    "goal_5_minute": "65'",
+    "goal_5_team": "Kingsport Rovers",
+    "goal_5_xg": "0.10",
+    "goal_5_score": "5-0",
+    "red_1_player": "Callum Hale",
+    "red_1_team": "Ashford Vale",
+    "home_men": "11",
+    "away_men": "10",
+    "top_player": "Dani Mensah",
+    "top_player_team": "Kingsport Rovers",
+    "top_player_leverage": "+0.57",
+    "last10_team": "Kingsport Rovers",
+    "last10_share": "91%",
+    "spell_team": "Kingsport Rovers",
+    "spell_start": "9'",
+    "spell_end": "19'",
+    "spell_share": "93%",
+    "spell_goals": "0",
+    "ground": "Harbour Park"
+   },
+   "truths": {
+    "finished": true,
+    "score": [
+     5,
+     0
+    ],
+    "leader": "home",
+    "derby": false,
+    "reds": 1,
+    "men": [
+     11,
+     10
+    ],
+    "comeback": false,
+    "late_winner": false,
+    "hat_trick": true,
+    "clean_sheet": true,
+    "dominant": true,
+    "upset": false
+   },
+   "goals": [
+    {
+     "minute": 1,
+     "team": "home",
+     "player": "Dani Mensah",
+     "xg": 0.22,
+     "score": "1-0"
+    },
+    {
+     "minute": 31,
+     "team": "home",
+     "player": "Ike Salazar",
+     "xg": 0.53,
+     "score": "2-0"
+    },
+    {
+     "minute": 57,
+     "team": "home",
+     "player": "Dani Mensah",
+     "xg": 0.46,
+     "score": "3-0"
+    },
+    {
+     "minute": 58,
+     "team": "home",
+     "player": "Arlo Brodie",
+     "xg": 0.04,
+     "score": "4-0"
+    },
+    {
+     "minute": 65,
+     "team": "home",
+     "player": "Dani Mensah",
+     "xg": 0.1,
+     "score": "5-0"
+    }
+   ],
+   "stats": {
+    "xg": [
+     3.39,
+     0.65
+    ],
+    "shots": [
+     24,
+     3
+    ],
+    "possession": [
+     0.491,
+     0.509
+    ],
+    "win_prob": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "men": [
+     11,
+     10
+    ],
+    "top_player": "Dani Mensah",
+    "top_player_leverage": "+0.57",
+    "spell": {
+     "team": "home",
+     "start": 9,
+     "end": 19,
+     "share": 0.934
+    }
+   }
+  },
+  {
+   "scenario": "derby",
+   "title": "The Marsh derby",
+   "hint": "Redmarsh and Thornwick, neighbours and rivals. One of them goes two down and fights back.",
+   "home": "RU",
+   "away": "TW",
+   "forecast": [
+    0.457,
+    0.269,
+    0.274
+   ],
+   "facts": {
+    "home": "Redmarsh United",
+    "away": "Thornwick Wanderers",
+    "score": "2-2",
+    "home_goals": "2",
+    "away_goals": "2",
+    "minute": "89'",
+    "home_xg": "1.15",
+    "away_xg": "1.38",
+    "home_possession": "55%",
+    "away_possession": "45%",
+    "home_win": "0%",
+    "draw": "100%",
+    "away_win": "0%",
+    "home_shots": "6",
+    "away_shots": "15",
+    "goal_1_player": "Anton Sandoval",
+    "goal_1_minute": "44'",
+    "goal_1_team": "Redmarsh United",
+    "goal_1_xg": "0.22",
+    "goal_1_score": "1-0",
+    "goal_2_player": "Anton Sandoval",
+    "goal_2_minute": "55'",
+    "goal_2_team": "Redmarsh United",
+    "goal_2_xg": "0.53",
+    "goal_2_score": "2-0",
+    "goal_3_player": "Santi Navarro",
+    "goal_3_minute": "57'",
+    "goal_3_team": "Thornwick Wanderers",
+    "goal_3_xg": "0.10",
+    "goal_3_score": "2-1",
+    "goal_4_player": "Zane Oduya",
+    "goal_4_minute": "70'",
+    "goal_4_team": "Thornwick Wanderers",
+    "goal_4_xg": "0.12",
+    "goal_4_score": "2-2",
+    "red_1_player": "Rio Jovanic",
+    "red_1_team": "Thornwick Wanderers",
+    "red_2_player": "Ivo Okoro",
+    "red_2_team": "Redmarsh United",
+    "home_men": "10",
+    "away_men": "10",
+    "top_player": "Anton Sandoval",
+    "top_player_team": "Redmarsh United",
+    "top_player_leverage": "+3.73",
+    "last10_team": "Thornwick Wanderers",
+    "last10_share": "63%",
+    "spell_team": "Thornwick Wanderers",
+    "spell_start": "0'",
+    "spell_end": "10'",
+    "spell_share": "94%",
+    "spell_goals": "0",
+    "ground": "Fenside"
+   },
+   "truths": {
+    "finished": true,
+    "score": [
+     2,
+     2
+    ],
+    "leader": null,
+    "derby": true,
+    "reds": 2,
+    "men": [
+     10,
+     10
+    ],
+    "comeback": true,
+    "late_winner": false,
+    "hat_trick": false,
+    "clean_sheet": false,
+    "dominant": true,
+    "upset": false
+   },
+   "goals": [
+    {
+     "minute": 44,
+     "team": "home",
+     "player": "Anton Sandoval",
+     "xg": 0.22,
+     "score": "1-0"
+    },
+    {
+     "minute": 55,
+     "team": "home",
+     "player": "Anton Sandoval",
+     "xg": 0.53,
+     "score": "2-0"
+    },
+    {
+     "minute": 57,
+     "team": "away",
+     "player": "Santi Navarro",
+     "xg": 0.1,
+     "score": "2-1"
+    },
+    {
+     "minute": 70,
+     "team": "away",
+     "player": "Zane Oduya",
+     "xg": 0.12,
+     "score": "2-2"
+    }
+   ],
+   "stats": {
+    "xg": [
+     1.15,
+     1.38
+    ],
+    "shots": [
+     6,
+     15
+    ],
+    "possession": [
+     0.548,
+     0.452
+    ],
+    "win_prob": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "men": [
+     10,
+     10
+    ],
+    "top_player": "Anton Sandoval",
+    "top_player_leverage": "+3.73",
+    "spell": {
+     "team": "away",
+     "start": 0,
+     "end": 10,
+     "share": 0.941
+    }
+   }
+  },
+  {
+   "scenario": "upset",
+   "title": "Smash and grab",
+   "hint": "Castlemere make the chances; Eastwick take the points.",
+   "home": "CC",
+   "away": "EA",
+   "forecast": [
+    0.805,
+    0.129,
+    0.066
+   ],
+   "facts": {
+    "home": "Castlemere City",
+    "away": "Eastwick Albion",
+    "score": "1-2",
+    "home_goals": "1",
+    "away_goals": "2",
+    "minute": "89'",
+    "home_xg": "2.67",
+    "away_xg": "0.47",
+    "home_possession": "49%",
+    "away_possession": "51%",
+    "home_win": "0%",
+    "draw": "0%",
+    "away_win": "100%",
+    "home_shots": "21",
+    "away_shots": "6",
+    "leader": "Eastwick Albion",
+    "trailer": "Castlemere City",
+    "goal_1_player": "Bruno Amberley",
+    "goal_1_minute": "8'",
+    "goal_1_team": "Eastwick Albion",
+    "goal_1_xg": "0.11",
+    "goal_1_score": "0-1",
+    "goal_2_player": "Lars Varga",
+    "goal_2_minute": "55'",
+    "goal_2_team": "Castlemere City",
+    "goal_2_xg": "0.18",
+    "goal_2_score": "1-1",
+    "goal_3_player": "Luca Radley",
+    "goal_3_minute": "70'",
+    "goal_3_team": "Eastwick Albion",
+    "goal_3_xg": "0.11",
+    "goal_3_score": "1-2",
+    "red_1_player": "Sami Ingram",
+    "red_1_team": "Eastwick Albion",
+    "home_men": "11",
+    "away_men": "10",
+    "top_player": "Luca Radley",
+    "top_player_team": "Eastwick Albion",
+    "top_player_leverage": "+3.96",
+    "last10_team": "Castlemere City",
+    "last10_share": "73%",
+    "spell_team": "Castlemere City",
+    "spell_start": "52'",
+    "spell_end": "62'",
+    "spell_share": "96%",
+    "spell_goals": "1",
+    "ground": "Mere Stadium"
+   },
+   "truths": {
+    "finished": true,
+    "score": [
+     1,
+     2
+    ],
+    "leader": "away",
+    "derby": false,
+    "reds": 1,
+    "men": [
+     11,
+     10
+    ],
+    "comeback": false,
+    "late_winner": false,
+    "hat_trick": false,
+    "clean_sheet": false,
+    "dominant": true,
+    "upset": true
+   },
+   "goals": [
+    {
+     "minute": 8,
+     "team": "away",
+     "player": "Bruno Amberley",
+     "xg": 0.11,
+     "score": "0-1"
+    },
+    {
+     "minute": 55,
+     "team": "home",
+     "player": "Lars Varga",
+     "xg": 0.18,
+     "score": "1-1"
+    },
+    {
+     "minute": 70,
+     "team": "away",
+     "player": "Luca Radley",
+     "xg": 0.11,
+     "score": "1-2"
+    }
+   ],
+   "stats": {
+    "xg": [
+     2.67,
+     0.47
+    ],
+    "shots": [
+     21,
+     6
+    ],
+    "possession": [
+     0.489,
+     0.511
+    ],
+    "win_prob": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "men": [
+     11,
+     10
+    ],
+    "top_player": "Luca Radley",
+    "top_player_leverage": "+3.96",
+    "spell": {
+     "team": "home",
+     "start": 52,
+     "end": 62,
+     "share": 0.965
+    }
+   }
+  },
+  {
+   "scenario": "fightback",
+   "title": "Ten-man fight-back",
+   "hint": "Northvale fall behind, lose a defender to a red card, and still win.",
+   "home": "NA",
+   "away": "BF",
+   "forecast": [
+    0.501,
+    0.288,
+    0.211
+   ],
+   "facts": {
+    "home": "Northvale Athletic",
+    "away": "Bramley Forge",
+    "score": "3-2",
+    "home_goals": "3",
+    "away_goals": "2",
+    "minute": "89'",
+    "home_xg": "0.95",
+    "away_xg": "1.17",
+    "home_possession": "53%",
+    "away_possession": "47%",
+    "home_win": "100%",
+    "draw": "0%",
+    "away_win": "0%",
+    "home_shots": "10",
+    "away_shots": "12",
+    "leader": "Northvale Athletic",
+    "trailer": "Bramley Forge",
+    "goal_1_player": "Abel Eastman",
+    "goal_1_minute": "3'",
+    "goal_1_team": "Bramley Forge",
+    "goal_1_xg": "0.08",
+    "goal_1_score": "0-1",
+    "goal_2_player": "Kofi Bellweather",
+    "goal_2_minute": "23'",
+    "goal_2_team": "Bramley Forge",
+    "goal_2_xg": "0.22",
+    "goal_2_score": "0-2",
+    "goal_3_player": "Rafa Quaresma",
+    "goal_3_minute": "46'",
+    "goal_3_team": "Northvale Athletic",
+    "goal_3_xg": "0.10",
+    "goal_3_score": "1-2",
+    "goal_4_player": "Dario Corrigan",
+    "goal_4_minute": "73'",
+    "goal_4_team": "Northvale Athletic",
+    "goal_4_xg": "0.05",
+    "goal_4_score": "2-2",
+    "goal_5_player": "Dario Corrigan",
+    "goal_5_minute": "81'",
+    "goal_5_team": "Northvale Athletic",
+    "goal_5_xg": "0.11",
+    "goal_5_score": "3-2",
+    "red_1_player": "Obi Zielinski",
+    "red_1_team": "Northvale Athletic",
+    "home_men": "10",
+    "away_men": "11",
+    "top_player": "Dario Corrigan",
+    "top_player_team": "Northvale Athletic",
+    "top_player_leverage": "+8.60",
+    "last10_team": "Northvale Athletic",
+    "last10_share": "86%",
+    "spell_team": "Bramley Forge",
+    "spell_start": "22'",
+    "spell_end": "32'",
+    "spell_share": "92%",
+    "spell_goals": "1",
+    "ground": "The Pinewood"
+   },
+   "truths": {
+    "finished": true,
+    "score": [
+     3,
+     2
+    ],
+    "leader": "home",
+    "derby": false,
+    "reds": 1,
+    "men": [
+     10,
+     11
+    ],
+    "comeback": true,
+    "late_winner": true,
+    "hat_trick": false,
+    "clean_sheet": false,
+    "dominant": true,
+    "upset": false
+   },
+   "goals": [
+    {
+     "minute": 3,
+     "team": "away",
+     "player": "Abel Eastman",
+     "xg": 0.08,
+     "score": "0-1"
+    },
+    {
+     "minute": 23,
+     "team": "away",
+     "player": "Kofi Bellweather",
+     "xg": 0.22,
+     "score": "0-2"
+    },
+    {
+     "minute": 46,
+     "team": "home",
+     "player": "Rafa Quaresma",
+     "xg": 0.1,
+     "score": "1-2"
+    },
+    {
+     "minute": 73,
+     "team": "home",
+     "player": "Dario Corrigan",
+     "xg": 0.05,
+     "score": "2-2"
+    },
+    {
+     "minute": 81,
+     "team": "home",
+     "player": "Dario Corrigan",
+     "xg": 0.11,
+     "score": "3-2"
+    }
+   ],
+   "stats": {
+    "xg": [
+     0.95,
+     1.17
+    ],
+    "shots": [
+     10,
+     12
+    ],
+    "possession": [
+     0.531,
+     0.469
+    ],
+    "win_prob": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "men": [
+     10,
+     11
+    ],
+    "top_player": "Dario Corrigan",
+    "top_player_leverage": "+8.60",
+    "spell": {
+     "team": "away",
+     "start": 22,
+     "end": 32,
+     "share": 0.917
+    }
+   }
+  },
+  {
+   "scenario": "chess",
+   "title": "The chess match",
+   "hint": "Two cautious sides cancel each other out: a goalless draw decided by shape, not shots.",
+   "home": "WH",
+   "away": "SM",
+   "forecast": [
+    0.236,
+    0.282,
+    0.482
+   ],
+   "facts": {
+    "home": "Westholt",
+    "away": "Saltmoor Athletic",
+    "score": "0-0",
+    "home_goals": "0",
+    "away_goals": "0",
+    "minute": "89'",
+    "home_xg": "0.90",
+    "away_xg": "0.34",
+    "home_possession": "54%",
+    "away_possession": "46%",
+    "home_win": "0%",
+    "draw": "100%",
+    "away_win": "0%",
+    "home_shots": "9",
+    "away_shots": "8",
+    "top_player": "Malik Ingram",
+    "top_player_team": "Saltmoor Athletic",
+    "top_player_leverage": "+2.32",
+    "last10_team": "Westholt",
+    "last10_share": "65%",
+    "spell_team": "Westholt",
+    "spell_start": "13'",
+    "spell_end": "23'",
+    "spell_share": "95%",
+    "spell_goals": "0",
+    "ground": "The Kiln Ground"
+   },
+   "truths": {
+    "finished": true,
+    "score": [
+     0,
+     0
+    ],
+    "leader": null,
+    "derby": false,
+    "reds": 0,
+    "men": [
+     11,
+     11
+    ],
+    "comeback": false,
+    "late_winner": false,
+    "hat_trick": false,
+    "clean_sheet": true,
+    "dominant": true,
+    "upset": false
+   },
+   "goals": [],
+   "stats": {
+    "xg": [
+     0.9,
+     0.34
+    ],
+    "shots": [
+     9,
+     8
+    ],
+    "possession": [
+     0.538,
+     0.462
+    ],
+    "win_prob": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "men": [
+     11,
+     11
+    ],
+    "top_player": "Malik Ingram",
+    "top_player_leverage": "+2.32",
+    "spell": {
+     "team": "home",
+     "start": 13,
+     "end": 23,
+     "share": 0.954
+    }
+   }
+  }
+ ]
+}

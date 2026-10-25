@@ -56,12 +56,12 @@ def _collect(scenario_id: str) -> dict[str, Any]:
     from engine.league import build_league
     from engine.live import LiveStats
     from engine.models import MatchMeta
-    from engine.scenarios import path_for
+    from engine.scenarios import live_match_id, path_for
     from engine.sim import MatchSimulator, SimConfig, load_scenario
 
     sc = load_scenario(path_for(scenario_id))
     league = build_league()
-    meta = MatchMeta(match_id=f"{sc.home}{sc.away}-{sc.seed}", home=sc.home, away=sc.away, seed=sc.seed or 0)
+    meta = MatchMeta(match_id=live_match_id(sc.home, sc.away, sc.seed or 0), home=sc.home, away=sc.away, seed=sc.seed or 0)
     live = LiveStats(meta, league)
     moments = []
     for item in MatchSimulator(meta, league, SimConfig(mode="full"), sc).run():
@@ -387,7 +387,8 @@ def _story_mutations(text: str, facts: dict[str, str], truths: dict[str, Any], i
         out.append(("unit after a fact", text.replace("{" + unit + "}", "{" + unit + "} percent", 1)))
     for phrase in ("A fierce local derby.", "Both arrive unbeaten.", "The league leaders are here.",
                    "A side at the bottom of the table.", "The favourites are clear.", "The match was drawn.",
-                   "A deserved victory."):
+                   "A deserved victory.", "A stunning comeback.", "A late winner.", "A hat-trick to remember.",
+                   "Down to ten men.", "A huge upset."):
         if any(re.search(pattern, phrase.lower()) and not test(truths) for pattern, _, test in implied):
             out.append(("claim the facts do not support", text + " " + phrase))
             break
@@ -414,6 +415,23 @@ def _story_plants() -> list[tuple[tuple[str, str], bool, str]]:
         out.append((("Preview", "clean preview passes"), not preview.check(trusted, facts, names, truths), trusted["story"]))
         for category, bad in _story_mutations(trusted["story"], facts, truths, preview.IMPLIED):
             out.append((("Preview", category), bool(preview.check({**trusted, "story": bad}, facts, names, truths)), bad))
+    from agents import newsdesk, story, summarizer
+    from app.newsdesk import matches
+
+    for m in matches():
+        facts, truths = m["facts"], m["truths"]
+        names = name_list({p.player_id: p.name for c in (m["home"], m["away"]) for p in league.squads[c]},
+                          {"home": facts["home"], "away": facts["away"]})
+        report = newsdesk.fallback(facts, truths)
+        out.append((("Newsdesk", "clean report passes"), not newsdesk.check(report, facts, names, truths), report["headline"]))
+        for category, bad in _story_mutations(report["body"][-1], facts, truths, story.MATCH_IMPLIED):
+            out.append((("Newsdesk", category),
+                        bool(newsdesk.check({**report, "body": report["body"][:-1] + [bad]}, facts, names, truths)), bad))
+        brief = summarizer.fallback(facts, truths)
+        out.append((("Summarizer", "clean brief passes"), not summarizer.check(brief, facts, names, truths), brief["bullets"][0]))
+        for category, bad in _story_mutations(brief["bullets"][0], facts, truths, story.MATCH_IMPLIED):
+            out.append((("Summarizer", category),
+                        bool(summarizer.check({"bullets": [bad] + brief["bullets"][1:]}, facts, names, truths)), bad))
     room = MatchRoom("eval-pg", league, RoomConfig(half_s=600.0, scenario=None))
     room.fast_forward(1200.0)
     pack = matchday.postgame(room, league)

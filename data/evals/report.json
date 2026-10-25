@@ -1,10 +1,10 @@
 {
  "planted": {
-  "moments": 130,
-  "planted": 4923,
-  "caught": 4923,
-  "clean": 538,
-  "clean_passed": 538,
+  "moments": 132,
+  "planted": 5119,
+  "caught": 5119,
+  "clean": 556,
+  "clean_passed": 556,
   "rows": [
    {
     "check": "Analyst: em dash",
@@ -63,98 +63,133 @@
    },
    {
     "check": "Narrator and Commentator: double unit",
-    "planted": 178,
-    "caught": 178
+    "planted": 202,
+    "caught": 202
    },
    {
     "check": "Narrator and Commentator: em dash",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: false claim",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: false wording",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: gendered",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: missing slot",
-    "planted": 184,
-    "caught": 184
+    "planted": 210,
+    "caught": 210
    },
    {
     "check": "Narrator and Commentator: possessive",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: too long",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: typed name",
-    "planted": 260,
-    "caught": 260
+    "planted": 262,
+    "caught": 262
    },
    {
     "check": "Narrator and Commentator: typed number",
-    "planted": 222,
-    "caught": 222
+    "planted": 237,
+    "caught": 237
    },
    {
     "check": "Narrator and Commentator: unknown slot",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Narrator and Commentator: unsupported detail",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
+   },
+   {
+    "check": "Newsdesk: claim the facts do not support",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Newsdesk: em dash",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Newsdesk: gendered pronoun",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Newsdesk: possessive",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Newsdesk: types a number",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Newsdesk: unknown fact",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Newsdesk: unsupported detail",
+    "planted": 5,
+    "caught": 5
    },
    {
     "check": "Personalizer: adds a slot",
-    "planted": 260,
-    "caught": 260
+    "planted": 263,
+    "caught": 263
    },
    {
     "check": "Personalizer: drops a slot",
-    "planted": 260,
-    "caught": 260
+    "planted": 263,
+    "caught": 263
    },
    {
     "check": "Personalizer: em dash",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Personalizer: renames a slot",
-    "planted": 260,
-    "caught": 260
+    "planted": 263,
+    "caught": 263
    },
    {
     "check": "Personalizer: types a Devanagari digit",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Personalizer: types a digit",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Personalizer: types a name",
-    "planted": 260,
-    "caught": 260
+    "planted": 264,
+    "caught": 264
    },
    {
     "check": "Post-game: claim the facts do not support",
@@ -275,10 +310,50 @@
     "check": "Recap: unsupported detail",
     "planted": 3,
     "caught": 3
+   },
+   {
+    "check": "Summarizer: claim the facts do not support",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Summarizer: em dash",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Summarizer: gendered pronoun",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Summarizer: possessive",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Summarizer: types a name",
+    "planted": 2,
+    "caught": 2
+   },
+   {
+    "check": "Summarizer: types a number",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Summarizer: unknown fact",
+    "planted": 5,
+    "caught": 5
+   },
+   {
+    "check": "Summarizer: unsupported detail",
+    "planted": 5,
+    "caught": 5
    }
   ],
   "misses": [],
-  "at": "2026-10-24 23:06"
+  "at": "2026-10-25 11:55"
  },
  "analyst": {
   "room": "2928b6c3",

@@ -152,6 +152,16 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         """The Preview agent's story: table, form, head to head, forecast and players to watch."""
         return await room_or_404(room_id).preview()
 
+    @app.get("/api/rooms/{room_id}/brief")
+    async def match_brief(room_id: str) -> dict[str, Any]:
+        """Catch me up: the Summarizer's three points on the match so far."""
+        return await room_or_404(room_id).brief()
+
+    @app.get("/api/newsdesk")
+    async def news() -> dict[str, Any]:
+        """The Newsdesk: a match report for every fixture of the matchday."""
+        return await hub.newsdesk()
+
     @app.get("/api/rooms/{room_id}/postgame")
     async def match_postgame(room_id: str) -> dict[str, Any]:
         """What decided the match, and what each club should watch next time."""

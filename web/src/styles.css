@@ -729,3 +729,77 @@ table.shots td:first-child { text-align: left; }
 .am-look { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
 .am-look p { font-family: "Source Serif 4", Georgia, serif; font-size: 16px; line-height: 1.5; color: #d6d8dc; padding-left: 14px; border-left: 2px solid var(--line-dash); }
 @media (max-width: 1000px) { .am { grid-template-columns: 1fr; } }
+
+/* Catch me up */
+.cmu-open { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 16px; background: var(--signal); color: #000; border: 0; border-radius: 3px; cursor: pointer; text-align: left; }
+.cmu-open b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: 0.02em; }
+.cmu-open span { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.cmu-open:hover { background: #f2ff7a; }
+.cmu { overflow: hidden; }
+.cmu-top { display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: center; gap: 10px; padding: 14px 16px 8px; }
+.cmu-top .nm { font-family: "Barlow Condensed"; font-weight: 800; font-size: 16px; text-transform: uppercase; line-height: 1; }
+.cmu-top .nm.r { text-align: right; }
+.cmu-top .sc { font-family: "Barlow Condensed"; font-weight: 800; font-size: 44px; line-height: 0.9; text-align: center; }
+.cmu-top .sc i { font-style: normal; color: var(--text-dim); padding: 0 6px; }
+.cmu-top .clock { grid-column: 1 / -1; text-align: center; }
+.cmu-kpis { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.cmu-kpis > div { padding: 10px 12px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; }
+.cmu-kpis > div:first-child { border-left: 0; }
+.cmu-kpis b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 24px; line-height: 1; }
+.cmu-kpis b small { font-size: 14px; color: var(--text-muted); }
+.cmu-kpis span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.cmu-bar { display: flex; height: 4px; gap: 2px; margin-top: 4px; }
+.cmu-points { list-style: none; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+.cmu-points li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 15px; line-height: 1.4; }
+.cmu-points li b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; color: var(--signal); line-height: 1.1; }
+.cmu-foot { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
+.cmu-foot .verified { margin-left: 0; font-size: 11px; }
+.cmu-foot button { background: none; border: 1px solid var(--line); color: var(--text-muted); border-radius: 2px; padding: 4px 10px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; text-transform: uppercase; cursor: pointer; }
+.cmu-foot button:first-of-type { margin-left: auto; }
+.cmu-foot button:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* Newsdesk */
+.nd { display: flex; flex-direction: column; gap: 18px; padding-top: 24px; }
+.nd-head h1 { font-family: "Barlow Condensed"; font-weight: 800; font-size: 64px; line-height: 0.92; text-transform: uppercase; margin-top: 6px; }
+.nd-writing { color: var(--signal); display: block; margin-top: 8px; }
+.nd-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+.nd-article { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.nd-hero { position: relative; padding: 38px 40px 30px; border-bottom: 1px solid var(--line); background: #050506; }
+.nd-hero::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: linear-gradient(90deg, var(--h) 50%, var(--a) 50%); }
+.nd-kicker { display: flex; gap: 12px; align-items: center; }
+.nd-kicker em { font-style: normal; background: var(--signal); color: #000; font-family: "Barlow Condensed"; font-weight: 800; font-size: 13px; padding: 2px 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.nd-hero h2 { font-family: "Barlow Condensed"; font-weight: 800; font-size: 60px; line-height: 0.94; text-transform: uppercase; margin-top: 14px; max-width: 900px; }
+.nd-score { display: flex; align-items: center; gap: 16px; margin-top: 22px; flex-wrap: wrap; }
+.nd-score span { font-family: "Barlow Condensed"; font-weight: 700; font-size: 22px; text-transform: uppercase; }
+.nd-score span.lost { color: var(--text-muted); }
+.nd-score b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 52px; line-height: 1; }
+.nd-score b i { font-style: normal; color: var(--text-dim); padding: 0 10px; }
+.nd-stand { font-family: "Source Serif 4", Georgia, serif; font-style: italic; font-size: 22px; line-height: 1.45; color: #e3e4e7; padding: 26px 40px 4px; max-width: 900px; }
+.nd-by { display: flex; gap: 16px; align-items: center; padding: 14px 40px 22px; border-bottom: 1px solid var(--line); }
+.nd-by .verified { margin-left: 0; font-size: 11px; }
+.nd-strip { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); }
+.nd-strip div { padding: 16px 20px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.nd-strip div:first-child { border-left: 0; }
+.nd-strip b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 28px; line-height: 1; }
+.nd-strip b small { font-size: 16px; color: var(--text-muted); }
+.nd-strip span { font-size: 12px; color: var(--text-muted); }
+.nd-body { padding: 28px 40px 20px; max-width: 840px; }
+.nd-body p { font-family: "Source Serif 4", Georgia, serif; font-size: 19px; line-height: 1.7; color: #dcdee2; margin-bottom: 18px; }
+.nd-body > div:first-child p::first-letter { font-family: "Barlow Condensed"; font-weight: 800; float: left; font-size: 74px; line-height: 0.78; padding: 6px 10px 0 0; color: var(--h); }
+.nd-pull { border-left: 4px solid var(--signal); padding: 4px 0 4px 20px; margin: 22px 0 26px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 30px; line-height: 1.1; text-transform: uppercase; }
+.nd-pull small { display: block; font-family: Barlow; font-weight: 500; font-size: 13px; color: var(--text-muted); text-transform: none; margin-top: 8px; }
+.nd-goals { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 40px 30px; }
+.nd-goals span { border: 1px solid var(--line); border-left: 4px solid; border-radius: 2px; padding: 6px 10px; font-size: 14px; }
+.nd-goals b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 16px; margin-right: 4px; }
+.nd-goals i { font-style: normal; color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+.nd-side { display: flex; flex-direction: column; gap: 10px; }
+.nd-side h3 { font-family: "Barlow Condensed"; font-weight: 800; font-size: 22px; text-transform: uppercase; }
+.nd-fx { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 2px; text-align: left; cursor: pointer; color: var(--text); }
+.nd-fx.on { border-color: var(--signal); }
+.nd-fx:hover { border-color: var(--line-dash); }
+.nd-fx .teams { display: flex; flex-direction: column; gap: 4px; }
+.nd-fx .teams div { display: flex; gap: 8px; align-items: center; font-family: "Barlow Condensed"; font-weight: 700; font-size: 17px; text-transform: uppercase; }
+.nd-fx .teams div.lose { color: var(--text-muted); }
+.nd-fx .goals { display: flex; flex-direction: column; gap: 4px; font-family: "Barlow Condensed"; font-weight: 800; font-size: 19px; text-align: right; }
+.nd-fx p { grid-column: 1 / -1; font-family: "Source Serif 4", Georgia, serif; font-size: 14px; line-height: 1.45; color: #bfc2c8; border-top: 1px solid var(--line); padding-top: 8px; }
+@media (max-width: 1000px) { .nd-grid { grid-template-columns: 1fr; } .nd-hero h2 { font-size: 40px; } .nd-strip { grid-template-columns: repeat(2, 1fr); } .nd-hero, .nd-stand, .nd-by, .nd-body, .nd-goals { padding-left: 20px; padding-right: 20px; } }

@@ -118,3 +118,11 @@ def test_ratings_round_trip_and_default():
     # A fitted home edge favours the home side.
     home, away = r.prior("X", "Y")
     assert home > away
+
+
+def test_probabilities_stay_in_range_at_full_time_with_a_big_lead():
+    from engine.winprob import GameState, result_probs
+
+    for score in [(4, 3), (5, 0), (0, 6), (3, 3)]:
+        p = result_probs((1.6, 1.2), GameState(minute=95.0, score=score))
+        assert all(0.0 <= x <= 1.0 for x in p) and abs(sum(p) - 1.0) < 1e-9

@@ -32,3 +32,13 @@ def test_every_stored_scenario_still_plays_its_story():
         results = list(pool.map(play, scenarios))
     for sc, r in zip(scenarios, results):
         assert BY_ID[sc.scenario_id].check(r), (sc.scenario_id, r.score, r.xg)
+
+
+def test_a_live_room_plays_the_same_match_the_search_checked():
+    from app.room import MatchRoom, RoomConfig
+    from engine.league import build_league
+    from engine.scenarios import live_match_id, path_for
+
+    for sc in library():
+        room = MatchRoom("same", build_league(), RoomConfig.for_scenario(str(path_for(sc.scenario_id))))
+        assert room.feed.meta.match_id == live_match_id(sc.home, sc.away, sc.seed)

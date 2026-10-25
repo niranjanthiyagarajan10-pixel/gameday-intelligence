@@ -16,9 +16,9 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from agents.desk import CardDesk, TraceStep
+from agents.desk import CardDesk, TraceStep, name_list
 from agents.llm import LLM
-from agents import analyst, commentator, personalizer, postgame, preview, recap
+from agents import analyst, commentator, newsdesk, personalizer, postgame, preview, recap, summarizer
 from agents.personalizer import LANGS
 from app import matchday
 from app.blueprint import build_blueprint
@@ -40,7 +40,8 @@ from engine.feed import Feed, SimulatorFeed
 from engine.league import League
 from engine.live import LiveStats
 from engine.models import MatchEvent, MatchMeta, Moment, OverlayEvent, TrackingFrame
-from engine.scenarios import BY_ID, path_for
+from engine.scenarios import BY_ID, live_match_id, path_for
+from engine.season import CURRENT_MATCHDAY
 from engine.sim import MatchSimulator, SimConfig, load_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -126,7 +127,8 @@ class MatchRoom:
         c = self.config
         # The match id (and so its random streams) depends only on the fixture and seed, never on
         # the room, so every replay of the demo is the same match the main room broadcasts.
-        meta = MatchMeta(match_id=f"{c.home}{c.away}-{c.seed}", home=c.home, away=c.away, seed=c.seed, scenario=c.scenario)
+        meta = MatchMeta(match_id=live_match_id(c.home, c.away, c.seed), home=c.home, away=c.away, seed=c.seed,
+                         scenario=c.scenario)
         scenario = load_scenario(c.scenario) if c.scenario else None
         sim = MatchSimulator(meta, self.league, SimConfig(mode="full", half_s=c.half_s), scenario)
         # The room only ever reads the match through the feed: the ingest boundary.
@@ -145,6 +147,7 @@ class MatchRoom:
         self._commentary: dict[tuple[str, str, str], asyncio.Future] = {}
         self._preview: dict[str, Any] | None = None
         self._postgame: dict[str, Any] | None = None
+        self._brief: dict[str, Any] | None = None
         self._story_lock = asyncio.Lock()
         self._recap_lock = asyncio.Lock()
         self.cards: list[dict[str, Any]] = []
@@ -276,9 +279,11 @@ class MatchRoom:
     # Before and after the match
 
     async def _write_story(self, tag: str, agent: str, module: Any, facts: dict[str, str], truths: dict[str, Any],
-                           ask: str) -> tuple[dict[str, Any], str, dict[str, dict[str, Any]]]:
+                           ask: str, names: Any = None) -> tuple[dict[str, Any], str, dict[str, dict[str, Any]]]:
         """An agent writes a story over facts: draft, check, at most one retry, else the template.
-        Returns the filled parts, the source and the Personalizer's languages."""
+        Returns the filled parts, the source and the Personalizer's languages. `names` are the names
+        the story may not type; by default this room's players and clubs."""
+        names = self.desk.forbidden if names is None else names
         t = self.live.t
         steps: list[TraceStep] = []
         feedback: list[str] = []
@@ -293,8 +298,7 @@ class MatchRoom:
                                            result.ms, result.error or "", t))
                     break
                 parsed = module.parse(result.text)
-                feedback = ["reply was not usable JSON"] if parsed is None else module.check(
-                    parsed, facts, self.desk.forbidden, truths)
+                feedback = ["reply was not usable JSON"] if parsed is None else module.check(parsed, facts, names, truths)
                 steps.append(TraceStep(tag, "both", agent, f"draft {attempt + 1}", "ok", result.ms,
                                        f"{result.backend} {result.model}", t))
                 steps.append(TraceStep(tag, "both", "Verifier", f"check {attempt + 1}", "reject" if feedback else "pass",
@@ -304,7 +308,7 @@ class MatchRoom:
                     break
         source = "agent"
         if parts is None:
-            parts = module.fallback(facts, truths) if module is preview else module.fallback(facts)
+            parts = module.fallback(facts, truths)
             source = "template"
             steps.append(TraceStep(tag, "both", "Fallback", "template", "fallback", 0,
                                    "template story, every value a fact" if self.llm.live else "no model: template story", t))
@@ -321,7 +325,7 @@ class MatchRoom:
                                                       prompt=personalizer.prompt(template, lang, "fan"), model=self.llm.fast)
                         tr = personalizer.parse(res.text) if res.ok else None
                         reasons = ([res.error or "no reply"] if not res.ok else ["reply was not usable JSON"] if tr is None
-                                   else personalizer.check(template, tr, self.desk.forbidden))
+                                   else personalizer.check(template, tr, names))
                         steps.append(TraceStep(tag, "both", "Personalizer", f"write {lang}", "pass" if not reasons else "reject",
                                                res.ms, "; ".join(reasons), t))
                         written.append(None if reasons else fill(tr))
@@ -356,6 +360,20 @@ class MatchRoom:
                                   "langs": langs, "status": self.status, "t": self.live.t,
                                   "home": self.config.home, "away": self.config.away}
             return self._postgame
+
+    async def brief(self) -> dict[str, Any]:
+        """Catch me up: the Summarizer's three points on the match so far. Rewritten when the match moves on."""
+        async with self._story_lock:
+            b = self._brief
+            if b is None or len(self.cards) != b["cards"] or self.live.t - b["t"] > 120 or b["status"] != self.status:
+                derby = matchday.PROFILES[self.config.home].rival == self.config.away
+                pack = matchday.match_facts(self.live, self.names, self.teams, self.status == "full_time", derby)
+                filled, source, langs = await self._write_story(
+                    "brief", "Summarizer", summarizer, pack["facts"], pack["truths"], summarizer.prompt(pack["facts"]))
+                self._brief = {**filled, "source": source, "langs": langs, "stats": pack["stats"],
+                               "score": pack["truths"]["score"], "minute": int(self.live.t // 60), "status": self.status,
+                               "t": self.live.t, "cards": len(self.cards)}
+            return self._brief
 
     async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
         """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""
@@ -708,6 +726,8 @@ class Hub:
         self._reaper: asyncio.Task | None = None
         self.llm = LLM.from_env()  # one model client for every room
         self.speech = Speech.from_env()  # one voice for every room
+        self._news: dict[str, dict[str, Any]] | None = None
+        self._news_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         self._warming = asyncio.create_task(self.llm.warm())
@@ -719,6 +739,41 @@ class Hub:
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def newsdesk(self) -> dict[str, Any]:
+        """Every matchday report. Templates at once; the Newsdesk agent's versions replace them as they pass."""
+        from app import newsdesk as news_data
+
+        if self._news is None:
+            self._news = {}
+            for m in news_data.matches():
+                parts = newsdesk.fallback(m["facts"], m["truths"])
+                filled = {k: [x.format(**m["facts"]) for x in v] if isinstance(v, list) else v.format(**m["facts"])
+                          for k, v in parts.items()}
+                self._news[m["scenario"]] = {**{k: m[k] for k in ("scenario", "title", "home", "away", "forecast",
+                                                                  "stats", "goals")},
+                                             "score": m["truths"]["score"], "ground": m["facts"]["ground"],
+                                             **filled, "source": "template", "langs": {}}
+            self._news_task = asyncio.create_task(self._write_news())
+        writing = self._news_task is not None and not self._news_task.done()
+        return {"matchday": CURRENT_MATCHDAY, "writing": writing, "articles": list(self._news.values())}
+
+    async def _write_news(self) -> None:
+        from app import newsdesk as news_data
+
+        room = self.rooms.get("main")
+        if room is None or not self.llm.live:
+            return
+        for m in news_data.matches():
+            names = name_list({p.player_id: p.name for c in (m["home"], m["away"]) for p in self.league.squads[c]},
+                              {"home": m["facts"]["home"], "away": m["facts"]["away"]})
+            try:
+                filled, source, langs = await room._write_story(
+                    "news", "Newsdesk", newsdesk, m["facts"], m["truths"], newsdesk.prompt(m["facts"], m["hint"]), names)
+            except Exception:  # one report failing keeps its template; the rest carry on
+                continue
+            if source == "agent" and self._news is not None:
+                self._news[m["scenario"]].update({**filled, "source": source, "langs": langs})
 
     def get(self, room_id: str) -> MatchRoom | None:
         return self.rooms.get(room_id)

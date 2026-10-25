@@ -10,9 +10,9 @@
   ],
   "scenario_id": "fightback",
   "title": "Ten-man fight-back",
-  "story": "Northvale lose a defender to a red card, fall behind, and still win.",
+  "story": "Northvale fall behind, lose a defender to a red card, and still win.",
   "home": "NA",
   "away": "BF",
-  "seed": 61,
+  "seed": 96,
   "matchday": 9
 }

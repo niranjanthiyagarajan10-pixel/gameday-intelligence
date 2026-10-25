@@ -156,3 +156,91 @@ def postgame(room: Any, league: League) -> dict[str, Any]:
                       "forecast": [round(ph, 3), round(pd, 3), round(pa, 3)]})
     truths = {"finished": room.status == "full_time", "score": tuple(s.score)}
     return {"facts": facts, "truths": truths, "decided": decided, "next": nexts}
+
+
+# Facts about one match, from the live engine: shared by Catch me up (live) and the Newsdesk (full time)
+
+
+def _threat_share(live: Any, k: int, since_minute: int) -> float | None:
+    rows = live.by_minute[since_minute:]
+    total = sum(b.xt[0] + b.xt[1] for b in rows)
+    return None if total <= 0 else sum(b.xt[k] for b in rows) / total
+
+
+def match_facts(live: Any, names: dict[str, str], teams: dict[str, str], finished: bool,
+                derby: bool = False, forecast: tuple[float, float, float] | None = None) -> dict[str, Any]:
+    """Facts (slot to formatted value) and the truths the wording checks need, for one match so far."""
+    from engine.spells import best_spells
+
+    s = live.stats()
+    home, away = teams["home"], teams["away"]
+    minute = int(s.t // 60)
+    facts: dict[str, str] = {
+        "home": home, "away": away, "score": f"{s.score[0]}-{s.score[1]}",
+        "home_goals": str(s.score[0]), "away_goals": str(s.score[1]), "minute": f"{minute}'",
+        "home_xg": f"{s.xg[0]:.2f}", "away_xg": f"{s.xg[1]:.2f}",
+        "home_possession": pct(s.possession[0]), "away_possession": pct(s.possession[1]),
+        "home_win": pct(s.win_prob[0]), "draw": pct(s.win_prob[1]), "away_win": pct(s.win_prob[2]),
+    }
+    shots = [sum(1 for x in live.shots if x.team == side) for side in ("home", "away")]
+    facts |= {"home_shots": str(shots[0]), "away_shots": str(shots[1])}
+    lead = 0 if s.score[0] > s.score[1] else 1 if s.score[1] > s.score[0] else None
+    if lead is not None:
+        facts |= {"leader": (home, away)[lead], "trailer": (away, home)[lead]}
+    # Goals in order, with the running score after each, so comebacks and late winners can be checked.
+    running = [0, 0]
+    trailed = {"home": False, "away": False}
+    scorers: dict[str, int] = {}
+    goals = []
+    for i, shot in enumerate(x for x in live.shots if x.outcome == "goal"):
+        k = 0 if shot.team == "home" else 1
+        running[k] += 1
+        n = i + 1
+        facts |= {f"goal_{n}_player": names.get(shot.player_id, shot.player_id), f"goal_{n}_minute": f"{shot.minute}'",
+                  f"goal_{n}_team": (home, away)[k], f"goal_{n}_xg": f"{shot.xg:.2f}",
+                  f"goal_{n}_score": f"{running[0]}-{running[1]}"}
+        scorers[shot.player_id] = scorers.get(shot.player_id, 0) + 1
+        trailed["home"] |= running[0] < running[1]
+        trailed["away"] |= running[1] < running[0]
+        goals.append({"minute": shot.minute, "team": shot.team, "player": names.get(shot.player_id, shot.player_id),
+                      "xg": round(shot.xg, 2), "score": f"{running[0]}-{running[1]}"})
+    for i, (side, pid) in enumerate(live.sent_off):
+        facts |= {f"red_{i + 1}_player": names.get(pid, pid), f"red_{i + 1}_team": teams[side]}
+    if live.men[0] < 11 or live.men[1] < 11:
+        facts |= {"home_men": str(live.men[0]), "away_men": str(live.men[1])}
+    lev = live.leverage_table()
+    if lev:
+        facts |= {"top_player": names.get(lev[0].player_id, lev[0].player_id), "top_player_team": teams[lev[0].team],
+                  "top_player_leverage": f"{lev[0].total:+.2f}"}
+    recent: dict[str, Any] = {}
+    if minute >= 10:
+        k = 0 if (_threat_share(live, 0, minute - 10) or 0) >= 0.5 else 1
+        share = _threat_share(live, k, minute - 10)
+        if share is not None:
+            facts |= {"last10_team": (home, away)[k], "last10_share": pct(share)}
+            recent = {"team": k, "share": share}
+    spells = best_spells(live.by_minute)
+    spell = max((sp for sp in spells.values() if sp), key=lambda sp: sp.share, default=None)
+    if spell:
+        facts |= {"spell_team": teams[spell.team], "spell_start": f"{spell.start}'", "spell_end": f"{spell.end}'",
+                  "spell_share": pct(spell.share), "spell_goals": str(spell.goals)}
+    last = goals[-1] if goals else None
+    winner = None if lead is None else ("home", "away")[lead]
+    truths = {
+        "finished": finished, "score": [s.score[0], s.score[1]], "leader": winner, "derby": derby,
+        "reds": len(live.sent_off), "men": [live.men[0], live.men[1]],
+        "comeback": bool(winner and trailed[winner]) or (lead is None and any(trailed.values()) and sum(s.score) > 0),
+        "late_winner": bool(finished and winner and last and last["minute"] >= 80 and last["team"] == winner
+                            and abs(s.score[0] - s.score[1]) == 1),
+        "hat_trick": any(v >= 3 for v in scorers.values()),
+        "clean_sheet": s.score[0] == 0 or s.score[1] == 0,
+        "dominant": bool(spell) or bool(recent and recent["share"] >= 0.6),
+        "upset": bool(finished and winner and forecast and forecast[0 if winner == "home" else 2] < max(forecast[0], forecast[2])),
+    }
+    return {"facts": facts, "truths": truths, "goals": goals,
+            "stats": {"xg": [round(s.xg[0], 2), round(s.xg[1], 2)], "shots": shots,
+                      "possession": [round(s.possession[0], 3), round(s.possession[1], 3)],
+                      "win_prob": [round(p, 3) for p in s.win_prob], "men": [live.men[0], live.men[1]],
+                      "top_player": facts.get("top_player"), "top_player_leverage": facts.get("top_player_leverage"),
+                      "spell": None if not spell else {"team": spell.team, "start": spell.start, "end": spell.end,
+                                                       "share": round(spell.share, 3)}}}

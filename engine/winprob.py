@@ -226,8 +226,9 @@ def result_probs(prior: tuple[float, float], state: GameState, effects: StateEff
     lam_h, lam_a = live_rates(prior, state, fx)
     joint = np.outer(goals_pmf(lam_h * left, fx.dispersion), goals_pmf(lam_a * left, fx.dispersion))
     final = _DIFF + (state.score[0] - state.score[1])
-    home = float(joint[final > 0].sum())
-    draw = float(joint[final == 0].sum())
+    # Clamped: at full time the sums can come out a hair above 1 in floating point.
+    home = min(max(float(joint[final > 0].sum()), 0.0), 1.0)
+    draw = min(max(float(joint[final == 0].sum()), 0.0), 1.0 - home)
     return home, draw, max(1.0 - home - draw, 0.0)
 
 

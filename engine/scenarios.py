@@ -24,6 +24,12 @@ SCENARIO_DIR = Path(__file__).resolve().parent.parent / "data" / "scenarios"
 SEARCH_SEEDS = range(1, 400)
 
 
+def live_match_id(home: str, away: str, seed: int) -> str:
+    """The match id a live room gives a fixture. The random streams hang off it, so the search, the room,
+    the Newsdesk and the evals must all use this one, or they would each play a different match."""
+    return f"{home}{away}-{seed}"
+
+
 def running_scores(r: Result) -> list[tuple[int, int, int]]:
     """(minute, home goals, away goals) after each goal."""
     h = a = 0
@@ -84,7 +90,7 @@ STORIES: list[Story] = [
           "Castlemere make the chances; Eastwick take the points.",
           "CC", "EA", (), check=_upset),
     Story("fightback", "Ten-man fight-back",
-          "Northvale lose a defender to a red card, fall behind, and still win.",
+          "Northvale fall behind, lose a defender to a red card, and still win.",
           "NA", "BF", (Incident(minute=30, kind="red_card", team="home", player_number=4),),
           check=lambda r: _ten_men_win(r, 0, 30)),
     Story("chess", "The chess match",
@@ -98,7 +104,7 @@ BY_ID = {s.scenario_id: s for s in STORIES}
 
 def play(scenario: Scenario) -> Result:
     assert scenario.home and scenario.away and scenario.seed is not None
-    meta = MatchMeta(match_id=f"{scenario.scenario_id}-{scenario.seed}", home=scenario.home, away=scenario.away,
+    meta = MatchMeta(match_id=live_match_id(scenario.home, scenario.away, scenario.seed), home=scenario.home, away=scenario.away,
                      seed=scenario.seed)
     events = list(MatchSimulator(meta, build_league(), SimConfig(mode="events_only"), scenario).run())
     return summarize("this", CURRENT_MATCHDAY, scenario.home, scenario.away, events)  # type: ignore[arg-type]
