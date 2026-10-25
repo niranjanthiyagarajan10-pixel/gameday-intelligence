@@ -84,6 +84,8 @@
      11,
      10
     ],
+    "early_red": false,
+    "early_goal": true,
     "comeback": false,
     "late_winner": false,
     "hat_trick": true,
@@ -238,6 +240,8 @@
      10,
      10
     ],
+    "early_red": true,
+    "early_goal": false,
     "comeback": true,
     "late_winner": false,
     "hat_trick": false,
@@ -380,6 +384,8 @@
      11,
      10
     ],
+    "early_red": false,
+    "early_goal": true,
     "comeback": false,
     "late_winner": false,
     "hat_trick": false,
@@ -525,6 +531,8 @@
      10,
      11
     ],
+    "early_red": false,
+    "early_goal": true,
     "comeback": true,
     "late_winner": true,
     "hat_trick": false,
@@ -653,6 +661,8 @@
      11,
      11
     ],
+    "early_red": false,
+    "early_goal": false,
     "comeback": false,
     "late_winner": false,
     "hat_trick": false,

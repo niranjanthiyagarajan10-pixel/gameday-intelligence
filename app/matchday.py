@@ -13,6 +13,7 @@ from engine.league import PROFILES, League
 from engine.season import CURRENT_MATCHDAY, Season, schedule
 
 DECISIVE_KINDS = {"goal", "low_xg_goal", "red_card", "leverage_swing", "big_chance"}
+EARLY_MINUTE = 20  # "early" in a match story means inside the first twenty minutes
 
 
 def ordinal(n: int) -> str:
@@ -229,6 +230,8 @@ def match_facts(live: Any, names: dict[str, str], teams: dict[str, str], finishe
     truths = {
         "finished": finished, "score": [s.score[0], s.score[1]], "leader": winner, "derby": derby,
         "reds": len(live.sent_off), "men": [live.men[0], live.men[1]],
+        "early_red": any(m <= EARLY_MINUTE for m in getattr(live, "red_minutes", [])),
+        "early_goal": bool(goals) and goals[0]["minute"] <= EARLY_MINUTE,
         "comeback": bool(winner and trailed[winner]) or (lead is None and any(trailed.values()) and sum(s.score) > 0),
         "late_winner": bool(finished and winner and last and last["minute"] >= 80 and last["team"] == winner
                             and abs(s.score[0] - s.score[1]) == 1),

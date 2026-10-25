@@ -87,3 +87,12 @@ def test_api_serves_the_brief_and_every_report():
         a = news["articles"][0]
         assert a["headline"] and a["standfirst"] and a["body"] and a["pull"] and a["source"] == "template"
         json.dumps(news)
+
+
+def test_early_claims_need_an_early_event():
+    demo = next(m for m in matches() if m["scenario"] == "demo")  # red card on 55', first goal on 1'
+    parts = newsdesk.fallback(demo["facts"], demo["truths"])
+    late_red = {**parts, "headline": "{leader} crush {trailer} {score} after an early red card"}
+    early_goal = {**parts, "headline": "An early goal sets {leader} on the way"}
+    assert any("early red card" in r for r in newsdesk.check(late_red, demo["facts"], names_for(demo), demo["truths"]))
+    assert newsdesk.check(early_goal, demo["facts"], names_for(demo), demo["truths"]) == []

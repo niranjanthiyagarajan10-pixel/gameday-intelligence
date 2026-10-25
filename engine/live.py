@@ -141,6 +141,7 @@ class LiveStats:
         self.marking = MarkingTracker(keepers)
         self.by_minute: list[MinuteBucket] = []  # threat, shots, goals and xG per minute, for spells
         self.sent_off: list[tuple[Side, str]] = []
+        self.red_minutes: list[int] = []  # minute of each red card, for checking words like "early"
 
         self.shots: list[ShotRecord] = []
         # Pass network: completed passes between pairs, and each player's average position in possession.
@@ -389,6 +390,7 @@ class LiveStats:
         lev = self.model.red_card(self.state(), k, e.player_id or "")
         self.men[k] -= 1
         self.sent_off.append((e.team, e.player_id or ""))
+        self.red_minutes.append(e.minute)
         self._credit(lev)
         self.leverage_log[e.event_id] = lev
         return self._moment(
