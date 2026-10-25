@@ -22,9 +22,9 @@ from engine.models import Claim, Moment, template_slots
 
 EM_DASH = chr(0x2014)
 MAX_CHARS = {"casual": 240, "analyst": 320}
-# "56 m meters", "74% percent": a unit written after a slot that already has one.
-DOUBLE_UNIT = re.compile(r"\d\s?(m|km/h|%|km)\s+(meters?|metres?|percent|per cent|kilometres?|kilometers?|km/h|kph)\b",
-                         re.IGNORECASE)
+# "56 m meters", "74% percent", "++0.57": a unit or sign written beside a slot that already has one.
+DOUBLE_UNIT = re.compile(r"\d\s?(m|km/h|%|km)\s+(meters?|metres?|percent|per cent|kilometres?|kilometers?|km/h|kph)\b"
+                         r"|[+\-]{2}\d", re.IGNORECASE)
 GOAL_KINDS = {"goal", "low_xg_goal"}
 # Players are fictional and their genders unknown: agents use the player's slot or "they".
 GENDERED = re.compile(r"\b(he|him|his|himself|she|her|hers|herself)\b", re.IGNORECASE)

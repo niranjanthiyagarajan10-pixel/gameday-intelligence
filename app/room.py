@@ -296,7 +296,7 @@ class MatchRoom:
         feedback: list[str] = []
         parts = None
         if self.llm.live:
-            for attempt in range(2):
+            for attempt in range(3):  # long stories get two retries
                 prompt = ask + ("\nYour last draft was rejected because: " + "; ".join(feedback) if feedback else "")
                 result = await self.llm.complete(agent=agent, instructions=module.INSTRUCTIONS, prompt=prompt,
                                                  model=self.llm.strong)

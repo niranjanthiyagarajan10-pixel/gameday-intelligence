@@ -49,6 +49,7 @@ def test_a_clean_template_passes():
     ("{player} scores " + chr(0x2014) + " {score}.", "no em dashes"),
     ("{player} scores to make it {score}, and {team} climb to {wp_after} percent.", "already carries its unit"),
     ("{player} scores to make it {score}, lifting {team}'s win chance to {wp_after}.", "never add 's to a slot"),
+    ("{player} scores to make it {score}, a swing of +{leverage}.", "already carries its unit"),
 ])
 def test_bad_drafts_fail_with_a_reason(template, reason):
     verdict = check(template)
