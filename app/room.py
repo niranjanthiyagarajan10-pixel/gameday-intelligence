@@ -16,6 +16,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from agents import story
 from agents.desk import CardDesk, TraceStep, name_list
 from agents.workflow import card_workflow, run_card
 from agents.llm import LLM
@@ -294,10 +295,16 @@ class MatchRoom:
         t = self.live.t
         steps: list[TraceStep] = []
         feedback: list[str] = []
+        previous: str | None = None
         parts = None
         if self.llm.live:
             for attempt in range(3):  # long stories get two retries
-                prompt = ask + ("\nYour last draft was rejected because: " + "; ".join(feedback) if feedback else "")
+                prompt = ask
+                if feedback:
+                    # Show the draft being fixed: without it the model starts over and often writes plain prose.
+                    prompt += ("\n\nYour last draft:\n" + (previous or "") + "\n\nIt was rejected because: "
+                               + "; ".join(feedback) + "\nFix only those problems. Keep every name and number "
+                               "as a {slot} from the facts; type none of them.")
                 result = await self.llm.complete(agent=agent, instructions=module.INSTRUCTIONS, prompt=prompt,
                                                  model=self.llm.strong)
                 if not result.ok:
@@ -305,6 +312,7 @@ class MatchRoom:
                                            result.ms, result.error or "", t))
                     break
                 parsed = module.parse(result.text)
+                previous = result.text
                 feedback = ["reply was not usable JSON"] if parsed is None else module.check(parsed, facts, names, truths)
                 steps.append(TraceStep(tag, "both", agent, f"draft {attempt + 1}", "ok", result.ms,
                                        f"{result.backend} {result.model}", t))
@@ -319,7 +327,7 @@ class MatchRoom:
             source = "template"
             steps.append(TraceStep(tag, "both", "Fallback", "template", "fallback", 0,
                                    "template story, every value a fact" if self.llm.live else "no model: template story", t))
-        fill = lambda tpl: tpl.format(**facts)  # noqa: E731
+        fill = lambda tpl: story.fill(tpl, facts)  # noqa: E731
         filled = {k: [fill(x) for x in v] if isinstance(v, list) else fill(v) for k, v in parts.items()}
         langs: dict[str, dict[str, Any]] = {}
         if self.llm.live and source == "agent":

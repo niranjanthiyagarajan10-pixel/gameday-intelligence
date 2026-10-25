@@ -1,8 +1,8 @@
 {
  "planted": {
   "moments": 132,
-  "planted": 5130,
-  "caught": 5130,
+  "planted": 5111,
+  "caught": 5111,
   "clean": 557,
   "clean_passed": 557,
   "rows": [
@@ -73,11 +73,6 @@
    },
    {
     "check": "In-depth Analyst: gendered pronoun",
-    "planted": 1,
-    "caught": 1
-   },
-   {
-    "check": "In-depth Analyst: possessive",
     "planted": 1,
     "caught": 1
    },
@@ -187,11 +182,6 @@
     "caught": 5
    },
    {
-    "check": "Newsdesk: possessive",
-    "planted": 5,
-    "caught": 5
-   },
-   {
     "check": "Newsdesk: types a number",
     "planted": 5,
     "caught": 5
@@ -257,11 +247,6 @@
     "caught": 3
    },
    {
-    "check": "Post-game: possessive",
-    "planted": 3,
-    "caught": 3
-   },
-   {
     "check": "Post-game: types a name",
     "planted": 2,
     "caught": 2
@@ -298,11 +283,6 @@
    },
    {
     "check": "Preview: gendered pronoun",
-    "planted": 5,
-    "caught": 5
-   },
-   {
-    "check": "Preview: possessive",
     "planted": 5,
     "caught": 5
    },
@@ -377,11 +357,6 @@
     "caught": 5
    },
    {
-    "check": "Summarizer: possessive",
-    "planted": 5,
-    "caught": 5
-   },
-   {
     "check": "Summarizer: types a name",
     "planted": 2,
     "caught": 2
@@ -403,7 +378,7 @@
    }
   ],
   "misses": [],
-  "at": "2026-10-25 17:49"
+  "at": "2026-10-25 18:03"
  },
  "analyst": {
   "room": "38071a79",

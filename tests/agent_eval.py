@@ -380,8 +380,7 @@ def _story_mutations(text: str, facts: dict[str, str], truths: dict[str, Any], i
     out += [("unknown fact", text + " The gate was {attendance}."),
             ("unsupported detail", text + " A key injury could decide it."),
             ("em dash", text + " " + chr(0x2014) + " watch this."),
-            ("gendered pronoun", text + " His side will be ready."),
-            ("possessive", text + " It is {home}'s moment.")]
+            ("gendered pronoun", text + " His side will be ready.")]
     unit = next((s for s in slots if facts.get(s, "").endswith("%")), None)
     if unit:
         out.append(("unit after a fact", text.replace("{" + unit + "}", "{" + unit + "} percent", 1)))

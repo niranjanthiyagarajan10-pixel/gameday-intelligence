@@ -41,6 +41,12 @@ def parse(text: str | None, keys: tuple[str, ...]) -> dict[str, Any] | None:
     return out
 
 
+def fill(template: str, facts: dict[str, str]) -> str:
+    """Fill a story's slots. A possessive after a name ending in s reads "Rovers'", not "Rovers's"."""
+    text = template.format(**facts)
+    return re.sub(r"(\w*s)'s\b", r"\1'", text)
+
+
 def check(parts: dict[str, Any], facts: dict[str, str], names: Iterable[str], truths: dict[str, Any],
           limits: dict[str, int], banned: list[str], implied: Implied) -> list[str]:
     """Reasons the story cannot be used; empty when every part passes."""
@@ -76,8 +82,6 @@ def check(parts: dict[str, Any], facts: dict[str, str], names: Iterable[str], tr
                 reasons.append(f"{where}: no em dashes")
             if GENDERED.search(literal):
                 reasons.append(f"{where}: never use he, him, his, she or her for a player")
-            if re.search(r"\}['’]s\b", template):
-                reasons.append(f"{where}: never add 's to a slot")
             if not unknown:
                 filled = template.format(**{k: facts[k] for k in slots})
                 if DOUBLE_UNIT.search(filled) or "%%" in filled:
@@ -96,7 +100,8 @@ MATCH_IMPLIED: Implied = [
     (r"\blead(s|ing)?\b|\bahead\b|\bin front\b", "a side is ahead", lambda t: bool(t["leader"])),
     (r"comeback|fight(s|ing)? back|fought back|came from behind|from behind|turn(ed|s)? it around",
      "a side came from behind", lambda t: bool(t["comeback"])),
-    (r"late winner|last[- ]gasp|dying minutes|stoppage", "a late winner", lambda t: bool(t["late_winner"])),
+    (r"late (winner|win|goal|strike)|last[- ]gasp|dying minutes|stoppage", "a late winner",
+     lambda t: bool(t["late_winner"])),
     (r"hat[- ]trick", "a hat-trick", lambda t: bool(t["hat_trick"])),
     (r"red card|sent off|ten men|down to ten|man down|ten-man", "a red card", lambda t: t["reds"] > 0),
     (r"clean sheet|shut ?out|\bnil\b", "a side did not score", lambda t: bool(t["clean_sheet"])),

@@ -27,10 +27,17 @@ Rules:
    records or the table. Words such as won, drew, comeback, late winner, upset, red card, dominated, derby
    and clean sheet are claims: use one only when the facts support it.
 4. Facts carry their units: {spell_share} is already "93%". Never add % or a unit after a slot.
+   Each number means only what its key says: {spell_share} is one team's share of the threat in that spell,
+   never possession, chances or control; *_possession is the ball; *_xg is chance quality. Never relabel one.
 5. Headline under 70 characters, punchy. Standfirst one sentence. Each body paragraph 2 to 4 sentences.
    Pull quote one short line a designer would print large. No em dashes. Never use he, him, his,
    she or her: use the player's slot or they. Never add 's to a slot.
 6. Reply with JSON only: {"headline": "...", "standfirst": "...", "body": ["...", "..."], "pull": "..."}
+
+Example of the form (slots only, never the values): {"headline": "{goal_1_player} sets {leader} on the way",
+"standfirst": "{leader} beat {trailer} {score} on a day of {home_xg} expected goals to {away_xg}.",
+"body": ["{goal_1_player} struck on {goal_1_minute} from a {goal_1_xg} xG chance, and ..."],
+"pull": "{spell_share} of the threat in ten minutes"}
 """
 
 
