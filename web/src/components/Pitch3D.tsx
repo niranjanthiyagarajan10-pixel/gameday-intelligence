@@ -435,7 +435,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         }
         if (tag.textContent !== label) tag.textContent = label;
         tag.classList.toggle("focus", id === focus && !replay);
-        proj.copy(f.group.position).setY(HEAD_Y + 1.2).project(camera);
+        proj.copy(f.group.position).setY(HEAD_Y + 0.6).project(camera);
         const off = proj.z > 1 || Math.abs(proj.x) > 1.1 || Math.abs(proj.y) > 1.1;
         tag.style.display = off ? "none" : "block";
         tag.style.transform = `translate(${(((proj.x + 1) / 2) * w).toFixed(1)}px, ${(((1 - proj.y) / 2) * h).toFixed(1)}px) translate(-50%, -100%)`;
