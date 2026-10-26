@@ -1,14 +1,24 @@
 import { Component, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Frame, FxEvent, Roster } from "../types";
+import { webglAvailable } from "../webgl";
 import { Pitch } from "./Pitch";
+import { BALL_R, HEAD_Y, L, cssColor, disc, disposeTree, flatMat, wx, wz } from "../pitch3d/core";
+import { buildPitch } from "../pitch3d/pitch";
+import { FigureKit, animate, dive, lunge, type Figure } from "../pitch3d/figures";
+import { BallTrail, FlightPaths, footballTexture } from "../pitch3d/ball";
+import { buildStadium } from "../pitch3d/stadium";
+import { TacticalLayers, type Layer } from "../pitch3d/layers";
+import { Director, PRESET_LABEL, type CamContext, type Preset } from "../pitch3d/camera";
+import { Telestrator, type OverlayStyle, type Spot } from "../pitch3d/overlays";
+import { buildScript, type Beat, type Caption, type ExplainRequest, type Script } from "../pitch3d/explain";
 
 /**
  * Interactive 3D pitch for the Live tab. Same props as the 2D Pitch, plus `onSelect` for click to
- * focus. Pitch metres map to world units: x 0..105 runs along world X, y 0..68 along world Z, up is Y.
- * If WebGL is missing or the scene throws, the 2D Pitch renders instead.
+ * focus and `explain` for the telestrated replay of a shot. If WebGL is missing or the scene throws,
+ * the 2D Pitch renders instead.
  */
 
 export interface Pitch3DProps {
@@ -20,486 +30,95 @@ export interface Pitch3DProps {
   fx: FxEvent[];
   labels?: Record<string, string>;
   onSelect?: (id: string) => void;
+  explain?: ExplainRequest | null;
+  onExplainEnd?: () => void;
 }
 
-/** A spot on the pitch in metres, a player id, or "ball". */
-export type Spot = { x: number; y: number } | string;
-export type Preset = "broadcast" | "goal" | "tactical" | "follow";
+export type { Preset, Spot, OverlayStyle, ExplainRequest };
 
-export interface OverlayStyle {
-  color?: string; // CSS colour, default the signal colour
-  width?: number; // metres
-  opacity?: number;
-}
-
-/** Imperative API for telestration. Every draw call returns an id for removeOverlay. */
+/** Imperative API for telestration. Draw calls return an id for removeOverlay. */
 export interface Pitch3DApi {
+  /** Fly to look at a spot and hold there until setPreset is called. */
   flyTo(target: Spot, duration?: number, opts?: { distance?: number; height?: number }): void;
   setPreset(p: Preset): void;
   drawArrow(a: Spot, b: Spot, style?: OverlayStyle): string;
   drawLine(a: Spot, b: Spot, style?: OverlayStyle): string;
   drawRing(at: Spot, radius?: number, style?: OverlayStyle): string;
   drawZone(at: Spot, radius: number, style?: OverlayStyle): string;
+  drawWedge(apex: Spot, a: Spot, b: Spot, style?: OverlayStyle): string;
   removeOverlay(id: string): void;
   clearOverlays(): void;
+  explain(req: ExplainRequest): void;
+  stopExplain(): void;
 }
 
-const L = 105;
-const W = 68;
-const FIG_SCALE = 1.5; // figures a bit larger than life so they read at broadcast distance
-const BALL_R = 0.26;
-const GROUND = 0.02;
-const PRESET_LABEL: Record<Preset, string> = { broadcast: "Broadcast", goal: "Behind goal", tactical: "Tactical", follow: "Follow ball" };
-const VIEW_KEY = "gdi.pitch3d.preset";
+const PRESET_KEY = "gdi.pitch3d.preset";
+const LAYER_KEY = "gdi.pitch3d.layers";
+const LAYER_LABEL: Record<Layer, string> = { shape: "Shape", passing: "Passing", control: "Control" };
+const CARRIER_M = 2.0;
+const REPLAY_HOLD_MS = 1600; // the last caption stays up this long after the clip ends
 
-const wx = (x: number) => x - L / 2;
-const wz = (y: number) => y - W / 2;
-
-export function webglAvailable(): boolean {
+function readPreset(): Preset {
   try {
-    const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+    const v = localStorage.getItem(PRESET_KEY);
+    return v && v in PRESET_LABEL ? (v as Preset) : "broadcast";
   } catch {
-    return false;
+    return "broadcast";
   }
 }
 
-function cssColor(name: string, fallback: string) {
+function readLayers(): Set<Layer> {
   try {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v || fallback;
+    const v = JSON.parse(localStorage.getItem(LAYER_KEY) ?? "[]");
+    return new Set(Array.isArray(v) ? v.filter((l): l is Layer => l in LAYER_LABEL) : []);
   } catch {
-    return fallback;
+    return new Set();
   }
 }
 
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-
-/** Flat shapes on the grass. Everything shares one material style: unlit, no depth write. */
-function flatMat(color: string | number, opacity = 1) {
-  return new THREE.MeshBasicMaterial({
-    color,
-    transparent: opacity < 1,
-    opacity,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    side: THREE.DoubleSide,
-  });
-}
-
-function strip(x1: number, z1: number, x2: number, z2: number, w: number, mat: THREE.Material, y = GROUND) {
-  const len = Math.hypot(x2 - x1, z2 - z1);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(len, w), mat);
-  m.rotation.x = -Math.PI / 2;
-  m.rotation.z = -Math.atan2(z2 - z1, x2 - x1);
-  m.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
-  return m;
-}
-
-function arc(cx: number, cz: number, r: number, w: number, start: number, len: number, mat: THREE.Material, y = GROUND) {
-  const m = new THREE.Mesh(new THREE.RingGeometry(r - w / 2, r + w / 2, 96, 1, start, len), mat);
-  m.rotation.x = -Math.PI / 2;
-  m.position.set(cx, y, cz);
-  return m;
-}
-
-function disc(cx: number, cz: number, r: number, mat: THREE.Material, y = GROUND) {
-  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 48), mat);
-  m.rotation.x = -Math.PI / 2;
-  m.position.set(cx, y, cz);
-  return m;
-}
-
-/** Grass with mowing stripes, the standard markings, and both goals with nets. */
-function buildPitch(): THREE.Group {
-  const g = new THREE.Group();
-  const surround = new THREE.Mesh(new THREE.PlaneGeometry(L + 30, W + 24), new THREE.MeshLambertMaterial({ color: 0x0a120d }));
-  surround.rotation.x = -Math.PI / 2;
-  surround.position.y = -0.01;
-  surround.receiveShadow = true;
-  g.add(surround);
-  const grass = new THREE.Mesh(new THREE.PlaneGeometry(L + 6, W + 6), new THREE.MeshLambertMaterial({ color: 0x0e1a12 }));
-  grass.rotation.x = -Math.PI / 2;
-  grass.receiveShadow = true;
-  g.add(grass);
-  const stripe = new THREE.MeshLambertMaterial({ color: 0x13241a, polygonOffset: true, polygonOffsetFactor: -1 });
-  const sw = L / 18;
-  for (let i = 0; i < 18; i += 2) {
-    const s = new THREE.Mesh(new THREE.PlaneGeometry(sw, W + 6), stripe);
-    s.rotation.x = -Math.PI / 2;
-    s.position.set(wx(i * sw + sw / 2), 0.005, 0);
-    s.receiveShadow = true;
-    g.add(s);
-  }
-
-  const line = flatMat(0xdfe3dc, 0.55);
-  const lw = 0.12;
-  const rect = (x0: number, y0: number, x1: number, y1: number) => {
-    g.add(strip(wx(x0), wz(y0), wx(x1), wz(y0), lw, line));
-    g.add(strip(wx(x0), wz(y1), wx(x1), wz(y1), lw, line));
-    g.add(strip(wx(x0), wz(y0), wx(x0), wz(y1), lw, line));
-    g.add(strip(wx(x1), wz(y0), wx(x1), wz(y1), lw, line));
-  };
-  rect(0, 0, L, W);
-  g.add(strip(0, wz(0), 0, wz(W), lw, line));
-  g.add(arc(0, 0, 9.15, lw, 0, Math.PI * 2, line));
-  const spot = flatMat(0xdfe3dc, 0.7);
-  g.add(disc(0, 0, 0.25, spot));
-  const penAng = Math.acos(5.5 / 9.15);
-  for (const left of [true, false]) {
-    const x0 = left ? 0 : L;
-    const s = left ? 1 : -1;
-    rect(Math.min(x0, x0 + s * 16.5), 13.84, Math.max(x0, x0 + s * 16.5), 54.16);
-    rect(Math.min(x0, x0 + s * 5.5), 24.84, Math.max(x0, x0 + s * 5.5), 43.16);
-    const px = wx(left ? 11 : 94);
-    g.add(disc(px, 0, 0.22, spot));
-    // RingGeometry angles run counterclockwise from +X in its own plane; after laying it flat the
-    // arc at angle a sits at (cos a, -sin a) in world X,Z, symmetric about the axis either way.
-    g.add(arc(px, 0, 9.15, lw, left ? -penAng : Math.PI - penAng, 2 * penAng, line));
-    g.add(buildGoal(left));
-  }
-  for (const [cx, cz, start] of [
-    [0, 0, -Math.PI / 2],
-    [L, 0, Math.PI],
-    [0, W, 0],
-    [L, W, Math.PI / 2],
-  ] as const) {
-    g.add(arc(wx(cx), wz(cz), 1, lw, start, Math.PI / 2, line));
-  }
-  return g;
-}
-
-function buildGoal(left: boolean): THREE.Group {
-  const g = new THREE.Group();
-  const h = 2.44;
-  const half = 7.32 / 2;
-  const depth = 2;
-  const post = new THREE.MeshLambertMaterial({ color: 0xf4f4f1 });
-  const r = 0.07;
-  for (const z of [-half, half]) {
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 10), post);
-    p.position.set(0, h / 2, z);
-    p.castShadow = true;
-    g.add(p);
-  }
-  const bar = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 7.32 + 2 * r, 10), post);
-  bar.rotation.x = Math.PI / 2;
-  bar.position.set(0, h, 0);
-  bar.castShadow = true;
-  g.add(bar);
-
-  // Net as a grid of line segments: back, roof and two sides. Depth runs toward -X here.
-  const pts: number[] = [];
-  const seg = (a: number[], b: number[]) => pts.push(...a, ...b);
-  const step = 0.35;
-  for (let z = -half; z <= half + 1e-6; z += step) {
-    seg([0, h, z], [-depth, h * 0.8, z]);
-    seg([-depth, h * 0.8, z], [-depth, 0, z]);
-  }
-  for (let y = 0; y <= h * 0.8 + 1e-6; y += step) seg([-depth, y, -half], [-depth, y, half]);
-  for (let d = 0; d <= depth + 1e-6; d += step) {
-    const y = h - (0.2 * h * d) / depth;
-    seg([-d, y, -half], [-d, y, half]);
-    for (const z of [-half, half]) seg([-d, 0, z], [-d, y, z]);
-  }
-  for (let y = 0; y <= h + 1e-6; y += step) {
-    // Side panels: the roof slopes down from the bar to 80% height at the back.
-    const back = y <= h * 0.8 ? depth : (depth * (h - y)) / (0.2 * h);
-    for (const z of [-half, half]) seg([0, y, z], [-back, y, z]);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-  g.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.32 })));
-  g.position.set(wx(left ? 0 : L), 0, 0);
-  if (!left) g.rotation.y = Math.PI;
-  return g;
-}
-
-interface Figure {
-  group: THREE.Group;
-  hit: THREE.Mesh;
-  legs: THREE.Group[];
-  arms: THREE.Group[];
-  phase: number;
-  swing: number;
-}
-
-const SKIN = [0xe6bf9c, 0xd0a07a, 0xa87552, 0x7c5238, 0x5a3a26];
-const HAIR = [0x16110d, 0x2e2118, 0x4a3324, 0x0b0b0b, 0x6b4a2b];
-
-/** Stable small hash so each synthetic player keeps the same look in every session. */
-function hash(s: string) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
-/** Shirt number drawn on a transparent canvas, used as a decal on the back and chest. */
-function numberTexture(n: number, color: string, edge: string) {
-  const c = document.createElement("canvas");
-  c.width = c.height = 128;
-  const g = c.getContext("2d");
-  if (g) {
-    g.font = "700 96px 'Barlow Condensed', 'Arial Narrow', sans-serif";
-    g.textAlign = "center";
-    g.textBaseline = "middle";
-    g.lineWidth = 6;
-    g.strokeStyle = edge;
-    g.strokeText(String(n), 64, 70);
-    g.fillStyle = color;
-    g.fillText(String(n), 64, 70);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
-}
-
-/**
- * Low-poly player in full kit: shirt with trim collar and cuffs, shorts, socks, boots, and the shirt
- * number on the back and chest. Legs and arms hang from pivots so they can swing with running speed.
- * The figure faces local +X. Geometry is shared; materials are cached per colour.
- */
-class FigureKit {
-  geo = {
-    boot: new THREE.BoxGeometry(0.24, 0.07, 0.1),
-    sock: new THREE.CylinderGeometry(0.062, 0.05, 0.42, 8),
-    thigh: new THREE.CylinderGeometry(0.085, 0.068, 0.24, 8),
-    shorts: new THREE.CylinderGeometry(0.2, 0.225, 0.26, 12),
-    torso: new THREE.CylinderGeometry(0.25, 0.2, 0.6, 14),
-    collar: new THREE.CylinderGeometry(0.085, 0.1, 0.06, 12),
-    neck: new THREE.CylinderGeometry(0.055, 0.06, 0.1, 8),
-    sleeve: new THREE.CylinderGeometry(0.08, 0.072, 0.2, 8),
-    cuff: new THREE.CylinderGeometry(0.074, 0.074, 0.04, 8),
-    arm: new THREE.CylinderGeometry(0.05, 0.042, 0.36, 6),
-    head: new THREE.SphereGeometry(0.115, 14, 10),
-    hair: new THREE.SphereGeometry(0.122, 14, 6, 0, Math.PI * 2, 0, Math.PI * 0.42),
-    backNo: new THREE.PlaneGeometry(0.26, 0.26),
-    frontNo: new THREE.PlaneGeometry(0.11, 0.11),
-    hit: new THREE.CylinderGeometry(0.6, 0.6, 2.2, 8),
-  };
-  hitMat = new THREE.MeshBasicMaterial({ visible: false });
-  mats = new Map<string, THREE.Material>();
-
-  mat(color: string | number) {
-    const key = String(color);
-    let m = this.mats.get(key);
-    if (!m) {
-      m = new THREE.MeshLambertMaterial({ color });
-      this.mats.set(key, m);
-    }
-    return m;
-  }
-
-  numberMat(n: number, color: string, edge: string) {
-    const key = `no${n}|${color}|${edge}`;
-    let m = this.mats.get(key);
-    if (!m) {
-      m = new THREE.MeshLambertMaterial({ map: numberTexture(n, color, edge), transparent: true, alphaTest: 0.3, depthWrite: false });
-      this.mats.set(key, m);
-    }
-    return m;
-  }
-
-  part(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D) {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    m.castShadow = true;
-    parent.add(m);
-    return m;
-  }
-
-  make(id: string, kit: { shirt: string; trim: string; shorts: string; socks: string; number: number }): Figure {
-    const group = new THREE.Group();
-    const h = hash(id);
-    const skin = this.mat(SKIN[h % SKIN.length]);
-    const hair = this.mat(HAIR[(h >> 4) % HAIR.length]);
-    const shirt = this.mat(kit.shirt);
-    const trim = this.mat(kit.trim);
-    const g = this.geo;
-
-    const legs = [-0.1, 0.1].map((z) => {
-      const hip = new THREE.Group();
-      hip.position.set(0, 0.7, z);
-      this.part(g.thigh, skin, 0, -0.14, 0, hip);
-      this.part(g.sock, this.mat(kit.socks), 0, -0.44, 0, hip);
-      this.part(g.boot, this.mat(0x111111), 0.04, -0.665, 0, hip);
-      group.add(hip);
-      return hip;
-    });
-    const shorts = this.part(g.shorts, this.mat(kit.shorts), 0, 0.78, 0, group);
-    shorts.scale.x = 0.75;
-    const torso = this.part(g.torso, shirt, 0, 1.2, 0, group);
-    torso.scale.x = 0.68;
-    this.part(g.collar, trim, 0, 1.5, 0, group);
-    this.part(g.neck, skin, 0, 1.55, 0, group);
-    this.part(g.head, skin, 0, 1.67, 0, group);
-    this.part(g.hair, hair, -0.01, 1.68, 0, group);
-    const arms = [-0.29, 0.29].map((z) => {
-      const shoulder = new THREE.Group();
-      shoulder.position.set(0, 1.45, z);
-      shoulder.rotation.x = z < 0 ? 0.12 : -0.12;
-      this.part(g.sleeve, shirt, 0, -0.08, 0, shoulder);
-      this.part(g.cuff, trim, 0, -0.19, 0, shoulder);
-      this.part(g.arm, skin, 0, -0.38, 0, shoulder);
-      group.add(shoulder);
-      return shoulder;
-    });
-    const back = new THREE.Mesh(g.backNo, this.numberMat(kit.number, kit.trim, kit.shirt));
-    back.position.set(-0.165, 1.2, 0);
-    back.rotation.y = -Math.PI / 2;
-    group.add(back);
-    const front = new THREE.Mesh(g.frontNo, this.numberMat(kit.number, kit.trim, kit.shirt));
-    front.position.set(0.162, 1.33, 0.08);
-    front.rotation.y = Math.PI / 2;
-    group.add(front);
-
-    const hit = new THREE.Mesh(g.hit, this.hitMat);
-    hit.position.y = 1.1;
-    hit.userData.id = id;
-    group.add(hit);
-    group.scale.setScalar(FIG_SCALE);
-    return { group, hit, legs, arms, phase: (h % 628) / 100, swing: 0 };
-  }
-
-  dispose() {
-    for (const geo of Object.values(this.geo)) geo.dispose();
-    this.hitMat.dispose();
-    for (const m of this.mats.values()) {
-      (m as THREE.MeshLambertMaterial).map?.dispose();
-      m.dispose();
-    }
+function save(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage blocked: the choice lasts for this visit only */
   }
 }
 
-/**
- * Equirectangular texture for a classic black and white football: 12 black pentagons and 20 white
- * hexagons with dark seams. Each texel takes the nearest panel centre; pentagon distances are scaled
- * up a little because pentagons are smaller panels than hexagons.
- */
-function footballTexture() {
-  const phi = (1 + Math.sqrt(5)) / 2;
-  const ico = [
-    [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
-    [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
-    [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1],
-  ].map((v) => new THREE.Vector3(...v).normalize());
-  const faces: THREE.Vector3[] = [];
-  for (let i = 0; i < 12; i++)
-    for (let j = i + 1; j < 12; j++)
-      for (let k = j + 1; k < 12; k++) {
-        const close = (a: number, b: number) => ico[a].dot(ico[b]) > 0.4;
-        if (close(i, j) && close(j, k) && close(i, k)) faces.push(ico[i].clone().add(ico[j]).add(ico[k]).normalize());
-      }
-  const W = 512;
-  const H = 256;
-  const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
-  const g = c.getContext("2d");
-  if (g) {
-    const img = g.createImageData(W, H);
-    const d = new THREE.Vector3();
-    for (let y = 0; y < H; y++) {
-      const th = ((y + 0.5) / H) * Math.PI;
-      for (let x = 0; x < W; x++) {
-        const ph = ((x + 0.5) / W) * Math.PI * 2;
-        d.set(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th));
-        let best = Infinity;
-        let second = Infinity;
-        let pent = false;
-        for (let i = 0; i < 32; i++) {
-          const p = i < 12;
-          const a = Math.acos(Math.min(1, d.dot(p ? ico[i] : faces[i - 12]))) * (p ? 1.2 : 1);
-          if (a < best) {
-            second = best;
-            best = a;
-            pent = p;
-          } else if (a < second) second = a;
-        }
-        const seam = second - best < 0.025;
-        const v = seam ? 70 : pent ? 22 : 238;
-        const o = (y * W + x) * 4;
-        img.data[o] = img.data[o + 1] = img.data[o + 2] = v;
-        img.data[o + 3] = 255;
-      }
-    }
-    g.putImageData(img, 0, 0);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+/** What the mounted scene exposes to React. */
+interface Engine {
+  frame(f: Frame): void;
+  preset(p: Preset): void;
+  layers(on: Set<Layer>): void;
+  explain(req: ExplainRequest): void;
+  stopExplain(): void;
+  api: Omit<Pitch3DApi, "setPreset" | "explain" | "stopExplain">;
 }
 
-interface Overlay {
-  obj: THREE.Object3D;
-  follow?: string; // player id or "ball" the overlay sticks to
+type Positions = Map<string, number[]>; // pitch metres: players x, y, speed; ball x, y, z
+
+interface Replay {
+  req: ExplainRequest;
+  script: Script;
+  t: number;
+  rate: number;
+  beat: number;
+  cursor: number;
+  last: number;
+  endedAt: number;
+  netDone: boolean;
 }
 
-interface Fly {
-  p0: THREE.Vector3;
-  t0: THREE.Vector3;
-  p1: THREE.Vector3;
-  t1: THREE.Vector3;
-  start: number;
-  dur: number;
-}
-
-const PRESETS: Record<Exclude<Preset, "follow">, { pos: [number, number, number]; target: [number, number, number] }> = {
-  broadcast: { pos: [0, 50, 80], target: [0, 0, 4] },
-  goal: { pos: [-L / 2 - 26, 20, 0], target: [6, 0, 0] },
-  tactical: { pos: [0, 112, 0.1], target: [0, 0, 0] },
-};
-const FOLLOW_OFFSET = new THREE.Vector3(0, 26, 34);
-
-/**
- * The live scene. Built once per mount; frames, focus and fx flow in through refs so React renders
- * never rebuild WebGL state. Calls onFail if anything in setup or the render loop throws.
- */
 const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(function Scene(props, ref) {
   const host = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
-  const api = useRef<Pitch3DApi | null>(null);
+  const tagLayer = useRef<HTMLDivElement>(null);
+  const engine = useRef<Engine | null>(null);
   const live = useRef(props);
   live.current = props;
-  const [preset, setPresetState] = useState<Preset>(() => {
-    try {
-      const v = localStorage.getItem(VIEW_KEY);
-      return v && v in PRESET_LABEL ? (v as Preset) : "broadcast";
-    } catch {
-      return "broadcast";
-    }
-  });
-  const frameIn = useRef<((f: Frame) => void) | null>(null);
-
-  useImperativeHandle(ref, () => ({
-    flyTo: (...a) => api.current?.flyTo(...a),
-    setPreset: (p) => setPresetState(p),
-    drawArrow: (...a) => api.current?.drawArrow(...a) ?? "",
-    drawLine: (...a) => api.current?.drawLine(...a) ?? "",
-    drawRing: (...a) => api.current?.drawRing(...a) ?? "",
-    drawZone: (...a) => api.current?.drawZone(...a) ?? "",
-    removeOverlay: (id) => api.current?.removeOverlay(id),
-    clearOverlays: () => api.current?.clearOverlays(),
-  }));
-
-  useEffect(() => {
-    if (props.frame) frameIn.current?.(props.frame);
-  }, [props.frame]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_KEY, preset);
-    } catch {
-      /* storage blocked: the preset just is not remembered */
-    }
-    if (preset !== "follow") {
-      const p = PRESETS[preset];
-      apiPreset.current?.(new THREE.Vector3(...p.pos), new THREE.Vector3(...p.target), false);
-    } else apiPreset.current?.(null, null, true);
-  }, [preset]);
-  const apiPreset = useRef<((pos: THREE.Vector3 | null, target: THREE.Vector3 | null, follow: boolean) => void) | null>(null);
+  const [preset, setPreset] = useState<Preset>(readPreset);
+  const [layers, setLayers] = useState<Set<Layer>>(readLayers);
+  const [caption, setCaption] = useState<Caption | null>(null);
+  const [replaying, setReplaying] = useState(false);
 
   useEffect(() => {
     const el = host.current;
@@ -508,27 +127,28 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     } catch {
-      props.onFail();
+      live.current.onFail();
       return;
     }
     const failed = { v: false };
     const fail = () => {
       if (failed.v) return;
       failed.v = true;
-      props.onFail();
+      live.current.onFail();
     };
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x000000, 1);
     el.appendChild(renderer.domElement);
-    renderer.domElement.addEventListener("webglcontextlost", fail);
+    const cv = renderer.domElement;
+    cv.addEventListener("webglcontextlost", fail);
 
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x000000, 140, 260);
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600);
-    const start = PRESETS[preset === "follow" ? "broadcast" : preset];
-    camera.position.set(...start.pos);
+    scene.fog = new THREE.Fog(0x000000, 150, 280);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.3, 700);
+    camera.position.set(0, 20, 42);
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0x1a2a1e, 1.1));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
@@ -539,24 +159,28 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     sun.shadow.bias = -0.0005;
     Object.assign(sun.shadow.camera, { left: -65, right: 65, top: 45, bottom: -45, near: 10, far: 200 });
     scene.add(sun);
-    scene.add(buildPitch());
+    const pitch = buildPitch();
+    scene.add(pitch.group);
+    const clubsKey = (r: Roster) => r.clubs.home.id + r.clubs.away.id;
+    let stadium = buildStadium(live.current.roster);
+    let stadiumFor = clubsKey(live.current.roster);
+    scene.add(stadium);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(...start.target);
+    const controls = new OrbitControls(camera, cv);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 12;
-    controls.maxDistance = 170;
-    controls.maxPolarAngle = Math.PI / 2 - 0.06; // never below the grass
-    controls.update();
+    controls.minDistance = 10;
+    controls.maxDistance = 130;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05; // never below the grass
+    const director = new Director(camera, controls, still);
 
     const signal = cssColor("--signal", "#e8ff3a");
     const kit = new FigureKit();
     const figures = new Map<string, Figure>();
     const players = new THREE.Group();
     scene.add(players);
-    const ringGeo = new THREE.RingGeometry(1.5, 1.75, 48);
-    const tagGeo = new THREE.RingGeometry(1.3, 1.42, 48);
+    const ringGeo = new THREE.RingGeometry(2.2, 2.55, 48);
+    const tagGeo = new THREE.RingGeometry(1.95, 2.12, 48);
     const ringMat = flatMat(signal, 0.95);
     const tagMat = flatMat(signal, 0.6);
     const rings = new Map<string, THREE.Mesh>();
@@ -565,149 +189,170 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     ball.castShadow = true;
     ball.visible = false;
     scene.add(ball);
-    const ballShadow = disc(0, 0, BALL_R * 1.6, flatMat(0x000000, 0.45), 0.03);
+    const ballShadow = disc(0, 0, BALL_R * 1.5, flatMat(0x000000, 0.45), 0.03);
     ballShadow.visible = false;
     scene.add(ballShadow);
+    const trail = new BallTrail();
+    scene.add(trail.mesh);
+    const flights = new FlightPaths();
+    scene.add(flights.group);
+    const tactics = new TacticalLayers();
+    scene.add(tactics.group);
 
     // Glide between frames, the same way the 2D pitch does.
-    let from = new Map<string, number[]>();
-    let to = new Map<string, number[]>();
-    const drawn = new Map<string, number[]>();
+    let from: Positions = new Map();
+    let to: Positions = new Map();
+    const drawn: Positions = new Map();
     let glideStart = 0;
     let gap = 200;
     let last = 0;
-    frameIn.current = (f) => {
-      const now = performance.now();
-      if (last) gap = Math.min(500, Math.max(60, 0.7 * gap + 0.3 * (now - last)));
-      last = now;
-      const next = new Map<string, number[]>(f.players.map((p) => [p[0], [p[1], p[2], p[3]]])); // x, y, speed
-      next.set("ball", [f.ball[0], f.ball[1], f.ball[2] ?? 0]);
+    let latest: Frame | null = null;
+    const toPositions = (f: { ball: number[]; players: [string, number, number, number][] }) => {
+      const m: Positions = new Map(f.players.map((p) => [p[0], [p[1], p[2], p[3]]]));
+      m.set("ball", [f.ball[0], f.ball[1], f.ball[2] ?? 0]);
+      return m;
+    };
+    const glideTo = (next: Positions, now: number) => {
       from = new Map(drawn);
       to = next;
       glideStart = now;
     };
-    if (live.current.frame) frameIn.current(live.current.frame);
 
-    const pos = (s: Spot): [number, number] | null => {
+    const resolve = (s: Spot): [number, number] | null => {
       if (typeof s !== "string") return [s.x, s.y];
       const p = drawn.get(s) ?? to.get(s);
       return p ? [p[0], p[1]] : null;
     };
+    const tele = new Telestrator(signal, resolve);
+    scene.add(tele.group);
 
-    // Overlays drawn on the grass for telestration.
-    const overlays = new Map<string, Overlay>();
-    const overlayRoot = new THREE.Group();
-    scene.add(overlayRoot);
-    let seq = 0;
-    const addOverlay = (obj: THREE.Object3D, follow?: string) => {
-      const id = `ov${++seq}`;
-      overlayRoot.add(obj);
-      overlays.set(id, { obj, follow });
-      return id;
+    const ctx: CamContext = { ball: new THREE.Vector3(), focus: null };
+
+    /** Bulge a net at the ball, or at the middle of the goal if the ball is not there yet. */
+    const goalAt = (end: number, now: number) => {
+      const near = Math.abs(ball.position.x) > L / 2 - 2;
+      const z = near ? ball.position.z : 0;
+      const y = near ? ball.position.y : 1.2;
+      // The right goal is turned round, so its own z runs the other way.
+      if (end > 0) pitch.nets[1].bulge(-z, y, now);
+      else pitch.nets[0].bulge(z, y, now);
     };
-    const disposeObj = (o: THREE.Object3D) =>
-      o.traverse((c) => {
-        const m = c as THREE.Mesh;
-        m.geometry?.dispose();
-        const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
-        for (const mat of mats) {
-          (mat as THREE.MeshLambertMaterial).map?.dispose();
-          mat.dispose();
-        }
-      });
-    const removeOverlay = (id: string) => {
-      const o = overlays.get(id);
-      if (!o) return;
-      overlayRoot.remove(o.obj);
-      disposeObj(o.obj);
-      overlays.delete(id);
-    };
-    const styleOf = (s?: OverlayStyle) => ({ color: s?.color ?? signal, width: s?.width ?? 0.45, opacity: s?.opacity ?? 0.9 });
-    const lineObj = (a: [number, number], b: [number, number], s: ReturnType<typeof styleOf>, head: boolean) => {
-      const g = new THREE.Group();
-      const mat = flatMat(s.color, s.opacity);
-      const [ax, az, bx, bz] = [wx(a[0]), wz(a[1]), wx(b[0]), wz(b[1])];
-      const len = Math.hypot(bx - ax, bz - az) || 0.001;
-      const ux = (bx - ax) / len;
-      const uz = (bz - az) / len;
-      const hl = head ? Math.min(len * 0.4, s.width * 5) : 0;
-      g.add(strip(ax, az, bx - ux * hl, bz - uz * hl, s.width, mat, 0.04));
-      if (head) {
-        const hw = s.width * 2.4;
-        const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(-hl, hw), new THREE.Vector2(-hl, -hw)]);
-        const tri = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat);
-        tri.rotation.x = -Math.PI / 2;
-        tri.rotation.z = -Math.atan2(bz - az, bx - ax);
-        tri.position.set(bx, 0.04, bz);
-        g.add(tri);
+
+    // Explain this moment: plays a shot's clip with telestration, then hands back to live.
+    let replay: Replay | null = null;
+    const frameAt = (r: Replay, t: number): Positions => {
+      const fr = r.req.clip.frames;
+      while (r.cursor < fr.length - 2 && fr[r.cursor + 1].t <= t) r.cursor++;
+      const a = fr[r.cursor];
+      const b = fr[Math.min(r.cursor + 1, fr.length - 1)];
+      const u = b.t > a.t ? Math.min(1, Math.max(0, (t - a.t) / (b.t - a.t))) : 0;
+      const pa = toPositions(a);
+      const pb = toPositions(b);
+      for (const [id, va] of pa) {
+        const vb = pb.get(id);
+        if (vb) pa.set(id, va.map((x, k) => x + ((vb[k] ?? x) - x) * u));
       }
-      return g;
+      return pa;
     };
-    const center = (at: Spot) => pos(at) ?? [L / 2, W / 2];
-    const follows = (at: Spot) => (typeof at === "string" ? at : undefined);
+    const applyBeat = (r: Replay, beat: Beat, now: number) => {
+      if (beat.caption) setCaption(beat.caption);
+      if (beat.rate) r.rate = beat.rate;
+      for (const d of beat.draw ?? []) {
+        if (d.type === "arrow") tele.arrow(d.a, d.b, { color: d.color, width: d.width, opacity: d.opacity });
+        else if (d.type === "line") tele.lineBetween(d.a, d.b, { color: d.color, width: d.width, opacity: d.opacity });
+        else if (d.type === "ring") tele.ring(d.at, d.radius, { color: d.color, width: 0.5 });
+        else tele.wedge(d.apex, d.a, d.b, { color: d.color, opacity: 0.18 });
+      }
+      const shooter = drawn.get(r.req.shot.player);
+      if (beat.cam === "shooter" && shooter) {
+        // Low, just behind the shooter, looking down the line of the shot at the goal.
+        const s = new THREE.Vector3(wx(shooter[0]), 0, wz(shooter[1]));
+        const goal = new THREE.Vector3((r.script.goalEnd * L) / 2, 0, 0);
+        const dir = goal.clone().sub(s).setY(0).normalize();
+        const side = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(5);
+        const pos = s.clone().addScaledVector(dir, -18).add(side).setY(10);
+        const look = s.clone().lerp(goal, 0.45).setY(0.5);
+        director.script(pos, look, now, 900);
+      }
+      if (beat.strike) flights.shot(live.current.roster.clubs[r.req.shot.team].primary, ball.position, now);
+    };
+    const startReplay = (req: ExplainRequest) => {
+      const now = performance.now();
+      const script = buildScript(req, live.current.roster, signal);
+      if (!script) {
+        live.current.onExplainEnd?.();
+        return;
+      }
+      tele.clear();
+      flights.clear();
+      trail.reset();
+      const r: Replay = { req, script, t: script.start, rate: 1, beat: 0, cursor: 0, last: now, endedAt: 0, netDone: false };
+      replay = r;
+      glideTo(frameAt(r, r.t), now);
+      setCaption(null);
+      setReplaying(true);
+    };
+    const endReplay = () => {
+      if (!replay) return;
+      replay = null;
+      const now = performance.now();
+      tele.clear();
+      flights.clear();
+      trail.reset();
+      setCaption(null);
+      setReplaying(false);
+      director.release(now, ctx);
+      if (latest) glideTo(toPositions(latest), now);
+      live.current.onExplainEnd?.();
+    };
+    const advanceReplay = (r: Replay, now: number) => {
+      const dt = Math.min(0.1, (now - r.last) / 1000);
+      r.last = now;
+      if (!r.endedAt) r.t = Math.min(r.script.end, r.t + dt * r.rate);
+      while (r.beat < r.script.beats.length && r.script.beats[r.beat].t <= r.t) applyBeat(r, r.script.beats[r.beat++], now);
+      if (r.t >= r.script.end && !r.endedAt) r.endedAt = now;
+      if (r.endedAt && now - r.endedAt > REPLAY_HOLD_MS) {
+        endReplay();
+        return;
+      }
+      const m = frameAt(r, r.t);
+      from = m;
+      to = m;
+    };
 
-    const fly: { cur: Fly | null } = { cur: null };
-    let following = preset === "follow";
-    const flyCam = (p1: THREE.Vector3, t1: THREE.Vector3, dur: number) => {
-      fly.cur = { p0: camera.position.clone(), t0: controls.target.clone(), p1, t1, start: performance.now(), dur: Math.max(1, dur) };
-    };
-
-    api.current = {
-      flyTo(target, duration = 1200, opts = {}) {
-        const c = center(target);
-        const t1 = new THREE.Vector3(wx(c[0]), 0, wz(c[1]));
-        const dir = camera.position.clone().sub(controls.target).setY(0);
-        if (dir.lengthSq() < 1e-3) dir.set(0, 0, 1);
-        dir.normalize().multiplyScalar(opts.distance ?? 26);
-        const p1 = t1.clone().add(dir).setY(opts.height ?? 16);
-        following = false;
-        flyCam(p1, t1, duration);
-      },
-      setPreset: () => undefined,
-      drawArrow: (a, b, s) => addOverlay(lineObj(center(a), center(b), styleOf(s), true)),
-      drawLine: (a, b, s) => addOverlay(lineObj(center(a), center(b), styleOf(s), false)),
-      drawRing(at, radius = 2.2, s) {
-        const st = styleOf(s);
-        const c = center(at);
-        return addOverlay(arc(wx(c[0]), wz(c[1]), radius, st.width * 0.6, 0, Math.PI * 2, flatMat(st.color, st.opacity), 0.04), follows(at));
-      },
-      drawZone(at, radius, s) {
-        const st = styleOf(s);
-        const c = center(at);
-        return addOverlay(disc(wx(c[0]), wz(c[1]), radius, flatMat(st.color, s?.opacity ?? 0.22), 0.035), follows(at));
-      },
-      removeOverlay,
-      clearOverlays: () => [...overlays.keys()].forEach(removeOverlay),
-    };
-    apiPreset.current = (p, t, follow) => {
-      following = follow;
-      if (follow) {
-        const b = drawn.get("ball") ?? [L / 2, W / 2];
-        const t1 = new THREE.Vector3(wx(b[0]), 0, wz(b[1]));
-        flyCam(t1.clone().add(FOLLOW_OFFSET), t1, 1100);
-      } else if (p && t) flyCam(p, t, 1100);
-    };
-
-    // Short-lived pass and shot lines from the fx feed.
+    // Short-lived pass lines, shot flights, reactions and goals from the live event feed.
     const seen = new Set<string>();
-    const fxLife = new Map<string, number>();
     const syncFx = (now: number) => {
       const { fx, roster } = live.current;
       for (const e of fx) {
-        if (seen.has(e.id) || now - e.at > 1500) continue;
+        if (seen.has(e.id)) continue;
         seen.add(e.id);
-        if ((e.type !== "pass" && e.type !== "shot") || e.end_x === null || e.end_y === null) continue;
-        const color = e.type === "pass" && e.outcome !== "complete" ? "#ffffff" : roster.clubs[e.team].primary;
-        const id = addOverlay(lineObj([e.x, e.y], [e.end_x, e.end_y], { color, width: e.type === "shot" ? 0.3 : 0.18, opacity: 0.7 }, e.type === "shot"));
-        fxLife.set(id, now + (e.type === "shot" ? 2000 : 1200));
-      }
-      for (const [id, until] of fxLife) {
-        if (now > until) {
-          removeOverlay(id);
-          fxLife.delete(id);
+        if (now - e.at > 1500) continue;
+        const end = e.team === "home" ? 1 : -1; // home always attacks toward x = 105
+        const color = roster.clubs[e.team].primary;
+        if (e.type === "pass" && e.end_x !== null && e.end_y !== null) {
+          const ok = e.outcome === "complete";
+          tele.lineBetween({ x: e.x, y: e.y }, { x: e.end_x, y: e.end_y }, { color: ok ? color : "#ffffff", width: 0.18, opacity: 0.65 }, 1200);
+        } else if (e.type === "shot") {
+          flights.shot(color, ball.position, now);
+          director.shotAt(end, now);
+          if (e.end_x !== null && e.end_y !== null && Math.abs(e.end_y - 34) < 7.5) {
+            for (const f of figures.values()) {
+              const info = roster.players[f.id];
+              if (!f.keeper || !info || info.side === e.team) continue;
+              if (Math.abs(f.group.position.x - (end * L) / 2) > 20) continue;
+              dive(f, now, [wx(e.x), wz(e.y)], [wx(e.end_x), wz(e.end_y)]);
+            }
+          }
+        } else if ((e.type === "tackle" || e.type === "interception") && e.player) {
+          const f = figures.get(e.player);
+          if (f) lunge(f, now, e.type === "tackle" ? 1 : 0.6);
+        } else if (e.type === "goal") {
+          goalAt(end, now);
+          director.goal(end, now);
         }
       }
-      if (seen.size > 2000) seen.clear();
+      if (seen.size > 4000) seen.clear();
     };
 
     const syncFigures = () => {
@@ -718,9 +363,12 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         if (!info) continue;
         const club = roster.clubs[info.side];
         // Keepers wear a dark kit trimmed in the club colour, as on the 2D pitch.
-        const f = info.position === "GK"
-          ? kit.make(id, { shirt: "#16181b", trim: club.primary, shorts: "#16181b", socks: "#16181b", number: info.number })
-          : kit.make(id, { shirt: club.primary, trim: club.secondary, shorts: club.secondary, socks: club.primary, number: info.number });
+        const f =
+          info.position === "GK"
+            ? kit.make(id, true, { shirt: "#16181b", trim: club.primary, shorts: "#16181b", socks: "#16181b", number: info.number })
+            : kit.make(id, false, { shirt: club.primary, trim: club.secondary, shorts: club.secondary, socks: club.primary, number: info.number });
+        const p = to.get(id)!;
+        f.group.position.set(wx(p[0]), 0, wz(p[1]));
         figures.set(id, f);
         players.add(f.group);
       }
@@ -731,7 +379,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         }
       }
       for (const [id, f] of figures) {
-        const want = id === focus ? ringGeo : tagged.has(id) ? tagGeo : null;
+        const want = replay ? null : id === focus ? ringGeo : tagged.has(id) ? tagGeo : null;
         let r = rings.get(id);
         if (!want) {
           if (r) {
@@ -752,14 +400,84 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       }
     };
 
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const lastBall = new THREE.Vector3();
+    // Name tags: small HTML labels pinned above the heads of the players that matter right now.
+    const tags = new Map<string, HTMLDivElement>();
+    const proj = new THREE.Vector3();
+    const syncTags = () => {
+      const layer = tagLayer.current;
+      if (!layer) return;
+      const { roster, focus, tagged, labels = {} } = live.current;
+      const want = new Map<string, string>();
+      const text = (id: string) => {
+        const info = roster.players[id];
+        return info ? `#${info.number} ${info.short.toUpperCase()}` : id;
+      };
+      if (replay) {
+        for (const id of replay.script.tags) want.set(id, text(id));
+      } else {
+        for (const id of tagged) want.set(id, labels[id] ? `${text(id)}  ${labels[id].toUpperCase()}` : text(id));
+        const me = focus ? drawn.get(focus) : undefined;
+        if (focus && me && director.mode !== "eye") want.set(focus, `${text(focus)}  ${((me[2] ?? 0) * 3.6).toFixed(1)} KM/H`);
+      }
+      const w = layer.clientWidth;
+      const h = layer.clientHeight;
+      for (const [id, label] of want) {
+        const f = figures.get(id);
+        const info = roster.players[id];
+        if (!f || !info) continue;
+        let tag = tags.get(id);
+        if (!tag) {
+          tag = document.createElement("div");
+          tag.className = "p3-tag";
+          tag.style.setProperty("--club", roster.clubs[info.side].primary);
+          layer.appendChild(tag);
+          tags.set(id, tag);
+        }
+        if (tag.textContent !== label) tag.textContent = label;
+        tag.classList.toggle("focus", id === focus && !replay);
+        proj.copy(f.group.position).setY(HEAD_Y + 1.2).project(camera);
+        const off = proj.z > 1 || Math.abs(proj.x) > 1.1 || Math.abs(proj.y) > 1.1;
+        tag.style.display = off ? "none" : "block";
+        tag.style.transform = `translate(${(((proj.x + 1) / 2) * w).toFixed(1)}px, ${(((1 - proj.y) / 2) * h).toFixed(1)}px) translate(-50%, -100%)`;
+      }
+      for (const [id, tag] of tags) {
+        if (want.has(id) && figures.has(id)) continue;
+        tag.remove();
+        tags.delete(id);
+      }
+    };
+
     const rollAxis = new THREE.Vector3();
     const tick = () => {
       if (failed.v) return;
       try {
         const now = performance.now();
-        const a = still ? 1 : Math.min(1, (now - glideStart) / gap);
+        const { roster, focus } = live.current;
+        if (clubsKey(roster) !== stadiumFor) {
+          scene.remove(stadium);
+          disposeTree(stadium);
+          stadium = buildStadium(roster);
+          stadiumFor = clubsKey(roster);
+          scene.add(stadium);
+        }
+        if (replay) advanceReplay(replay, now);
+        const a = still || replay ? 1 : Math.min(1, (now - glideStart) / gap);
+
+        // The player on the ball, from where things were drawn last frame.
+        const b0 = drawn.get("ball");
+        let carrier: string | null = null;
+        if (b0 && (b0[2] ?? 0) < 1.5) {
+          let best = CARRIER_M;
+          for (const [id, p] of drawn) {
+            if (id === "ball") continue;
+            const d = Math.hypot(p[0] - b0[0], p[1] - b0[1]);
+            if (d < best) {
+              best = d;
+              carrier = id;
+            }
+          }
+        }
+
         for (const [id, target] of to) {
           const f = from.get(id);
           const v = target.map((t, k) => (f && f[k] !== undefined ? f[k] + (t - f[k]) * a : t));
@@ -783,58 +501,43 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
           }
           const fig = figures.get(id);
           if (!fig) continue;
-          if (prev && (v[0] - prev[0]) ** 2 + (v[1] - prev[1]) ** 2 > 1e-5) {
-            const want = Math.atan2(-(v[1] - prev[1]), v[0] - prev[0]);
-            let d = want - fig.group.rotation.y;
-            d = ((d + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-            fig.group.rotation.y += d * 0.2;
+          let dist = 0;
+          if (prev) {
+            dist = Math.hypot(v[0] - prev[0], v[1] - prev[1]);
+            if (dist > 1e-3) {
+              const want = Math.atan2(-(v[1] - prev[1]), v[0] - prev[0]);
+              let d = want - fig.group.rotation.y;
+              d = ((((d + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
+              fig.group.rotation.y += d * 0.2;
+            }
           }
           fig.group.position.set(wx(v[0]), 0, wz(v[1]));
-          // Running cycle: stride follows distance covered, swing grows with speed.
-          if (prev) fig.phase += Math.hypot(v[0] - prev[0], v[1] - prev[1]) * 2.4;
-          fig.swing += (Math.min(0.7, (v[2] ?? 0) * 0.09) - fig.swing) * 0.1;
-          const s = Math.sin(fig.phase) * fig.swing;
-          fig.legs[0].rotation.z = s;
-          fig.legs[1].rotation.z = -s;
-          fig.arms[0].rotation.z = -s * 0.8;
-          fig.arms[1].rotation.z = s * 0.8;
+          animate(fig, now, dist, v[2] ?? 0, id === carrier);
         }
         syncFigures();
-        syncFx(now);
-        for (const o of overlays.values()) {
-          if (!o.follow) continue;
-          const p = drawn.get(o.follow);
-          if (p) o.obj.position.set(wx(p[0]), o.obj.position.y, wz(p[1]));
+        if (!replay) syncFx(now);
+        else if (!replay.netDone && replay.req.shot.outcome === "goal" && Math.abs(ball.position.x) > L / 2 + 0.3 && Math.abs(ball.position.z) < 3.8) {
+          replay.netDone = true;
+          goalAt(replay.script.goalEnd, now);
         }
+        tele.update(now);
+        pitch.nets[0].update(now);
+        pitch.nets[1].update(now);
+        trail.update(ball.position, now);
+        flights.update(ball.position, ball.position.y - BALL_R, now);
+        tactics.update(now, drawn, roster, carrier);
 
-        const fl = fly.cur;
-        if (fl) {
-          const k = ease(Math.min(1, (now - fl.start) / fl.dur));
-          camera.position.lerpVectors(fl.p0, fl.p1, k);
-          controls.target.lerpVectors(fl.t0, fl.t1, k);
-          if (k >= 1) fly.cur = null;
-        }
-        if (following && ball.visible) {
-          const bt = new THREE.Vector3(ball.position.x, 0, ball.position.z);
-          if (fl) {
-            fl.t1.copy(bt);
-            fl.p1.copy(bt).add(FOLLOW_OFFSET);
-          } else if (lastBall.lengthSq() > 0) {
-            // Move with the ball but keep whatever angle the viewer orbited to.
-            const step = bt.clone().sub(controls.target).multiplyScalar(0.12);
-            controls.target.add(step);
-            camera.position.add(step);
-          }
-          lastBall.copy(bt).setY(1);
-        }
-        controls.update();
+        ctx.ball.copy(ball.position).setY(ball.position.y - BALL_R);
+        ctx.focus = focus ? figures.get(focus) ?? null : null;
+        const eye = director.mode === "eye" && !replay ? focus : null;
+        for (const [id, f] of figures) f.group.visible = id !== eye;
+        director.update(now, ctx);
+        syncTags();
         renderer.render(scene, camera);
       } catch {
         fail();
       }
     };
-    renderer.setAnimationLoop(tick);
-    if (preset === "follow") apiPreset.current(null, null, true);
 
     const resize = () => {
       const w = el.clientWidth || 1;
@@ -847,14 +550,14 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     const ro = new ResizeObserver(resize);
     ro.observe(el);
 
-    // Hover shows the shirt number; a click without a drag focuses that player.
+    // Hover shows the player; a click without a drag focuses them.
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     const pick = (ev: PointerEvent): string | null => {
-      const r = renderer.domElement.getBoundingClientRect();
+      const r = cv.getBoundingClientRect();
       ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
-      const hits = ray.intersectObjects([...figures.values()].map((f) => f.hit), false);
+      const hits = ray.intersectObjects([...figures.values()].filter((f) => f.group.visible).map((f) => f.hit), false);
       return (hits[0]?.object.userData.id as string | undefined) ?? null;
     };
     const onMove = (ev: PointerEvent) => {
@@ -866,16 +569,16 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       }
       const id = pick(ev);
       const info = id ? live.current.roster.players[id] : undefined;
-      renderer.domElement.style.cursor = info ? "pointer" : "grab";
+      cv.style.cursor = info ? "pointer" : "grab";
       if (!info) {
         t.style.display = "none";
         return;
       }
       const r = el.getBoundingClientRect();
-      t.textContent = `#${info.number} ${info.short}`;
+      t.textContent = `#${info.number} ${info.name}`;
       t.style.display = "block";
-      t.style.left = `${ev.clientX - r.left + 12}px`;
-      t.style.top = `${ev.clientY - r.top - 28}px`;
+      t.style.left = `${Math.max(0, Math.min(ev.clientX - r.left + 12, r.width - 200))}px`;
+      t.style.top = `${ev.clientY - r.top - 30}px`;
     };
     let down: [number, number] | null = null;
     const onDown = (ev: PointerEvent) => {
@@ -890,16 +593,54 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     const onLeave = () => {
       if (tip.current) tip.current.style.display = "none";
     };
-    // A user drag ends any camera flight so the controls never fight the tween.
-    const onStart = () => {
-      fly.cur = null;
-    };
+    const onStart = () => director.userStart();
     controls.addEventListener("start", onStart);
-    const cv = renderer.domElement;
     cv.addEventListener("pointermove", onMove);
     cv.addEventListener("pointerdown", onDown);
     cv.addEventListener("pointerup", onUp);
     cv.addEventListener("pointerleave", onLeave);
+
+    engine.current = {
+      frame(f) {
+        const now = performance.now();
+        latest = f;
+        if (replay) return;
+        if (last) gap = Math.min(500, Math.max(60, 0.7 * gap + 0.3 * (now - last)));
+        last = now;
+        glideTo(toPositions(f), now);
+      },
+      preset(p) {
+        director.setMode(p, performance.now(), ctx);
+      },
+      layers(on) {
+        tactics.on = new Set(on);
+      },
+      explain: startReplay,
+      stopExplain: endReplay,
+      api: {
+        flyTo(target, duration = 1200, opts = {}) {
+          const c = resolve(target) ?? [L / 2, 34];
+          const t1 = new THREE.Vector3(wx(c[0]), 0, wz(c[1]));
+          const dir = camera.position.clone().sub(controls.target).setY(0);
+          if (dir.lengthSq() < 1e-3) dir.set(0, 0, 1);
+          dir.normalize().multiplyScalar(opts.distance ?? 26);
+          director.script(t1.clone().add(dir).setY(opts.height ?? 16), t1, performance.now(), duration);
+        },
+        drawArrow: (a, b, s) => tele.arrow(a, b, s),
+        drawLine: (a, b, s) => tele.lineBetween(a, b, s),
+        drawRing: (at, radius, s) => tele.ring(at, radius, s),
+        drawZone: (at, radius, s) => tele.zone(at, radius, s),
+        drawWedge: (apex, a, b, s) => tele.wedge(apex, a, b, s),
+        removeOverlay: (id) => tele.remove(id),
+        clearOverlays: () => tele.clear(),
+      },
+    };
+    if (live.current.frame) engine.current.frame(live.current.frame);
+    // Start on the chosen view at once rather than flying in from the default pose.
+    const startBall = to.get("ball");
+    if (startBall) ctx.ball.set(wx(startBall[0]), 0, wz(startBall[1]));
+    director.setMode(readPreset(), performance.now() - 5000, ctx);
+    renderer.setAnimationLoop(tick);
 
     return () => {
       renderer.setAnimationLoop(null);
@@ -911,32 +652,99 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       cv.removeEventListener("pointerup", onUp);
       cv.removeEventListener("pointerleave", onLeave);
       cv.removeEventListener("webglcontextlost", fail);
-      frameIn.current = null;
-      api.current = null;
-      apiPreset.current = null;
-      disposeObj(scene);
+      for (const t of tags.values()) t.remove();
+      engine.current = null;
+      flights.clear();
+      tele.clear();
+      disposeTree(scene);
       for (const g of [ringGeo, tagGeo]) g.dispose();
       for (const m of [ringMat, tagMat]) m.dispose();
       kit.dispose();
+      tactics.dispose();
       renderer.dispose();
       cv.remove();
     };
-    // Built once per mount. Live props arrive through refs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (props.frame) engine.current?.frame(props.frame);
+  }, [props.frame]);
+
+  const firstPreset = useRef(true);
+  useEffect(() => {
+    save(PRESET_KEY, preset);
+    // The scene already starts on the saved preset; only later changes fly the camera.
+    if (firstPreset.current) firstPreset.current = false;
+    else engine.current?.preset(preset);
+  }, [preset]);
+
+  useEffect(() => {
+    save(LAYER_KEY, JSON.stringify([...layers]));
+    engine.current?.layers(layers);
+  }, [layers]);
+
+  const explainKey = props.explain?.key;
+  useEffect(() => {
+    if (live.current.explain) engine.current?.explain(live.current.explain);
+  }, [explainKey]);
+
+  useImperativeHandle(ref, () => ({
+    flyTo: (...a) => engine.current?.api.flyTo(...a),
+    setPreset: (p) => setPreset(p),
+    drawArrow: (...a) => engine.current?.api.drawArrow(...a) ?? "",
+    drawLine: (...a) => engine.current?.api.drawLine(...a) ?? "",
+    drawRing: (...a) => engine.current?.api.drawRing(...a) ?? "",
+    drawZone: (...a) => engine.current?.api.drawZone(...a) ?? "",
+    drawWedge: (...a) => engine.current?.api.drawWedge(...a) ?? "",
+    removeOverlay: (id) => engine.current?.api.removeOverlay(id),
+    clearOverlays: () => engine.current?.api.clearOverlays(),
+    explain: (req) => engine.current?.explain(req),
+    stopExplain: () => engine.current?.stopExplain(),
+  }));
+
+  const toggle = (l: Layer) =>
+    setLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(l)) next.delete(l);
+      else next.add(l);
+      return next;
+    });
 
   return (
     <div className="pitch3d">
       <div ref={host} className="p3-canvas" />
+      <div ref={tagLayer} className="p3-tags" />
       <div ref={tip} className="p3-tip" />
-      <div className="p3-presets" role="group" aria-label="Camera">
-        {(Object.keys(PRESET_LABEL) as Preset[]).map((p) => (
-          <button key={p} className={p === preset ? "on" : ""} onClick={() => setPresetState(p)}>
-            {PRESET_LABEL[p]}
-          </button>
-        ))}
+      <div className="p3-controls">
+        <div className="p3-group" role="group" aria-label="Camera">
+          {(Object.keys(PRESET_LABEL) as Preset[]).map((p) => (
+            <button key={p} className={p === preset ? "on" : ""} aria-pressed={p === preset} onClick={() => setPreset(p)}>
+              {PRESET_LABEL[p]}
+            </button>
+          ))}
+        </div>
+        <div className="p3-group" role="group" aria-label="Layers">
+          <span className="p3-glabel">Layers</span>
+          {(Object.keys(LAYER_LABEL) as Layer[]).map((l) => (
+            <button key={l} className={layers.has(l) ? "on" : ""} aria-pressed={layers.has(l)} onClick={() => toggle(l)}>
+              {LAYER_LABEL[l]}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="p3-hint label">Drag to orbit. Scroll to zoom. Click a player to focus.</div>
+      {replaying && (
+        <div className="p3-replay">
+          <b>Replay</b>
+          <button onClick={() => engine.current?.stopExplain()}>Back to live</button>
+        </div>
+      )}
+      {caption && (
+        <div key={caption.kind + caption.text} className="p3-caption" style={{ "--club": caption.color } as CSSProperties}>
+          <span className="kind">{caption.kind}</span>
+          <p>{caption.text}</p>
+        </div>
+      )}
+      {!replaying && <div className="p3-hint label">Drag to orbit. Scroll to zoom. Click a player to focus.</div>}
     </div>
   );
 });
@@ -957,7 +765,11 @@ class Boundary extends Component<{ onFail: () => void; children: ReactNode }, { 
 /** The 3D pitch with its safety net: no WebGL or any scene error shows the 2D pitch. */
 const Pitch3D = forwardRef<Pitch3DApi, Pitch3DProps>(function Pitch3D(props, ref) {
   const [ok, setOk] = useState(webglAvailable);
-  const { onSelect: _onSelect, ...flat } = props;
+  const { onSelect: _onSelect, explain, onExplainEnd, ...flat } = props;
+  // The 2D fallback cannot run the 3D replay, so tell the caller it is over.
+  useEffect(() => {
+    if (!ok && explain) onExplainEnd?.();
+  }, [ok, explain, onExplainEnd]);
   if (!ok) return <Pitch {...flat} />;
   return (
     <Boundary onFail={() => setOk(false)}>
