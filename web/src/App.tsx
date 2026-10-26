@@ -296,7 +296,7 @@ export default function App() {
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
       {trace && <TracePanel steps={state.trace} agents={state.agents} onClose={() => setTrace(false)} />}
       <main className={route.page === "match" && tab === "live" ? "" : "hidden"}>
-        <Live state={state} depth={depth} focus={focus || null} prefs={prefs} update={updatePrefs} />
+        <Live state={state} depth={depth} focus={focus || null} prefs={prefs} update={updatePrefs} onFocus={setFocus} />
       </main>
       <main className={route.page === "match" && tab === "analyst" ? "" : "hidden"}>
         <DeepCards cards={state.deep} roster={roster} lang={prefs.lang} />

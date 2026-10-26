@@ -4,7 +4,7 @@ import { Pitch } from "./Pitch";
 import { Tick } from "../tween";
 import { AskPanel } from "./AskPanel";
 import { METRIC_LABEL, isMine, metricBoard, type Prefs } from "../prefs";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { WinProbability } from "./WinProbability";
 import { MomentCard } from "./MomentCard";
 import { Commentator } from "./Commentator";
@@ -13,12 +13,24 @@ import { DeepCards } from "./DeepCard";
 import { signed } from "../format";
 import { playerHref } from "../route";
 
+const Pitch3D = lazy(() => import("./Pitch3D"));
+const VIEW_KEY = "gdi.pitchView";
+
+function readView(): "2d" | "3d" {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "3d" ? "3d" : "2d";
+  } catch {
+    return "2d";
+  }
+}
+
 interface Props {
   state: MatchState;
   depth: Audience;
   focus: string | null;
   prefs: Prefs;
   update: (p: Partial<Prefs>) => void;
+  onFocus?: (id: string) => void;
 }
 
 const TAG_WINDOW_S = 10;
@@ -49,8 +61,17 @@ function GoalBanner({ fx, roster, score }: { fx: FxEvent[]; roster: Roster; scor
   );
 }
 
-export function Live({ state, depth, focus, prefs, update }: Props) {
+export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
   const [onlyMine, setOnlyMine] = useState(false);
+  const [view, setViewState] = useState(readView);
+  const setView = (v: "2d" | "3d") => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* storage blocked: the choice lasts for this visit only */
+    }
+  };
   const { roster, stats, frame, analyst } = state;
   if (!roster || !stats) return null;
   const home = roster.clubs.home;
@@ -68,6 +89,8 @@ export function Live({ state, depth, focus, prefs, update }: Props) {
   const focusLev = focus ? analyst?.leverage.find((r) => r.player === focus)?.total : undefined;
   const liveSpeed = focus ? frame?.players.find((p) => p[0] === focus)?.[3] : undefined;
 
+  const pitch2d = <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} />;
+
   const mom = stats.momentum;
   const hasFavs = prefs.clubs.length + prefs.players.length > 0;
   const cards = [...state.cards].reverse().filter((c) => !onlyMine || isMine(c, prefs)).slice(0, 12);
@@ -77,7 +100,16 @@ export function Live({ state, depth, focus, prefs, update }: Props) {
       <div className="c8 col">
         <div className="panel">
           <div className="ph">
-            <h3>Live pitch</h3>
+            <div className="ph-l">
+              <h3>Live pitch</h3>
+              <div className="viewtoggle" role="group" aria-label="Pitch view">
+                {(["2d", "3d"] as const).map((v) => (
+                  <button key={v} className={view === v ? "on" : ""} aria-pressed={view === v} onClick={() => setView(v)}>
+                    {v.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="legend">
               <span>
                 <i className="sw" style={{ background: home.primary }} />
@@ -95,7 +127,13 @@ export function Live({ state, depth, focus, prefs, update }: Props) {
             </div>
           </div>
           <div className="pitchwrap">
-            <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} />
+            {view === "3d" ? (
+              <Suspense fallback={pitch2d}>
+                <Pitch3D frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} onSelect={onFocus} />
+              </Suspense>
+            ) : (
+              pitch2d
+            )}
             <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
             {focusInfo && (
               <div className="focusbox" style={{ borderLeftColor: roster.clubs[focusInfo.side].primary }}>
