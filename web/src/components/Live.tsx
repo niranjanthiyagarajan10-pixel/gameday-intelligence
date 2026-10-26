@@ -182,6 +182,7 @@ export function Live({ state, depth, focus, prefs, update }: Props) {
             </div>
           </div>
         </div>
+        <AskPanel room={state.room} roster={roster} lang={prefs.lang} depth={depth} favourites={prefs.players} />
       </div>
 
       <div className="c4 col">
@@ -230,7 +231,6 @@ export function Live({ state, depth, focus, prefs, update }: Props) {
             ))}
           </div>
         </div>
-        <AskPanel room={state.room} roster={roster} lang={prefs.lang} depth={depth} favourites={prefs.players} />
       </div>
     </div>
   );
