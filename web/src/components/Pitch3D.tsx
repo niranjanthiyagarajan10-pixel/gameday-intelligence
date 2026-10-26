@@ -47,7 +47,7 @@ export interface Pitch3DApi {
 const L = 105;
 const W = 68;
 const FIG_SCALE = 1.5; // figures a bit larger than life so they read at broadcast distance
-const BALL_R = 0.22;
+const BALL_R = 0.26;
 const GROUND = 0.02;
 const PRESET_LABEL: Record<Preset, string> = { broadcast: "Broadcast", goal: "Behind goal", tactical: "Tactical", follow: "Follow ball" };
 const VIEW_KEY = "gdi.pitch3d.preset";
@@ -219,51 +219,217 @@ function buildGoal(left: boolean): THREE.Group {
 interface Figure {
   group: THREE.Group;
   hit: THREE.Mesh;
+  legs: THREE.Group[];
+  arms: THREE.Group[];
+  phase: number;
+  swing: number;
 }
 
-/** Low-poly player: legs, shirt cylinder, head. Shared geometry, per-club materials. */
-class FigureKit {
-  legGeo = new THREE.CylinderGeometry(0.075, 0.06, 0.8, 6);
-  bodyGeo = new THREE.CylinderGeometry(0.27, 0.22, 0.75, 10);
-  headGeo = new THREE.SphereGeometry(0.15, 10, 8);
-  hitGeo = new THREE.CylinderGeometry(0.6, 0.6, 2.2, 8);
-  hitMat = new THREE.MeshBasicMaterial({ visible: false });
-  skin = new THREE.MeshLambertMaterial({ color: 0xc8a382 });
-  mats = new Map<string, THREE.MeshLambertMaterial>();
+const SKIN = [0xe6bf9c, 0xd0a07a, 0xa87552, 0x7c5238, 0x5a3a26];
+const HAIR = [0x16110d, 0x2e2118, 0x4a3324, 0x0b0b0b, 0x6b4a2b];
 
-  mat(color: string) {
-    let m = this.mats.get(color);
+/** Stable small hash so each synthetic player keeps the same look in every session. */
+function hash(s: string) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Shirt number drawn on a transparent canvas, used as a decal on the back and chest. */
+function numberTexture(n: number, color: string, edge: string) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  if (g) {
+    g.font = "700 96px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.lineWidth = 6;
+    g.strokeStyle = edge;
+    g.strokeText(String(n), 64, 70);
+    g.fillStyle = color;
+    g.fillText(String(n), 64, 70);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+/**
+ * Low-poly player in full kit: shirt with trim collar and cuffs, shorts, socks, boots, and the shirt
+ * number on the back and chest. Legs and arms hang from pivots so they can swing with running speed.
+ * The figure faces local +X. Geometry is shared; materials are cached per colour.
+ */
+class FigureKit {
+  geo = {
+    boot: new THREE.BoxGeometry(0.24, 0.07, 0.1),
+    sock: new THREE.CylinderGeometry(0.062, 0.05, 0.42, 8),
+    thigh: new THREE.CylinderGeometry(0.085, 0.068, 0.24, 8),
+    shorts: new THREE.CylinderGeometry(0.2, 0.225, 0.26, 12),
+    torso: new THREE.CylinderGeometry(0.25, 0.2, 0.6, 14),
+    collar: new THREE.CylinderGeometry(0.085, 0.1, 0.06, 12),
+    neck: new THREE.CylinderGeometry(0.055, 0.06, 0.1, 8),
+    sleeve: new THREE.CylinderGeometry(0.08, 0.072, 0.2, 8),
+    cuff: new THREE.CylinderGeometry(0.074, 0.074, 0.04, 8),
+    arm: new THREE.CylinderGeometry(0.05, 0.042, 0.36, 6),
+    head: new THREE.SphereGeometry(0.115, 14, 10),
+    hair: new THREE.SphereGeometry(0.122, 14, 6, 0, Math.PI * 2, 0, Math.PI * 0.42),
+    backNo: new THREE.PlaneGeometry(0.26, 0.26),
+    frontNo: new THREE.PlaneGeometry(0.11, 0.11),
+    hit: new THREE.CylinderGeometry(0.6, 0.6, 2.2, 8),
+  };
+  hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  mats = new Map<string, THREE.Material>();
+
+  mat(color: string | number) {
+    const key = String(color);
+    let m = this.mats.get(key);
     if (!m) {
       m = new THREE.MeshLambertMaterial({ color });
-      this.mats.set(color, m);
+      this.mats.set(key, m);
     }
     return m;
   }
 
-  make(id: string, shirt: string, shorts: string): Figure {
-    const group = new THREE.Group();
-    const legMat = this.mat(shorts);
-    for (const dx of [-0.11, 0.11]) {
-      const leg = new THREE.Mesh(this.legGeo, legMat);
-      leg.position.set(0, 0.4, dx);
-      leg.castShadow = true;
-      group.add(leg);
+  numberMat(n: number, color: string, edge: string) {
+    const key = `no${n}|${color}|${edge}`;
+    let m = this.mats.get(key);
+    if (!m) {
+      m = new THREE.MeshLambertMaterial({ map: numberTexture(n, color, edge), transparent: true, alphaTest: 0.3, depthWrite: false });
+      this.mats.set(key, m);
     }
-    const body = new THREE.Mesh(this.bodyGeo, this.mat(shirt));
-    body.position.y = 1.17;
-    body.castShadow = true;
-    group.add(body);
-    const head = new THREE.Mesh(this.headGeo, this.skin);
-    head.position.y = 1.72;
-    head.castShadow = true;
-    group.add(head);
-    const hit = new THREE.Mesh(this.hitGeo, this.hitMat);
+    return m;
+  }
+
+  part(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    parent.add(m);
+    return m;
+  }
+
+  make(id: string, kit: { shirt: string; trim: string; shorts: string; socks: string; number: number }): Figure {
+    const group = new THREE.Group();
+    const h = hash(id);
+    const skin = this.mat(SKIN[h % SKIN.length]);
+    const hair = this.mat(HAIR[(h >> 4) % HAIR.length]);
+    const shirt = this.mat(kit.shirt);
+    const trim = this.mat(kit.trim);
+    const g = this.geo;
+
+    const legs = [-0.1, 0.1].map((z) => {
+      const hip = new THREE.Group();
+      hip.position.set(0, 0.7, z);
+      this.part(g.thigh, skin, 0, -0.14, 0, hip);
+      this.part(g.sock, this.mat(kit.socks), 0, -0.44, 0, hip);
+      this.part(g.boot, this.mat(0x111111), 0.04, -0.665, 0, hip);
+      group.add(hip);
+      return hip;
+    });
+    const shorts = this.part(g.shorts, this.mat(kit.shorts), 0, 0.78, 0, group);
+    shorts.scale.x = 0.75;
+    const torso = this.part(g.torso, shirt, 0, 1.2, 0, group);
+    torso.scale.x = 0.68;
+    this.part(g.collar, trim, 0, 1.5, 0, group);
+    this.part(g.neck, skin, 0, 1.55, 0, group);
+    this.part(g.head, skin, 0, 1.67, 0, group);
+    this.part(g.hair, hair, -0.01, 1.68, 0, group);
+    const arms = [-0.29, 0.29].map((z) => {
+      const shoulder = new THREE.Group();
+      shoulder.position.set(0, 1.45, z);
+      shoulder.rotation.x = z < 0 ? 0.12 : -0.12;
+      this.part(g.sleeve, shirt, 0, -0.08, 0, shoulder);
+      this.part(g.cuff, trim, 0, -0.19, 0, shoulder);
+      this.part(g.arm, skin, 0, -0.38, 0, shoulder);
+      group.add(shoulder);
+      return shoulder;
+    });
+    const back = new THREE.Mesh(g.backNo, this.numberMat(kit.number, kit.trim, kit.shirt));
+    back.position.set(-0.165, 1.2, 0);
+    back.rotation.y = -Math.PI / 2;
+    group.add(back);
+    const front = new THREE.Mesh(g.frontNo, this.numberMat(kit.number, kit.trim, kit.shirt));
+    front.position.set(0.162, 1.33, 0.08);
+    front.rotation.y = Math.PI / 2;
+    group.add(front);
+
+    const hit = new THREE.Mesh(g.hit, this.hitMat);
     hit.position.y = 1.1;
     hit.userData.id = id;
     group.add(hit);
     group.scale.setScalar(FIG_SCALE);
-    return { group, hit };
+    return { group, hit, legs, arms, phase: (h % 628) / 100, swing: 0 };
   }
+
+  dispose() {
+    for (const geo of Object.values(this.geo)) geo.dispose();
+    this.hitMat.dispose();
+    for (const m of this.mats.values()) {
+      (m as THREE.MeshLambertMaterial).map?.dispose();
+      m.dispose();
+    }
+  }
+}
+
+/**
+ * Equirectangular texture for a classic black and white football: 12 black pentagons and 20 white
+ * hexagons with dark seams. Each texel takes the nearest panel centre; pentagon distances are scaled
+ * up a little because pentagons are smaller panels than hexagons.
+ */
+function footballTexture() {
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const ico = [
+    [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
+    [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
+    [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1],
+  ].map((v) => new THREE.Vector3(...v).normalize());
+  const faces: THREE.Vector3[] = [];
+  for (let i = 0; i < 12; i++)
+    for (let j = i + 1; j < 12; j++)
+      for (let k = j + 1; k < 12; k++) {
+        const close = (a: number, b: number) => ico[a].dot(ico[b]) > 0.4;
+        if (close(i, j) && close(j, k) && close(i, k)) faces.push(ico[i].clone().add(ico[j]).add(ico[k]).normalize());
+      }
+  const W = 512;
+  const H = 256;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d");
+  if (g) {
+    const img = g.createImageData(W, H);
+    const d = new THREE.Vector3();
+    for (let y = 0; y < H; y++) {
+      const th = ((y + 0.5) / H) * Math.PI;
+      for (let x = 0; x < W; x++) {
+        const ph = ((x + 0.5) / W) * Math.PI * 2;
+        d.set(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th));
+        let best = Infinity;
+        let second = Infinity;
+        let pent = false;
+        for (let i = 0; i < 32; i++) {
+          const p = i < 12;
+          const a = Math.acos(Math.min(1, d.dot(p ? ico[i] : faces[i - 12]))) * (p ? 1.2 : 1);
+          if (a < best) {
+            second = best;
+            best = a;
+            pent = p;
+          } else if (a < second) second = a;
+        }
+        const seam = second - best < 0.025;
+        const v = seam ? 70 : pent ? 22 : 238;
+        const o = (y * W + x) * 4;
+        img.data[o] = img.data[o + 1] = img.data[o + 2] = v;
+        img.data[o + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 interface Overlay {
@@ -395,7 +561,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     const tagMat = flatMat(signal, 0.6);
     const rings = new Map<string, THREE.Mesh>();
 
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 16, 12), new THREE.MeshLambertMaterial({ color: 0xf4f4f1 }));
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 16), new THREE.MeshLambertMaterial({ map: footballTexture() }));
     ball.castShadow = true;
     ball.visible = false;
     scene.add(ball);
@@ -414,7 +580,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       const now = performance.now();
       if (last) gap = Math.min(500, Math.max(60, 0.7 * gap + 0.3 * (now - last)));
       last = now;
-      const next = new Map<string, number[]>(f.players.map((p) => [p[0], [p[1], p[2]]]));
+      const next = new Map<string, number[]>(f.players.map((p) => [p[0], [p[1], p[2], p[3]]])); // x, y, speed
       next.set("ball", [f.ball[0], f.ball[1], f.ball[2] ?? 0]);
       from = new Map(drawn);
       to = next;
@@ -444,7 +610,10 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         const m = c as THREE.Mesh;
         m.geometry?.dispose();
         const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
-        for (const mat of mats) mat.dispose();
+        for (const mat of mats) {
+          (mat as THREE.MeshLambertMaterial).map?.dispose();
+          mat.dispose();
+        }
       });
     const removeOverlay = (id: string) => {
       const o = overlays.get(id);
@@ -548,8 +717,10 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         const info = roster.players[id];
         if (!info) continue;
         const club = roster.clubs[info.side];
-        const keeper = info.position === "GK";
-        const f = kit.make(id, keeper ? "#16181b" : club.primary, keeper ? club.primary : club.secondary);
+        // Keepers wear a dark kit trimmed in the club colour, as on the 2D pitch.
+        const f = info.position === "GK"
+          ? kit.make(id, { shirt: "#16181b", trim: club.primary, shorts: "#16181b", socks: "#16181b", number: info.number })
+          : kit.make(id, { shirt: club.primary, trim: club.secondary, shorts: club.secondary, socks: club.primary, number: info.number });
         figures.set(id, f);
         players.add(f.group);
       }
@@ -583,6 +754,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
 
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const lastBall = new THREE.Vector3();
+    const rollAxis = new THREE.Vector3();
     const tick = () => {
       if (failed.v) return;
       try {
@@ -601,8 +773,11 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
             ballShadow.scale.setScalar(Math.max(0.5, 1 - z * 0.06));
             (ballShadow.material as THREE.MeshBasicMaterial).opacity = Math.max(0.15, 0.45 - z * 0.025);
             if (prev) {
-              const d = Math.hypot(v[0] - prev[0], v[1] - prev[1]);
-              ball.rotation.z -= d / BALL_R;
+              // Roll about the horizontal axis at right angles to the direction of travel.
+              const dx = v[0] - prev[0];
+              const dz = v[1] - prev[1];
+              const d = Math.hypot(dx, dz);
+              if (d > 1e-4 && z < 0.5) ball.rotateOnWorldAxis(rollAxis.set(dz / d, 0, -dx / d), d / BALL_R);
             }
             continue;
           }
@@ -615,6 +790,14 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
             fig.group.rotation.y += d * 0.2;
           }
           fig.group.position.set(wx(v[0]), 0, wz(v[1]));
+          // Running cycle: stride follows distance covered, swing grows with speed.
+          if (prev) fig.phase += Math.hypot(v[0] - prev[0], v[1] - prev[1]) * 2.4;
+          fig.swing += (Math.min(0.7, (v[2] ?? 0) * 0.09) - fig.swing) * 0.1;
+          const s = Math.sin(fig.phase) * fig.swing;
+          fig.legs[0].rotation.z = s;
+          fig.legs[1].rotation.z = -s;
+          fig.arms[0].rotation.z = -s * 0.8;
+          fig.arms[1].rotation.z = s * 0.8;
         }
         syncFigures();
         syncFx(now);
@@ -732,8 +915,9 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       api.current = null;
       apiPreset.current = null;
       disposeObj(scene);
-      for (const g of [ringGeo, tagGeo, kit.legGeo, kit.bodyGeo, kit.headGeo, kit.hitGeo]) g.dispose();
-      for (const m of [ringMat, tagMat, kit.hitMat, kit.skin, ...kit.mats.values()]) m.dispose();
+      for (const g of [ringGeo, tagGeo]) g.dispose();
+      for (const m of [ringMat, tagMat]) m.dispose();
+      kit.dispose();
       renderer.dispose();
       cv.remove();
     };
