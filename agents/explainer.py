@@ -28,8 +28,9 @@ Rules:
    shared facts (no b prefix). Never mention a later beat early.
 3. Then one line, "why": what made the chance what it was (the space, the defenders taken out, the angle,
    the distance), ending with how good it was using {chance}. "meanings" says what each fact measures; b_ keys
-   apply to every beat. Use a fact only for what it means. Never claim one beat caused another unless the facts
-   say so. Write in full grammatical sentences.
+   apply to every beat. Use a fact only for what it means. Never claim one thing caused another: no gave,
+   created, led to, allowed, set up, thanks to or because. State each fact on its own, for example
+   "{shooter} has {space} to the nearest defender and an angle of {angle}: {chance}, worth {xg}." Write in full grammatical sentences.
 4. Use only the facts. Each beat has a "kind": won (ball won), foul_won, restart, pass, carry (a run with the
    ball), tackle_beaten, shot. Describe only that. Never mention injuries, managers, the crowd, penalties,
    headers, volleys, the season or records. Say scored, goal or finish only when {outcome} is a goal; saved only
@@ -85,7 +86,21 @@ def check(parts: dict[str, Any], facts: dict[str, str], names: Any, truths: dict
         other = sorted({int(m) for m in re.findall(r"\{b(\d+)_", line)} - {i + 1})
         if other:
             reasons.append(f"line {i + 1}: uses beat {other[0]} facts; each line tells only its own beat")
+    # Cause and effect: the facts say what happened, never that one thing caused another.
+    texts = [("why", parts.get("why", ""))] + [(f"line {i + 1}", x) for i, x in enumerate(lines)]
+    for where, text in texts:
+        found = CAUSAL.search(re.sub(r"\{[^{}]*\}", " ", text).lower())
+        if found:
+            reasons.append(f'{where}: "{found.group(0)}" claims one thing caused another, which the facts do not say; '
+                           "state each fact on its own")
     return reasons
+
+
+CAUSAL = re.compile(
+    r"\b(gave|gives|giving|created|creates|creating|led to|leads to|leading to|resulted in|results in|resulting in"
+    r"|allowed|allows|allowing|enabled|enables|enabling|thanks to|because|due to|as a result|which meant|meaning"
+    r"|opened up|opens up|opening up|set up|sets up|setting up|earned|earns|forced|forces|forcing|caused|causes"
+    r"|helped|helps|helping|paved)\b")
 
 
 def _line(kind: str, n: int, facts: dict[str, str]) -> str:

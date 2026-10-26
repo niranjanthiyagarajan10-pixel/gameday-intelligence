@@ -94,6 +94,8 @@ def test_explainer_rejects_planted_errors(packs):
         {**good, "why": "It was a 0.4 xG chance."},  # a typed number
         {**good, "why": f"{name} had the space."},  # a typed name
         {**good, "why": "{shooter} scores with ease."},  # a goal that was not
+        {**good, "why": "The first beat gave {shooter} {space} of room, so it was {chance}."},  # cause and effect
+        {**good, "why": "Quick passing created {chance} for {shooter}."},  # cause and effect
         {**good, "lines": [good["lines"][0].replace(".", ", then {b2_player} takes over.")] + good["lines"][1:]},  # out of order
         {**good, "why": "{shooter} was unmarked with time and space."} if (pk["truths"]["space_m"] or 9) < 3 else
         {**good, "why": "{shooter} was in a tight spot."},  # space claim against the tracking
