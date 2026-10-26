@@ -13,6 +13,7 @@ interface Props {
   open: boolean;
   lang?: Lang;
   mine?: "club" | "player" | null;
+  onExplain?: () => void; // replays a shot moment on the 3D pitch with telestration
 }
 
 const FORMULAS: Record<string, string> = {
@@ -26,7 +27,7 @@ const FORMULAS: Record<string, string> = {
   top_speed: "speed = distance between tracking frames / time, smoothed over 3 frames",
 };
 
-export function MomentCard({ card, roster, depth, open: openByDefault, lang = "en", mine = null }: Props) {
+export function MomentCard({ card, roster, depth, open: openByDefault, lang = "en", mine = null, onExplain }: Props) {
   const [open, setOpen] = useState(openByDefault);
   const [own, setOwn] = useState<Audience | null>(null);
   const audience = own ?? depth;
@@ -55,6 +56,11 @@ export function MomentCard({ card, roster, depth, open: openByDefault, lang = "e
         <button onClick={() => setOwn(audience === "casual" ? "analyst" : "casual")}>
           {audience === "casual" ? "Go deeper" : "Explain simply"}
         </button>
+        {SHOT_KINDS.has(m.kind) && m.event_ids[0] && onExplain && (
+          <button className="actlink" onClick={onExplain}>
+            Explain in 3D
+          </button>
+        )}
         {SHOT_KINDS.has(m.kind) && m.event_ids[0] && (
           <a className="actlink" href={shotHref(m.event_ids[0])}>
             Watch replay
