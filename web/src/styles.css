@@ -892,3 +892,85 @@ table.shots td:first-child { text-align: left; }
 .tab { flex: none; }
 .settings, .playback { max-width: 100%; flex-wrap: wrap; }
 @media (max-width: 600px) { .p3-group button { font-size: 11px; padding: 2px 6px; } .p3-glabel { display: none; } }
+
+/* Match Theatre: the 3D pitch full screen, with the whole match around it */
+.mt-open { font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; background: var(--signal); color: #000; border: 0; border-radius: 2px; cursor: pointer; margin-left: auto; }
+.mt-expand { position: absolute; right: 12px; bottom: 12px; z-index: 3; font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; background: #000; color: var(--text); border: 1px solid var(--signal); border-radius: 2px; cursor: pointer; }
+.mt-expand:hover, .mt-open:hover { filter: brightness(1.1); }
+.theatre { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; flex-direction: column; animation: mt-in 220ms ease-out; }
+@keyframes mt-in { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+.mt-top { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.mt-brand { font-family: "Barlow Condensed"; font-weight: 800; font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--signal); white-space: nowrap; }
+.mt-score { display: flex; align-items: center; gap: 12px; margin: 0 auto; min-width: 0; }
+.mt-score > b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.mt-sc { display: flex; font-family: "Barlow Condensed"; font-weight: 800; font-size: 28px; line-height: 1; }
+.mt-sc i { font-style: normal; padding: 4px 12px; background: #fff; color: #000; }
+.mt-sc i:first-child { border-left: 4px solid var(--h); }
+.mt-sc i:last-child { border-right: 4px solid var(--a); }
+.mt-clock { font-family: "Barlow Condensed"; font-weight: 700; font-size: 18px; color: var(--signal); padding: 2px 8px; border: 1px solid var(--line); border-radius: 2px; }
+.mt-close { font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 2px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+.mt-close kbd { font-family: inherit; font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+.mt-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 0; }
+.mt-stage { position: relative; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+.mt-stage .pitch3d { flex: 1; height: auto; min-height: 0; }
+.mt-loading { flex: 1; display: grid; place-items: center; }
+.mt-caption { position: absolute; left: 20px; right: 20px; bottom: 74px; max-width: 760px; margin: 0 auto; background: rgba(0, 0, 0, 0.9); border-left: 6px solid var(--club); padding: 10px 18px 12px; animation: p3-in 200ms ease-out; z-index: 2; }
+.mt-caption .kind { display: block; font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--signal); font-variant-numeric: tabular-nums; }
+.mt-caption p { font-size: 20px; line-height: 1.35; margin-top: 3px; font-weight: 500; }
+.mt-timeline { padding: 10px 20px 8px; border-top: 1px solid var(--line); background: var(--surface); }
+.mt-tl-track { position: relative; height: 22px; background: var(--surface-2); border-radius: 2px; }
+.mt-tl-now { position: absolute; left: 0; top: 0; bottom: 0; background: #1c1e23; }
+.mt-tl-ht { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-dash); }
+.mt-tl-mark { position: absolute; top: 2px; width: 10px; height: 18px; margin-left: -5px; background: var(--club); border: 1px solid #000; border-radius: 1px; cursor: pointer; padding: 0; }
+.mt-tl-mark.big_chance { height: 12px; top: 5px; opacity: 0.8; }
+.mt-tl-mark.red_card { width: 7px; cursor: default; }
+.mt-tl-mark.on { outline: 2px solid var(--signal); outline-offset: 1px; }
+.mt-tl-mark:not(:disabled):hover { transform: scaleY(1.2); }
+.mt-tl-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; }
+.mt-rail { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 10px; background: var(--bg); }
+.mt-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 2px; padding-bottom: 10px; }
+.mt-ph { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 14px 6px; }
+.mt-ph h3 { font-family: "Barlow Condensed"; font-weight: 800; font-size: 18px; letter-spacing: 0.06em; text-transform: uppercase; }
+.mt-note { padding: 4px 14px; color: var(--text-muted); font-size: 14px; }
+.mt-list { display: flex; flex-direction: column; }
+.mt-chance { display: grid; grid-template-columns: 34px auto 1fr auto; align-items: center; gap: 8px; text-align: left; background: transparent; color: var(--text); border: 0; border-left: 3px solid var(--club); border-top: 1px solid var(--line); padding: 8px 12px; cursor: pointer; font-size: 14px; }
+.mt-chance b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; }
+.mt-chance span:nth-child(3) { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-chance em { font-style: normal; font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--signal); }
+.mt-chance:hover { background: var(--surface-2); }
+.mt-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 0 14px 8px; padding: 8px 10px; border-left: 4px solid var(--club); background: var(--surface-2); }
+.mt-who b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; text-transform: uppercase; letter-spacing: 0.03em; width: 100%; }
+.mt-who span { font-family: "Barlow Condensed"; font-weight: 700; font-size: 16px; color: var(--text-muted); }
+.mt-steps { list-style: none; margin: 0; padding: 0 14px; display: flex; flex-direction: column; gap: 4px; }
+.mt-steps button { display: flex; gap: 10px; width: 100%; text-align: left; background: transparent; color: var(--text-muted); border: 1px solid transparent; border-radius: 2px; padding: 7px 8px; cursor: pointer; }
+.mt-steps .num { flex: none; display: grid; place-items: center; width: 22px; height: 22px; font-family: "Barlow Condensed"; font-weight: 800; font-size: 14px; background: var(--surface-2); border-radius: 2px; color: var(--text-muted); }
+.mt-steps p { font-size: 14px; line-height: 1.4; }
+.mt-steps li.done button { color: var(--text); }
+.mt-steps li.on button { color: var(--text); border-color: var(--signal); background: #101106; }
+.mt-steps li.on .num { background: var(--signal); color: #000; }
+.mt-steps li.why button { flex-direction: column; gap: 2px; border-top: 1px solid var(--line); border-radius: 0; margin-top: 4px; }
+.mt-steps li.why .label { color: var(--signal); font-size: 11px; }
+.mt-steps li.why.on button { border-color: var(--signal); border-radius: 2px; }
+.mt-ctrl { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px 0; }
+.mt-ctrl button { font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 10px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 2px; cursor: pointer; }
+.mt-ctrl button.on { border-color: var(--signal); color: var(--signal); }
+.mt-ctrl button:last-child { margin-left: auto; background: var(--text); color: #000; border-color: var(--text); }
+.mt-box { padding: 0 14px; }
+.mt-box-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 8px; }
+.mt-row { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.mt-row > b { font-family: "Barlow Condensed"; font-weight: 700; font-size: 17px; text-align: center; justify-self: center; padding: 1px 8px; border-radius: 3px; }
+.mt-row > b.lead { background: var(--club); color: #fff; }
+.mt-row-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mt-row-mid span { font-size: 13px; }
+.mt-split { display: flex; width: 100%; height: 3px; gap: 2px; }
+.mt-split i { display: block; min-width: 2px; }
+.mt-wp { padding: 0 14px; }
+@media (max-width: 900px) {
+  .mt-body { grid-template-columns: 1fr; grid-template-rows: minmax(320px, 55vh) auto; overflow-y: auto; }
+  .mt-stage { border-right: 0; }
+  .mt-rail { overflow: visible; }
+  .mt-score > b, .mt-brand { display: none; }
+  .mt-top { gap: 8px; padding: 8px 10px; }
+  .mt-caption p { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .theatre, .mt-caption { animation: none; } }

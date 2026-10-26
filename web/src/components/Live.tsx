@@ -14,6 +14,7 @@ import { KIND_LABEL, signed } from "../format";
 import { playerHref, shotHref } from "../route";
 import { webglAvailable } from "../webgl";
 import type { ExplainRequest } from "../pitch3d/explain";
+import { MatchTheatre } from "./MatchTheatre";
 
 const Pitch3D = lazy(() => import("./Pitch3D"));
 const VIEW_KEY = "gdi.pitchView";
@@ -69,6 +70,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
   const [explain, setExplain] = useState<ExplainRequest | null>(null);
   const [viewBefore, setViewBefore] = useState<"2d" | "3d" | null>(null); // where to return after a replay
   const [can3d] = useState(webglAvailable);
+  const [theatre, setTheatre] = useState<{ start: Card | null } | null>(null); // Match Theatre, full screen
   const setView = (v: "2d" | "3d") => {
     setViewState(v);
     try {
@@ -97,6 +99,10 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
   /** Replays a shot moment on the 3D pitch. Without a clip, or if the fetch fails, open the 2D shot page. */
   const explainCard = async (card: Card) => {
     const id = card.moment.event_ids[0];
+    if (can3d) {
+      setTheatre({ start: card });
+      return;
+    }
     try {
       const r = await fetch(`/api/rooms/${state.room}/shots/${encodeURIComponent(id)}`);
       const body = (await r.json()) as { shot: Shot; clip: Clip | null };
@@ -136,6 +142,11 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
                 ))}
               </div>
             </div>
+            {can3d && (
+              <button className="mt-open" onClick={() => setTheatre({ start: null })}>
+                Match Theatre
+              </button>
+            )}
             <div className="legend">
               <span>
                 <i className="sw" style={{ background: home.primary }} />
@@ -153,13 +164,16 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
             </div>
           </div>
           <div className={`pitchwrap${view === "3d" ? " is3d" : ""}`}>
-            {view === "3d" ? (
+            {view === "3d" && !theatre ? (
               <Suspense fallback={pitch2d}>
                 <Pitch3D frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} onSelect={onFocus}
                   explain={explain} onExplainEnd={endExplain} />
               </Suspense>
             ) : (
               pitch2d
+            )}
+            {view === "3d" && !theatre && !explain && (
+              <button className="mt-expand" onClick={() => setTheatre({ start: null })}>Open Match Theatre</button>
             )}
             <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
             {focusInfo && !explain && (
@@ -297,6 +311,10 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
           </div>
         </div>
       </div>
+      {theatre && (
+        <MatchTheatre state={state} prefs={prefs} start={theatre.start} focus={focus} onFocus={onFocus}
+          onClose={() => setTheatre(null)} />
+      )}
     </div>
   );
 }

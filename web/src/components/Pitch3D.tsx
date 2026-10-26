@@ -32,9 +32,11 @@ export interface Pitch3DProps {
   onSelect?: (id: string) => void;
   explain?: ExplainRequest | null;
   onExplainEnd?: () => void;
+  onCaption?: (c: Caption | null) => void; // each caption of a replay as it shows, for a voice or a step list
+  hideCaption?: boolean; // the host shows captions itself
 }
 
-export type { Preset, Spot, OverlayStyle, ExplainRequest };
+export type { Preset, Spot, OverlayStyle, ExplainRequest, Caption };
 
 /** Imperative API for telestration. Draw calls return an id for removeOverlay. */
 export interface Pitch3DApi {
@@ -50,6 +52,10 @@ export interface Pitch3DApi {
   clearOverlays(): void;
   explain(req: ExplainRequest): void;
   stopExplain(): void;
+  /** Replay controls: pause or play, jump to a story beat (-1 for the verdict), end a hold early. */
+  pauseReplay(paused: boolean): void;
+  jumpTo(step: number): void;
+  release(): void;
 }
 
 const PRESET_KEY = "gdi.pitch3d.preset";
@@ -91,7 +97,10 @@ interface Engine {
   layers(on: Set<Layer>): void;
   explain(req: ExplainRequest): void;
   stopExplain(): void;
-  api: Omit<Pitch3DApi, "setPreset" | "explain" | "stopExplain">;
+  pause(p: boolean): void;
+  jump(step: number): void;
+  release(): void;
+  api: Omit<Pitch3DApi, "setPreset" | "explain" | "stopExplain" | "pauseReplay" | "jumpTo" | "release">;
 }
 
 type Positions = Map<string, number[]>; // pitch metres: players x, y, speed; ball x, y, z
@@ -106,6 +115,8 @@ interface Replay {
   last: number;
   endedAt: number;
   netDone: boolean;
+  holdUntil: number; // frozen on a beat until then
+  paused: boolean;
 }
 
 const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(function Scene(props, ref) {
@@ -240,6 +251,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
 
     // Explain this moment: plays a shot's clip with telestration, then hands back to live.
     let replay: Replay | null = null;
+    let modeBefore: Preset | null = null;
     const frameAt = (r: Replay, t: number): Positions => {
       const fr = r.req.clip.frames;
       while (r.cursor < fr.length - 2 && fr[r.cursor + 1].t <= t) r.cursor++;
@@ -257,8 +269,10 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     const applyBeat = (r: Replay, beat: Beat, now: number) => {
       if (beat.caption) setCaption(beat.caption);
       if (beat.rate) r.rate = beat.rate;
+      if (beat.hold) r.holdUntil = now + beat.hold;
       for (const d of beat.draw ?? []) {
-        if (d.type === "arrow") tele.arrow(d.a, d.b, { color: d.color, width: d.width, opacity: d.opacity });
+        if (d.type === "zone") tele.zone(d.at, d.radius, { color: d.color, opacity: 0.16 });
+        else if (d.type === "arrow") tele.arrow(d.a, d.b, { color: d.color, width: d.width, opacity: d.opacity });
         else if (d.type === "line") tele.lineBetween(d.a, d.b, { color: d.color, width: d.width, opacity: d.opacity });
         else if (d.type === "ring") tele.ring(d.at, d.radius, { color: d.color, width: 0.5 });
         else tele.wedge(d.apex, d.a, d.b, { color: d.color, opacity: 0.18 });
@@ -286,7 +300,10 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       tele.clear();
       flights.clear();
       trail.reset();
-      const r: Replay = { req, script, t: script.start, rate: 1, beat: 0, cursor: 0, last: now, endedAt: 0, netDone: false };
+      // The replay follows the ball, so a fixed camera never films the wrong end. The fan's camera comes back after.
+      if (!replay) modeBefore = director.mode;
+      director.setMode("follow", now, ctx);
+      const r: Replay = { req, script, t: script.start, rate: 1, beat: 0, cursor: 0, last: now, endedAt: 0, netDone: false, holdUntil: 0, paused: false };
       replay = r;
       glideTo(frameAt(r, r.t), now);
       setCaption(null);
@@ -302,16 +319,20 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       setCaption(null);
       setReplaying(false);
       director.release(now, ctx);
+      if (modeBefore) director.setMode(modeBefore, now, ctx);
+      modeBefore = null;
       if (latest) glideTo(toPositions(latest), now);
       live.current.onExplainEnd?.();
     };
     const advanceReplay = (r: Replay, now: number) => {
       const dt = Math.min(0.1, (now - r.last) / 1000);
       r.last = now;
-      if (!r.endedAt) r.t = Math.min(r.script.end, r.t + dt * r.rate);
-      while (r.beat < r.script.beats.length && r.script.beats[r.beat].t <= r.t) applyBeat(r, r.script.beats[r.beat++], now);
-      if (r.t >= r.script.end && !r.endedAt) r.endedAt = now;
-      if (r.endedAt && now - r.endedAt > REPLAY_HOLD_MS) {
+      const frozen = r.paused || now < r.holdUntil;
+      if (!r.endedAt && !frozen) r.t = Math.min(r.script.end, r.t + dt * r.rate);
+      // One beat at a time, so a hold on one beat is not skipped past by the next.
+      if (!frozen && r.beat < r.script.beats.length && r.script.beats[r.beat].t <= r.t) applyBeat(r, r.script.beats[r.beat++], now);
+      if (r.t >= r.script.end && !r.endedAt && !frozen && r.beat >= r.script.beats.length) r.endedAt = now;
+      if (r.endedAt && now - r.endedAt > REPLAY_HOLD_MS && !r.paused) {
         endReplay();
         return;
       }
@@ -617,6 +638,28 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       },
       explain: startReplay,
       stopExplain: endReplay,
+      pause(p) {
+        if (replay) replay.paused = p;
+      },
+      jump(step) {
+        const r = replay;
+        if (!r) return;
+        const i = r.script.beats.findIndex((b) => b.caption?.step === step);
+        if (i < 0) return;
+        tele.clear();
+        flights.clear();
+        trail.reset();
+        r.t = Math.max(r.script.start, r.script.beats[i].t - 0.05);
+        r.beat = i;
+        r.cursor = 0;
+        r.holdUntil = 0;
+        r.endedAt = 0;
+        r.paused = false;
+        director.release(performance.now(), ctx);
+      },
+      release() {
+        if (replay) replay.holdUntil = Math.min(replay.holdUntil, performance.now() + 350);
+      },
       api: {
         flyTo(target, duration = 1200, opts = {}) {
           const c = resolve(target) ?? [L / 2, 34];
@@ -700,7 +743,14 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     clearOverlays: () => engine.current?.api.clearOverlays(),
     explain: (req) => engine.current?.explain(req),
     stopExplain: () => engine.current?.stopExplain(),
+    pauseReplay: (p) => engine.current?.pause(p),
+    jumpTo: (step) => engine.current?.jump(step),
+    release: () => engine.current?.release(),
   }));
+
+  useEffect(() => {
+    live.current.onCaption?.(caption);
+  }, [caption]);
 
   const toggle = (l: Layer) =>
     setLayers((prev) => {
@@ -738,7 +788,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
           <button onClick={() => engine.current?.stopExplain()}>Back to live</button>
         </div>
       )}
-      {caption && (
+      {caption && !props.hideCaption && (
         <div key={caption.kind + caption.text} className="p3-caption" style={{ "--club": caption.color } as CSSProperties}>
           <span className="kind">{caption.kind}</span>
           <p>{caption.text}</p>

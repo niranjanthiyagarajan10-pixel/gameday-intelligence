@@ -42,6 +42,16 @@ export interface Stats {
   momentum: number;
   control_index: number;
   chaos_index: number;
+  box?: BoxRow[]; // the team stats a results page shows
+}
+
+/** One row of the match box score. Values are home, away. */
+export interface BoxRow {
+  key: string;
+  label: string;
+  values: [number, number];
+  unit?: string;
+  lower_better?: boolean;
 }
 
 export interface Moment {
@@ -368,4 +378,39 @@ export interface DeepCard {
   source: "agent" | "template";
   langs: Record<string, { headline: string; text: string }>;
   chart: { start: number; home: number }[];
+}
+
+/** Explain this moment: one beat of the move behind a shot, found in code, with its verified line. */
+export type BeatDraw =
+  | { arrow: [number, number, number, number] }
+  | { run: [number, number, number, number] }
+  | { ring: string | null; tone?: "beaten" }
+  | { spot: [number, number] }
+  | { shot: [number, number] }
+  | { space: string; radius_m: number };
+
+export interface ExplainBeat {
+  kind: "won" | "foul_won" | "restart" | "pass" | "carry" | "tackle_beaten" | "shot";
+  t: number;
+  player: string | null;
+  to?: string;
+  x: number;
+  y: number;
+  end_x?: number;
+  end_y?: number;
+  key?: boolean;
+  final?: boolean;
+  facts: Record<string, string | number | null>;
+  draw: BeatDraw[];
+  line: string;
+}
+
+export interface Explanation {
+  event_id: string;
+  shot: Shot;
+  clip: Clip;
+  beats: ExplainBeat[];
+  why: string;
+  source: "agent" | "template";
+  langs: Record<string, { lines: string[]; why: string }>;
 }

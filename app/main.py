@@ -41,6 +41,11 @@ class Question(BaseModel):
     audience: Literal["casual", "analyst"] = "casual"
 
 
+class SpeakLine(BaseModel):
+    index: int = Field(ge=-1, le=12)  # a beat's line, or -1 for why it worked
+    lang: Literal["en", "es", "hi"] = "en"
+
+
 class Speak(BaseModel):
     moment_id: str = Field(min_length=1, max_length=80)
     style: Literal["classic", "hype", "stats", "tactician"] = "classic"
@@ -120,12 +125,24 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         return found
 
     @app.get("/api/rooms/{room_id}/explain/{event_id}")
-    async def explain(room_id: str, event_id: str) -> dict[str, Any]:
+    async def explain(room_id: str, event_id: str, lang: Literal["en", "es", "hi"] = Query("en")) -> dict[str, Any]:
         """Explain this moment: the beats of the move behind a goal or big chance, each with a verified line."""
-        found = await room_or_404(room_id).explain(event_id)
+        found = await room_or_404(room_id).explain(event_id, lang)
         if found is None:
             raise HTTPException(404, "no explanation for that shot")
         return found
+
+    @app.post("/api/rooms/{room_id}/explain/{event_id}/speech")
+    async def explain_speech(room_id: str, event_id: str, body: SpeakLine) -> Response:
+        """One verified line of an explanation as MP3. 503 with the text means: use the browser voice."""
+        room = room_or_404(room_id)
+        said = await room.explain_line(event_id, body.index, body.lang)
+        if said is None:
+            raise HTTPException(404, "no such line")
+        audio = await room.speak(said, event_id)
+        if audio is None:
+            return JSONResponse(status_code=503, content=said)
+        return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
 
     @app.get("/api/rooms/{room_id}/trace")
     async def trace(room_id: str) -> dict[str, Any]:

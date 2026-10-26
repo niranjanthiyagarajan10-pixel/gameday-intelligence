@@ -172,6 +172,9 @@ class MatchRoom:
         self._shots_clipped = 0
         self.clips: dict[str, dict[str, Any]] = {}
         self._explained: dict[str, dict[str, Any]] = {}
+        self._explain_parts: dict[str, dict[str, Any]] = {}  # the templates, for writing other languages later
+        self._explain_lock = asyncio.Lock()
+        self._to_explain: list[str] = []  # big chances whose replay just finished: written ahead of any click
 
     # Snapshots
 
@@ -289,10 +292,12 @@ class MatchRoom:
     # Before and after the match
 
     async def _write_story(self, tag: str, agent: str, module: Any, facts: dict[str, str], truths: dict[str, Any],
-                           ask: str, names: Any = None) -> tuple[dict[str, Any], str, dict[str, dict[str, Any]]]:
+                           ask: str, names: Any = None, langs: tuple[str, ...] = LANGS,
+                           keep: dict[str, Any] | None = None) -> tuple[dict[str, Any], str, dict[str, dict[str, Any]]]:
         """An agent writes a story over facts: draft, check, at most one retry, else the template.
         Returns the filled parts, the source and the Personalizer's languages. `names` are the names
-        the story may not type; by default this room's players and clubs."""
+        the story may not type; by default this room's players and clubs. `keep`, when given, receives
+        the templates, so other languages can be written later."""
         names = self.desk.forbidden if names is None else names
         t = self.live.t
         steps: list[TraceStep] = []
@@ -331,26 +336,37 @@ class MatchRoom:
                                    "template story, every value a fact" if self.llm.live else "no model: template story", t))
         fill = lambda tpl: story.fill(tpl, facts)  # noqa: E731
         filled = {k: [fill(x) for x in v] if isinstance(v, list) else fill(v) for k, v in parts.items()}
-        langs: dict[str, dict[str, Any]] = {}
+        if keep is not None:
+            keep.update(parts=parts, facts=facts, names=names, source=source)
+        written_langs: dict[str, dict[str, Any]] = {}
         if self.llm.live and source == "agent":
-            for lang in LANGS:
-                out: dict[str, Any] = {}
-                for key, value in parts.items():
-                    written = []
-                    for template in value if isinstance(value, list) else [value]:
-                        res = await self.llm.complete(agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
-                                                      prompt=personalizer.prompt(template, lang, "fan"), model=self.llm.fast)
-                        tr = personalizer.parse(res.text) if res.ok else None
-                        reasons = ([res.error or "no reply"] if not res.ok else ["reply was not usable JSON"] if tr is None
-                                   else personalizer.check(template, tr, names))
-                        steps.append(TraceStep(tag, "both", "Personalizer", f"write {lang}", "pass" if not reasons else "reject",
-                                               res.ms, "; ".join(reasons), t))
-                        written.append(None if reasons else fill(tr))
-                    out[key] = written if isinstance(value, list) else written[0]
-                if all(x is not None for v in out.values() for x in (v if isinstance(v, list) else [v])):
-                    langs[lang] = out
+            for lang in langs:
+                out = await self._personalize(tag, parts, facts, names, lang, steps)
+                if out is not None:
+                    written_langs[lang] = out
         self._log(steps)
-        return filled, source, langs
+        return filled, source, written_langs
+
+    async def _personalize(self, tag: str, parts: dict[str, Any], facts: dict[str, str], names: Any, lang: str,
+                           steps: list[TraceStep]) -> dict[str, Any] | None:
+        """The Personalizer writes a verified story in another language; None if any part fails its check."""
+        fill = lambda tpl: story.fill(tpl, facts)  # noqa: E731
+        out: dict[str, Any] = {}
+        for key, value in parts.items():
+            written = []
+            for template in value if isinstance(value, list) else [value]:
+                res = await self.llm.complete(agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
+                                              prompt=personalizer.prompt(template, lang, "fan"), model=self.llm.fast)
+                tr = personalizer.parse(res.text) if res.ok else None
+                reasons = ([res.error or "no reply"] if not res.ok else ["reply was not usable JSON"] if tr is None
+                           else personalizer.check(template, tr, names))
+                steps.append(TraceStep(tag, "both", "Personalizer", f"write {lang}", "pass" if not reasons else "reject",
+                                       res.ms, "; ".join(reasons), self.live.t))
+                written.append(None if reasons else fill(tr))
+            out[key] = written if isinstance(value, list) else written[0]
+        if all(x is not None for v in out.values() for x in (v if isinstance(v, list) else [v])):
+            return out
+        return None
 
     async def preview(self) -> dict[str, Any]:
         """The Preview agent's story for this fixture, with the table, form, head to head and players to watch."""
@@ -392,29 +408,51 @@ class MatchRoom:
                                "t": self.live.t, "cards": len(self.cards)}
             return self._brief
 
-    async def explain(self, event_id: str) -> dict[str, Any] | None:
+    async def explain(self, event_id: str, lang: str = "en") -> dict[str, Any] | None:
         """Explain this moment: the beats of the move behind a goal or big chance, a line for each, and why it
-        worked. Written once per shot, after its replay has finished recording."""
+        worked. Written in English once per shot (ahead of time, as soon as its replay has finished
+        recording), and in another language the first time a fan asks for it."""
         page = self.shot(event_id)
         if page is None or page["clip"] is None or not explain_facts.explainable(page["shot"]):
             return None
-        done = self._explained.get(event_id)
-        if done is not None:
-            return done
-        async with self._story_lock:
-            if event_id in self._explained:
-                return self._explained[event_id]
-            pk = explain_facts.pack(page["shot"], list(self.event_log.values()), page["clip"]["frames"],
-                                    self.roster, self.names, self.teams)
-            filled, source, langs = await self._write_story(
-                f"explain {event_id}", "Explainer", explainer, pk["facts"], pk["truths"],
-                explainer.prompt(pk["facts"], pk["truths"]["kinds"], explain_facts.MEANINGS))
-            out = {"event_id": event_id, "shot": pk["shot"], "clip": page["clip"], "roster": self.roster,
-                   "beats": [{**b, "line": line} for b, line in zip(pk["beats"], filled["lines"])],
-                   "why": filled["why"], "source": source, "langs": langs, "facts": pk["facts"]}
-            if self.clips.get(event_id) is not None:  # cache only once the replay is complete
+        async with self._explain_lock:
+            out = self._explained.get(event_id)
+            if out is None:
+                pk = explain_facts.pack(page["shot"], list(self.event_log.values()), page["clip"]["frames"],
+                                        self.roster, self.names, self.teams)
+                keep: dict[str, Any] = {}
+                filled, source, _ = await self._write_story(
+                    f"explain {event_id}", "Explainer", explainer, pk["facts"], pk["truths"],
+                    explainer.prompt(pk["facts"], pk["truths"]["kinds"], explain_facts.MEANINGS), langs=(), keep=keep)
+                out = {"event_id": event_id, "shot": pk["shot"], "clip": page["clip"],
+                       "beats": [{**b, "line": line} for b, line in zip(pk["beats"], filled["lines"])],
+                       "why": filled["why"], "source": source, "langs": {}}
+                if self.clips.get(event_id) is None:  # still recording: do not keep a story over a partial replay
+                    return out
                 self._explained[event_id] = out
+                self._explain_parts[event_id] = keep
+            keep = self._explain_parts.get(event_id, {})
+            if lang != "en" and lang not in out["langs"] and self.llm.live and keep.get("source") == "agent":
+                steps: list[TraceStep] = []
+                written = await self._personalize(f"explain {event_id}", keep["parts"], keep["facts"], keep["names"],
+                                                  lang, steps)
+                self._log(steps)
+                if written is not None:
+                    out["langs"][lang] = written
             return out
+
+    async def explain_line(self, event_id: str, index: int, lang: str) -> dict[str, Any] | None:
+        """A line of an explanation for the voice: only text the Verifier passed is ever spoken."""
+        ex = await self.explain(event_id, lang)
+        if ex is None or index >= len(ex["beats"]):
+            return None
+        written = ex["langs"].get(lang) if lang != "en" else None
+        if written is not None:
+            text = written["why"] if index < 0 else written["lines"][index]
+        else:
+            lang = "en"
+            text = ex["why"] if index < 0 else ex["beats"][index]["line"]
+        return {"text": text, "lang": lang, "style": "tactician", "source": ex["source"]}
 
     async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
         """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""
@@ -612,6 +650,7 @@ class MatchRoom:
         for clip in self._pending_clips:
             clip.frames.append(compact)
             if compact["t"] >= clip.shot_t + CLIP_AFTER_S:
+                self._to_explain.append(clip.event_id)
                 self.clips[clip.event_id] = {
                     "shot_t": clip.shot_t,
                     "dt": self.feed.dt,
@@ -744,6 +783,11 @@ class MatchRoom:
             for card in self.advance():
                 self.publish(card)
                 self._to_narrate.append(card)
+            while self._to_explain:
+                eid = self._to_explain.pop(0)
+                shot = self.shot(eid)
+                if self.llm.live and shot and explain_facts.explainable(shot["shot"]):
+                    asyncio.create_task(self.explain(eid))
             now = time.monotonic()
             if self.last_frame and now - last_frame >= FRAME_INTERVAL_S:
                 if self._anim:

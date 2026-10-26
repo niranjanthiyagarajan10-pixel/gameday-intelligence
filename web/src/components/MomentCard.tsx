@@ -58,7 +58,7 @@ export function MomentCard({ card, roster, depth, open: openByDefault, lang = "e
         </button>
         {SHOT_KINDS.has(m.kind) && m.event_ids[0] && onExplain && (
           <button className="actlink" onClick={onExplain}>
-            Explain in 3D
+            Explain this moment
           </button>
         )}
         {SHOT_KINDS.has(m.kind) && m.event_ids[0] && (
