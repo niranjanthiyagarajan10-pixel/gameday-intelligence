@@ -17,13 +17,14 @@ import type { ExplainRequest } from "../pitch3d/explain";
 import { MatchTheatre } from "./MatchTheatre";
 
 const Pitch3D = lazy(() => import("./Pitch3D"));
-const VIEW_KEY = "gdi.pitchView";
+const VIEW_KEY = "gdi.pitchView.v2"; // v2: 3D became the default
 
 function readView(): "2d" | "3d" {
   try {
-    return localStorage.getItem(VIEW_KEY) === "3d" ? "3d" : "2d";
+    if (!webglAvailable()) return "2d";
+    return localStorage.getItem(VIEW_KEY) === "2d" ? "2d" : "3d";
   } catch {
-    return "2d";
+    return webglAvailable() ? "3d" : "2d";
   }
 }
 
@@ -144,7 +145,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
             </div>
             {can3d && (
               <button className="mt-open" onClick={() => setTheatre({ start: null })}>
-                Match Theatre
+                Match Theatre<i aria-hidden="true">&#8599;</i>
               </button>
             )}
             <div className="legend">
@@ -173,7 +174,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
               pitch2d
             )}
             {view === "3d" && !theatre && !explain && (
-              <button className="mt-expand" onClick={() => setTheatre({ start: null })}>Open Match Theatre</button>
+              <button className="mt-expand" onClick={() => setTheatre({ start: null })}>Open Match Theatre<i aria-hidden="true">&#8599;</i></button>
             )}
             <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
             {focusInfo && !explain && (

@@ -107,7 +107,7 @@ Specific charts:
 
 - Numbers tick to new values over 300 ms. No bouncing.
 - Respect `prefers-reduced-motion`: no slides, numbers swap instantly.
-- The live dot pulses slowly in `--signal`. Nothing else pulses.
+- The live dot pulses slowly in `--signal`. The one exception: the Match Theatre button breathes a soft white glow, the single call to action that invites a tap. Nothing else pulses or glows.
 
 ## 10. Trace panel
 
