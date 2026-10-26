@@ -855,11 +855,40 @@ table.shots td:first-child { text-align: left; }
 /* Live pitch: 2D or 3D toggle and the 3D view */
 .ph-l { display: flex; align-items: baseline; gap: 12px; }
 .viewtoggle { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; align-self: center; }
-.viewtoggle button, .p3-presets button { font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 10px; color: var(--text-muted); background: none; border: 0; cursor: pointer; }
-.viewtoggle button.on, .p3-presets button.on { background: var(--text); color: #000; }
-.pitch3d { position: relative; width: 100%; height: clamp(440px, 52vh, 620px); background: #000; overflow: hidden; }
+.viewtoggle button, .p3-group button { font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; color: var(--text-muted); background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.viewtoggle button.on, .p3-group button.on { background: var(--text); color: #000; }
+.grid > * { min-width: 0; } /* a wide child can never stretch its column past the page */
+.pitchwrap.is3d { overflow: hidden; }
+.pitch3d { position: relative; width: 100%; max-width: 100%; height: clamp(460px, 56vh, 660px); background: #000; overflow: hidden; contain: strict; }
 .p3-canvas, .p3-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.p3-presets { position: absolute; right: 10px; top: 10px; display: flex; flex-wrap: wrap; gap: 2px; background: #000; border: 1px solid var(--line); border-radius: 3px; padding: 2px; }
+.p3-tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.p3-tag { position: absolute; left: 0; top: 0; background: #000; color: var(--text); border-left: 3px solid var(--club); padding: 1px 7px 0; font-family: "Barlow Condensed"; font-weight: 700; font-size: 14px; letter-spacing: 0.04em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.p3-tag.focus { border-bottom: 2px solid var(--signal); }
+.p3-controls { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: calc(100% - 20px); }
+.p3-group { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px; background: #000; border: 1px solid var(--line); border-radius: 3px; padding: 2px; }
+.p3-glabel { font-family: "Barlow Condensed"; font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); padding: 0 6px; }
 .p3-tip { position: absolute; display: none; pointer-events: none; background: #000; color: var(--text); border-left: 3px solid var(--signal); padding: 2px 8px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
 .p3-hint { position: absolute; right: 10px; bottom: 8px; color: var(--text-muted); pointer-events: none; }
-@media (max-width: 720px) { .p3-hint { display: none; } }
+.p3-replay { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 10px; background: #000; border: 1px solid var(--line); border-radius: 3px; padding: 4px 4px 4px 10px; }
+.p3-replay b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--signal); }
+.p3-replay button { font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; background: var(--text); color: #000; border: 0; border-radius: 2px; cursor: pointer; }
+.p3-caption { position: absolute; left: 16px; bottom: 16px; max-width: min(560px, calc(100% - 32px)); background: rgba(0, 0, 0, 0.88); border-left: 4px solid var(--club); padding: 8px 14px 10px; animation: p3-in 200ms ease-out; }
+.p3-caption .kind { display: block; font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.p3-caption p { font-size: 16px; line-height: 1.35; margin-top: 2px; }
+@keyframes p3-in { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* In 3D the focus box shrinks to a strip in the bottom left, clear of the camera buttons. */
+.pitchwrap.is3d .focusbox { top: auto; bottom: 28px; left: 28px; min-width: 0; padding: 6px 10px 7px; }
+.pitchwrap.is3d .focusbox .label { display: none; }
+.pitchwrap.is3d .focusbox .nm { font-size: 17px; }
+.pitchwrap.is3d .fstats { gap: 2px 12px; margin-top: 4px; }
+.pitchwrap.is3d .fstats b { font-size: 17px; }
+.pitchwrap.is3d .fstats .label { display: block; font-size: 10px; }
+@media (max-width: 900px) { .p3-hint { display: none; } }
+@media (prefers-reduced-motion: reduce) { .p3-caption { animation: none; } }
+.pitchwrap.is3d .goalbanner { bottom: 104px; }
+/* The tab row scrolls inside itself on narrow windows instead of pushing the page sideways. */
+.tabs { max-width: 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; }
+.settings, .playback { max-width: 100%; flex-wrap: wrap; }
+@media (max-width: 600px) { .p3-group button { font-size: 11px; padding: 2px 6px; } .p3-glabel { display: none; } }

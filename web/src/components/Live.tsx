@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { Audience, FxEvent, MatchState, Roster } from "../types";
+import type { Audience, Card, Clip, FxEvent, MatchState, Roster, Shot } from "../types";
 import { Pitch } from "./Pitch";
 import { Tick } from "../tween";
 import { AskPanel } from "./AskPanel";
@@ -10,8 +10,10 @@ import { MomentCard } from "./MomentCard";
 import { Commentator } from "./Commentator";
 import { CatchMeUp } from "./CatchMeUp";
 import { DeepCards } from "./DeepCard";
-import { signed } from "../format";
-import { playerHref } from "../route";
+import { KIND_LABEL, signed } from "../format";
+import { playerHref, shotHref } from "../route";
+import { webglAvailable } from "../webgl";
+import type { ExplainRequest } from "../pitch3d/explain";
 
 const Pitch3D = lazy(() => import("./Pitch3D"));
 const VIEW_KEY = "gdi.pitchView";
@@ -64,6 +66,9 @@ function GoalBanner({ fx, roster, score }: { fx: FxEvent[]; roster: Roster; scor
 export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
   const [onlyMine, setOnlyMine] = useState(false);
   const [view, setViewState] = useState(readView);
+  const [explain, setExplain] = useState<ExplainRequest | null>(null);
+  const [viewBefore, setViewBefore] = useState<"2d" | "3d" | null>(null); // where to return after a replay
+  const [can3d] = useState(webglAvailable);
   const setView = (v: "2d" | "3d") => {
     setViewState(v);
     try {
@@ -88,6 +93,27 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
   const focusRun = focus ? analyst?.runs[focus] : undefined;
   const focusLev = focus ? analyst?.leverage.find((r) => r.player === focus)?.total : undefined;
   const liveSpeed = focus ? frame?.players.find((p) => p[0] === focus)?.[3] : undefined;
+
+  /** Replays a shot moment on the 3D pitch. Without a clip, or if the fetch fails, open the 2D shot page. */
+  const explainCard = async (card: Card) => {
+    const id = card.moment.event_ids[0];
+    try {
+      const r = await fetch(`/api/rooms/${state.room}/shots/${encodeURIComponent(id)}`);
+      const body = (await r.json()) as { shot: Shot; clip: Clip | null };
+      if (!r.ok || !body.clip || body.clip.frames.length < 2) throw new Error("no clip");
+      if (!explain) setViewBefore(view);
+      setView("3d");
+      setExplain({ key: `${id}@${performance.now()}`, title: KIND_LABEL[card.moment.kind] ?? "Chance", shot: body.shot, clip: body.clip });
+    } catch {
+      location.hash = shotHref(id);
+    }
+  };
+
+  const endExplain = () => {
+    setExplain(null);
+    if (viewBefore) setView(viewBefore);
+    setViewBefore(null);
+  };
 
   const pitch2d = <Pitch frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} />;
 
@@ -126,16 +152,17 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
               )}
             </div>
           </div>
-          <div className="pitchwrap">
+          <div className={`pitchwrap${view === "3d" ? " is3d" : ""}`}>
             {view === "3d" ? (
               <Suspense fallback={pitch2d}>
-                <Pitch3D frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} onSelect={onFocus} />
+                <Pitch3D frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} onSelect={onFocus}
+                  explain={explain} onExplainEnd={endExplain} />
               </Suspense>
             ) : (
               pitch2d
             )}
             <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
-            {focusInfo && (
+            {focusInfo && !explain && (
               <div className="focusbox" style={{ borderLeftColor: roster.clubs[focusInfo.side].primary }}>
                 <div className="label">Player focus</div>
                 <a className="nm" href={playerHref(focus!)}>
@@ -265,7 +292,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
             {cards.length === 0 && <div className="empty">Key moments appear here as they happen.</div>}
             {cards.map((card, i) => (
               <MomentCard key={card.moment.moment_id} card={card} roster={roster} depth={depth} open={i === 0 && depth === "analyst"}
-                lang={prefs.lang} mine={isMine(card, prefs)} />
+                lang={prefs.lang} mine={isMine(card, prefs)} onExplain={can3d ? () => explainCard(card) : undefined} />
             ))}
           </div>
         </div>
