@@ -11,6 +11,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from engine import metrics
+from engine.boxscore import BoxScore
 from engine.gravity import GravityBaseline, GravityTracker
 from engine.league import League
 from engine.leverage import Leverage, LeverageModel
@@ -144,6 +145,7 @@ class LiveStats:
         self.red_minutes: list[int] = []  # minute of each red card, for checking words like "early"
 
         self.shots: list[ShotRecord] = []
+        self.box = BoxScore()  # shots, passes, fouls, cards and corners, as a results page shows them
         # Pass network: completed passes between pairs, and each player's average position in possession.
         self.pass_pairs: dict[tuple[str, str], int] = {}
         self.in_possession_pos: dict[str, list[float]] = {}  # player -> [sum x, sum y, frames]
@@ -196,6 +198,10 @@ class LiveStats:
             chaos_index=round(chaos, 3),
         )
 
+    def box_score(self) -> dict:
+        s = self.stats()
+        return self.box.to_dict(s.xg, s.possession)
+
     def leverage_table(self) -> list[LeverageRow]:
         return sorted(self.leverage_rows.values(), key=lambda r: -r.total)
 
@@ -208,6 +214,7 @@ class LiveStats:
         self.t = max(self.t, e.t)
         k = SIDES.index(e.team)
         self.press.record(e)
+        self.box.event(e)
         found: list[Moment] = []
         handler = {
             EventType.POSSESSION_CHANGE: self._possession_change,
@@ -427,6 +434,7 @@ class LiveStats:
         self.t = max(self.t, frame.t)
         self._last_frame = frame
         self.kinematics.update(frame)
+        self.box.frame(frame)
         possession = self.timeline.current
         self.gravity.update(frame, possession)
         self.marking.update(frame, possession)

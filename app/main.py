@@ -119,6 +119,14 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
             raise HTTPException(404, "no such shot")
         return found
 
+    @app.get("/api/rooms/{room_id}/explain/{event_id}")
+    async def explain(room_id: str, event_id: str) -> dict[str, Any]:
+        """Explain this moment: the beats of the move behind a goal or big chance, each with a verified line."""
+        found = await room_or_404(room_id).explain(event_id)
+        if found is None:
+            raise HTTPException(404, "no explanation for that shot")
+        return found
+
     @app.get("/api/rooms/{room_id}/trace")
     async def trace(room_id: str) -> dict[str, Any]:
         """Every agent step so far: Narrator drafts, Verifier verdicts, fallbacks, with timings."""

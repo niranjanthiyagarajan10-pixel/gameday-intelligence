@@ -20,8 +20,9 @@ from agents import story
 from agents.desk import CardDesk, TraceStep, name_list
 from agents.workflow import card_workflow, run_card
 from agents.llm import LLM
-from agents import analyst, commentator, deep, newsdesk, personalizer, postgame, preview, recap, summarizer
+from agents import analyst, commentator, deep, explainer, newsdesk, personalizer, postgame, preview, recap, summarizer
 from agents.personalizer import LANGS
+from app import explain as explain_facts
 from app import matchday
 from app.blueprint import build_blueprint
 from app.league import season as league_season
@@ -170,6 +171,7 @@ class MatchRoom:
         self._pending_clips: list[_PendingClip] = []
         self._shots_clipped = 0
         self.clips: dict[str, dict[str, Any]] = {}
+        self._explained: dict[str, dict[str, Any]] = {}
 
     # Snapshots
 
@@ -182,7 +184,7 @@ class MatchRoom:
             "paused": self.paused,
             "half_s": self.config.half_s,
             "roster": self.roster,
-            "stats": stats_message(self.live.stats()),
+            "stats": stats_message(self.live.stats(), self.live.box_score()),
             "frame": self.last_frame,
             "history": self.history,
             "cards": self.cards,
@@ -389,6 +391,30 @@ class MatchRoom:
                                "score": pack["truths"]["score"], "minute": int(self.live.t // 60), "status": self.status,
                                "t": self.live.t, "cards": len(self.cards)}
             return self._brief
+
+    async def explain(self, event_id: str) -> dict[str, Any] | None:
+        """Explain this moment: the beats of the move behind a goal or big chance, a line for each, and why it
+        worked. Written once per shot, after its replay has finished recording."""
+        page = self.shot(event_id)
+        if page is None or page["clip"] is None or not explain_facts.explainable(page["shot"]):
+            return None
+        done = self._explained.get(event_id)
+        if done is not None:
+            return done
+        async with self._story_lock:
+            if event_id in self._explained:
+                return self._explained[event_id]
+            pk = explain_facts.pack(page["shot"], list(self.event_log.values()), page["clip"]["frames"],
+                                    self.roster, self.names, self.teams)
+            filled, source, langs = await self._write_story(
+                f"explain {event_id}", "Explainer", explainer, pk["facts"], pk["truths"],
+                explainer.prompt(pk["facts"], pk["truths"]["kinds"], explain_facts.MEANINGS))
+            out = {"event_id": event_id, "shot": pk["shot"], "clip": page["clip"], "roster": self.roster,
+                   "beats": [{**b, "line": line} for b, line in zip(pk["beats"], filled["lines"])],
+                   "why": filled["why"], "source": source, "langs": langs, "facts": pk["facts"]}
+            if self.clips.get(event_id) is not None:  # cache only once the replay is complete
+                self._explained[event_id] = out
+            return out
 
     async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
         """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""
@@ -704,7 +730,7 @@ class MatchRoom:
                     self.status = "full_time"
                     if self.llm.live:
                         asyncio.create_task(self.write_recap())
-                    self.publish(stats_message(self.live.stats()))
+                    self.publish(stats_message(self.live.stats(), self.live.box_score()))
                     self.publish(analyst_message(self.live))
                     self.publish(self._control_message())
                 await asyncio.sleep(0.5)
@@ -726,7 +752,7 @@ class MatchRoom:
                 self.publish(self.last_frame)
                 last_frame = now
             if now - last_stats >= STATS_INTERVAL_S:
-                self.publish(stats_message(self.live.stats()))
+                self.publish(stats_message(self.live.stats(), self.live.box_score()))
                 last_stats = now
             if now - last_analyst >= ANALYST_INTERVAL_S:
                 self.publish(analyst_message(self.live))

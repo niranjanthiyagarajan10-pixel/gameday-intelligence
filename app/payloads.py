@@ -63,7 +63,10 @@ def _event_dict(e: MatchEvent) -> dict[str, Any]:
 
 def event_record(e: MatchEvent) -> dict[str, Any]:
     """Any event, compactly, for the event log the agents' tools read."""
-    return {"id": e.event_id, "minute": e.minute, **_event_dict(e)}
+    out = {"id": e.event_id, "minute": e.minute, **_event_dict(e)}
+    if e.meta:
+        out["meta"] = dict(e.meta)
+    return out
 
 
 def clip_event(e: MatchEvent) -> dict[str, Any] | None:
@@ -159,8 +162,11 @@ def player_summary(live: LiveStats, player_id: str) -> dict[str, Any]:
     }
 
 
-def stats_message(stats: StatsUpdate) -> dict[str, Any]:
-    return {"type": "stats", **stats.model_dump(mode="json")}
+def stats_message(stats: StatsUpdate, box: dict[str, Any] | None = None) -> dict[str, Any]:
+    msg = {"type": "stats", **stats.model_dump(mode="json")}
+    if box is not None:
+        msg["box"] = box["rows"]
+    return msg
 
 
 def card_message(m: Moment, names: dict[str, str], teams: dict[Side, str], match_id: str) -> dict[str, Any]:
