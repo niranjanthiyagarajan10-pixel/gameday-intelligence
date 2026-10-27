@@ -1,13 +1,17 @@
-import { Component, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { Component, createElement, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import type { CSSProperties, ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Frame, FxEvent, Roster } from "../types";
 import { webglAvailable } from "../webgl";
 import { Pitch } from "./Pitch";
-import { BALL_R, HEAD_Y, L, cssColor, disc, disposeTree, flatMat, wx, wz } from "../pitch3d/core";
+import { Crest } from "./Crest";
+import { clock } from "../format";
+import { BALL_R, HEAD_Y, L, cssColor, disc, disposeTree, flatMat, hash, wx, wz } from "../pitch3d/core";
 import { buildPitch } from "../pitch3d/pitch";
-import { FigureKit, animate, dive, lunge, type Figure } from "../pitch3d/figures";
+import { FigureKit, animate, dive, lunge, patternFor, react, type Figure } from "../pitch3d/figures";
 import { BallTrail, FlightPaths, footballTexture } from "../pitch3d/ball";
 import { buildStadium } from "../pitch3d/stadium";
 import { TacticalLayers, type Layer } from "../pitch3d/layers";
@@ -32,6 +36,8 @@ export interface Pitch3DProps {
   onSelect?: (id: string) => void;
   explain?: ExplainRequest | null;
   onExplainEnd?: () => void;
+  score?: [number, number]; // for the score bug
+  clock?: number; // match seconds, for the score bug
 }
 
 export type { Preset, Spot, OverlayStyle, ExplainRequest };
@@ -57,6 +63,31 @@ const LAYER_KEY = "gdi.pitch3d.layers";
 const LAYER_LABEL: Record<Layer, string> = { shape: "Shape", passing: "Passing", control: "Control" };
 const CARRIER_M = 2.0;
 const REPLAY_HOLD_MS = 1600; // the last caption stays up this long after the clip ends
+const LOWER_MS = 3800;
+const CARD_COLOR = { yellow: "#f5c518", red: "#ff4d4d" } as const;
+
+/**
+ * A club's crest as SVG markup, rendered from the same Crest component the rest of the app uses.
+ * Runs from the animation loop, outside React's own rendering, so flushSync is safe here.
+ */
+function crestMarkup(club: Roster["clubs"]["home"]): string {
+  const div = document.createElement("div");
+  const root = createRoot(div);
+  try {
+    flushSync(() => root.render(createElement(Crest, { club, size: 80 })));
+    return div.innerHTML;
+  } finally {
+    root.unmount();
+  }
+}
+
+interface Lower {
+  key: number;
+  kind: string;
+  title: string;
+  sub: string;
+  color: string;
+}
 
 function readPreset(): Preset {
   try {
@@ -119,6 +150,8 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
   const [layers, setLayers] = useState<Set<Layer>>(readLayers);
   const [caption, setCaption] = useState<Caption | null>(null);
   const [replaying, setReplaying] = useState(false);
+  const [wipe, setWipe] = useState<{ key: number; color: string } | null>(null);
+  const [lower, setLower] = useState<Lower | null>(null);
 
   useEffect(() => {
     const el = host.current;
@@ -173,6 +206,29 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     controls.maxDistance = 130;
     controls.maxPolarAngle = Math.PI / 2 - 0.05; // never below the grass
     const director = new Director(camera, controls, still);
+    director.onWipe = (end) => {
+      const r = live.current.roster;
+      setWipe({ key: performance.now(), color: r.clubs[end > 0 ? "home" : "away"].primary });
+    };
+    let lowerTimer = 0;
+    const showLower = (l: Omit<Lower, "key">) => {
+      window.clearTimeout(lowerTimer);
+      setLower({ ...l, key: performance.now() });
+      lowerTimer = window.setTimeout(() => setLower(null), LOWER_MS);
+    };
+    /** After a goal: the scorer celebrates, team-mates near them cheer, the beaten keeper and defence slump. */
+    const celebrate = (scorerId: string | null, team: "home" | "away", end: number, now: number) => {
+      const roster = live.current.roster;
+      const scorer = scorerId ? figures.get(scorerId) : undefined;
+      for (const f of figures.values()) {
+        const info = roster.players[f.id];
+        if (!info) continue;
+        if (f === scorer) react(f, now, "celebrate", 250);
+        else if (info.side === team) {
+          if (!scorer || f.group.position.distanceTo(scorer.group.position) < 35) react(f, now, "cheer", 350 + (hash(f.id) % 500));
+        } else if (f.keeper || Math.abs(f.group.position.x - (end * L) / 2) < 25) react(f, now, "slump", 300 + (hash(f.id) % 300));
+      }
+    };
 
     const signal = cssColor("--signal", "#e8ff3a");
     const kit = new FigureKit();
@@ -350,6 +406,18 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         } else if (e.type === "goal") {
           goalAt(end, now);
           director.goal(end, now);
+          celebrate(e.player, e.team, end, now);
+        } else if (e.type === "card" && e.player) {
+          const info = roster.players[e.player];
+          if (info) {
+            const red = e.outcome === "red";
+            showLower({
+              kind: red ? "Red card" : "Yellow card",
+              title: `#${info.number} ${info.name}`,
+              sub: `${roster.clubs[e.team].name} ${Math.floor(e.t / 60)}\u2032`,
+              color: red ? CARD_COLOR.red : CARD_COLOR.yellow,
+            });
+          }
         }
       }
       if (seen.size > 4000) seen.clear();
@@ -362,11 +430,18 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         const info = roster.players[id];
         if (!info) continue;
         const club = roster.clubs[info.side];
+        try {
+          kit.setCrest(club.id, crestMarkup(club));
+        } catch {
+          /* no crest on the shirt; everything else still draws */
+        }
         // Keepers wear a dark kit trimmed in the club colour, as on the 2D pitch.
         const f =
           info.position === "GK"
-            ? kit.make(id, true, { shirt: "#16181b", trim: club.primary, shorts: "#16181b", socks: "#16181b", number: info.number })
-            : kit.make(id, false, { shirt: club.primary, trim: club.secondary, shorts: club.secondary, socks: club.primary, number: info.number });
+            ? kit.make(id, true, { club: club.id, shirt: "#16181b", trim: club.primary, shorts: "#16181b", socks: "#16181b", number: info.number, pattern: "plain" })
+            : kit.make(id, false, {
+                club: club.id, shirt: club.primary, trim: club.secondary, shorts: club.secondary, socks: club.primary, number: info.number, pattern: patternFor(club.id),
+              });
         const p = to.get(id)!;
         f.group.position.set(wx(p[0]), 0, wz(p[1]));
         figures.set(id, f);
@@ -376,6 +451,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
         if (!to.has(id)) {
           players.remove(f.group);
           figures.delete(id);
+          kit.release(id);
         }
       }
       for (const [id, f] of figures) {
@@ -502,23 +578,27 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
           const fig = figures.get(id);
           if (!fig) continue;
           let dist = 0;
+          let turn = 0;
           if (prev) {
             dist = Math.hypot(v[0] - prev[0], v[1] - prev[1]);
             if (dist > 1e-3) {
+              // Ease into turns rather than snapping round; the body banks with the turn.
               const want = Math.atan2(-(v[1] - prev[1]), v[0] - prev[0]);
               let d = want - fig.group.rotation.y;
               d = ((((d + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
-              fig.group.rotation.y += d * 0.2;
+              turn = d * 0.12;
+              fig.group.rotation.y += turn;
             }
           }
           fig.group.position.set(wx(v[0]), 0, wz(v[1]));
-          animate(fig, now, dist, v[2] ?? 0, id === carrier);
+          animate(fig, now, dist, v[2] ?? 0, id === carrier, turn);
         }
         syncFigures();
         if (!replay) syncFx(now);
         else if (!replay.netDone && replay.req.shot.outcome === "goal" && Math.abs(ball.position.x) > L / 2 + 0.3 && Math.abs(ball.position.z) < 3.8) {
           replay.netDone = true;
           goalAt(replay.script.goalEnd, now);
+          celebrate(replay.req.shot.player, replay.req.shot.team, replay.script.goalEnd, now);
         }
         tele.update(now);
         pitch.nets[0].update(now);
@@ -643,6 +723,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
     renderer.setAnimationLoop(tick);
 
     return () => {
+      window.clearTimeout(lowerTimer);
       renderer.setAnimationLoop(null);
       ro.disconnect();
       controls.removeEventListener("start", onStart);
@@ -732,6 +813,23 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
           ))}
         </div>
       </div>
+      {props.score && (
+        <div className="p3-bug" aria-label="Score">
+          <span className="t" style={{ "--club": props.roster.clubs.home.primary } as CSSProperties}>{props.roster.clubs.home.short}</span>
+          <b className="num">{props.score[0]}</b>
+          <b className="num">{props.score[1]}</b>
+          <span className="t" style={{ "--club": props.roster.clubs.away.primary } as CSSProperties}>{props.roster.clubs.away.short}</span>
+          {props.clock !== undefined && <span className="num clk">{clock(props.clock)}</span>}
+        </div>
+      )}
+      {lower && !replaying && (
+        <div key={lower.key} className="p3-lower" style={{ "--club": lower.color } as CSSProperties}>
+          <span className="kind">{lower.kind}</span>
+          <b>{lower.title}</b>
+          <span className="sub">{lower.sub}</span>
+        </div>
+      )}
+      {wipe && <div key={wipe.key} className="p3-wipe" style={{ "--club": wipe.color } as CSSProperties} onAnimationEnd={() => setWipe(null)} />}
       {replaying && (
         <div className="p3-replay">
           <b>Replay</b>

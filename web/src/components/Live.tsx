@@ -156,7 +156,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
             {view === "3d" ? (
               <Suspense fallback={pitch2d}>
                 <Pitch3D frame={frame} roster={roster} focus={focus} tagged={tagged} speed={state.speed} fx={state.fx} labels={labels} onSelect={onFocus}
-                  explain={explain} onExplainEnd={endExplain} />
+                  explain={explain} onExplainEnd={endExplain} score={stats.score} clock={stats.t} />
               </Suspense>
             ) : (
               pitch2d

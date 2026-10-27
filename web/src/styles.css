@@ -892,3 +892,21 @@ table.shots td:first-child { text-align: left; }
 .tab { flex: none; }
 .settings, .playback { max-width: 100%; flex-wrap: wrap; }
 @media (max-width: 600px) { .p3-group button { font-size: 11px; padding: 2px 6px; } .p3-glabel { display: none; } }
+/* 3D broadcast graphics: score bug, lower third, and the club-colour wipe on camera cuts */
+.p3-bug { position: absolute; left: 10px; top: 10px; display: flex; align-items: stretch; height: 30px; background: #000; border: 1px solid var(--line); border-radius: 2px; font-family: "Barlow Condensed"; font-weight: 800; text-transform: uppercase; pointer-events: none; }
+.p3-bug .t { display: flex; align-items: center; padding: 0 9px; font-size: 16px; letter-spacing: 0.04em; border-left: 4px solid var(--club); }
+.p3-bug .t:last-of-type { border-left: 0; border-right: 4px solid var(--club); }
+.p3-bug b { display: flex; align-items: center; justify-content: center; min-width: 26px; font-size: 20px; background: var(--text); color: #000; }
+.p3-bug b + b { border-left: 1px solid #000; }
+.p3-bug .clk { display: flex; align-items: center; padding: 0 10px; font-size: 16px; color: var(--signal); border-left: 1px solid var(--line); }
+.pitch3d .p3-replay { top: 48px; }
+.p3-lower { position: absolute; left: 16px; bottom: 104px; display: grid; grid-template-columns: auto; background: rgba(0, 0, 0, 0.9); border-left: 6px solid var(--club); padding: 6px 16px 8px 12px; animation: p3-in 200ms ease-out, p3-out 300ms ease-in 3500ms forwards; pointer-events: none; }
+.p3-lower .kind { font-family: "Barlow Condensed"; font-weight: 700; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--club); }
+.p3-lower b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 24px; line-height: 1.05; text-transform: uppercase; }
+.p3-lower .sub { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+@keyframes p3-out { to { transform: translateX(-16px); opacity: 0; } }
+.p3-wipe { position: absolute; top: 0; bottom: 0; left: 0; width: 140%; pointer-events: none; background: var(--club); transform: translateX(-120%) skewX(-14deg); animation: p3-wipe 380ms cubic-bezier(0.6, 0, 0.4, 1) forwards; }
+.p3-wipe::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 18px; background: #000; }
+@keyframes p3-wipe { 0% { transform: translateX(-120%) skewX(-14deg); } 100% { transform: translateX(110%) skewX(-14deg); } }
+@media (prefers-reduced-motion: reduce) { .p3-wipe { display: none; } .p3-lower { animation: none; } }
+@media (max-width: 600px) { .p3-bug { top: auto; bottom: 8px; left: auto; right: 8px; } }
