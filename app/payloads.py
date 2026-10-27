@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from agents import i18n
+from agents.personalizer import LANGS
+
 from typing import Any
 
 from statistics import mean
@@ -169,6 +172,16 @@ def stats_message(stats: StatsUpdate, box: dict[str, Any] | None = None) -> dict
     return msg
 
 
+def _static_langs(cues: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for lang in LANGS:
+        for aud, c in cues.items():
+            tr = i18n.cue({**c.model_dump(mode="json"), "text": c.text()}, lang)
+            if tr is not None:
+                out.setdefault(lang, {})[aud] = tr
+    return out
+
+
 def card_message(m: Moment, names: dict[str, str], teams: dict[Side, str], match_id: str) -> dict[str, Any]:
     cues = {aud: fallback_cue(m, aud, names, teams, match_id) for aud in ("casual", "analyst")}
     hero = hero_for(m)
@@ -179,7 +192,9 @@ def card_message(m: Moment, names: dict[str, str], teams: dict[Side, str], match
         "hero": {"value": hero.value, "label": hero.label},
         "source": "template",  # until the Narrator's verified draft replaces it
         "sources": {"casual": "template", "analyst": "template"},
-        "langs": {},  # es and hi cues, added by the Personalizer
+        # Template cues in every language, translated ahead of time; the Personalizer replaces them
+        # when a Narrator's verified line arrives.
+        "langs": _static_langs(cues),
     }
 
 

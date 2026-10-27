@@ -24,7 +24,7 @@ from engine.models import Moment
 @dataclass
 class CardJob:
     moment: Moment
-    translate: bool
+    langs: tuple[str, ...]  # the languages fans are watching in right now; English is always written
 
 
 @dataclass
@@ -80,10 +80,12 @@ class Personalize(Executor):
     @handler
     async def translate(self, settled: Settled, ctx: WorkflowContext[None, CardResult]) -> None:
         translated: list[Written] = []
-        if settled.job.translate:
+        if settled.job.langs:
             t = settled.written[0].cue.t_start - 1.0
+            # Template cues already carry their translations, made ahead of time (agents/i18n.py).
             translated = list(await asyncio.gather(*(self.desk.translate(w.cue, lang, t)
-                                                     for lang in LANGS for w in settled.written)))
+                                                     for lang in settled.job.langs for w in settled.written
+                                                     if w.source == "narrator")))
         await ctx.yield_output(CardResult(settled.job.moment.moment_id, settled.written, translated))
 
 
@@ -102,8 +104,10 @@ def card_workflow(desk: CardDesk) -> Workflow:
     )
 
 
-async def run_card(workflow: Workflow, moment: Moment, translate: bool) -> CardResult:
-    result = await workflow.run(CardJob(moment, translate))
+async def run_card(workflow: Workflow, moment: Moment, translate: bool = False,
+                   langs: tuple[str, ...] | None = None) -> CardResult:
+    """`langs` are the languages to write; `translate=True` alone means every language."""
+    result = await workflow.run(CardJob(moment, tuple(LANGS) if langs is None and translate else (langs or ())))
     outputs = [o for o in result.get_outputs() if isinstance(o, CardResult)]
     if not outputs:
         raise RuntimeError(f"card workflow ended without a card: {result.get_final_state()}")

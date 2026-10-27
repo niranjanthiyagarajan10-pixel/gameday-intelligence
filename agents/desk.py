@@ -15,7 +15,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 
-from agents import commentator, narrator, personalizer
+from agents import commentator, i18n, narrator, personalizer
 from agents.fallback import CUE_KIND, fallback_cue, moment_time, slots_for
 from agents.llm import LLM
 from agents.verifier import verify
@@ -149,5 +149,6 @@ class CardDesk:
             return Written(cue, "template", steps)
         steps.append(TraceStep(mid, cue.audience, "Personalizer", label, "pass", result.ms,
                                "same slots, no typed numbers or names", t))
-        translated = cue.model_copy(update={"template": out, "lang": lang, "cue_id": f"{cue.cue_id}-{lang}"})
+        translated = cue.model_copy(update={"template": out, "lang": lang, "cue_id": f"{cue.cue_id}-{lang}",
+                                            "slots": i18n.localize(cue.slots, lang)})
         return Written(translated, "personalizer", steps)

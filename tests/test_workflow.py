@@ -44,7 +44,7 @@ class Broken:
 
 def test_the_workflow_runs_both_narrators_then_translates():
     wf = card_workflow(CardDesk(LLM(Echo()), NAMES, TEAMS, "KRAV-7"))
-    done = asyncio.run(run_card(wf, GOAL, translate=True))
+    done = asyncio.run(run_card(wf, GOAL, langs=("es", "hi")))
     assert [w.cue.audience for w in done.written] == ["casual", "analyst"]
     assert all(w.source == "narrator" for w in done.written)
     assert sorted((w.cue.lang, w.cue.audience) for w in done.translated) == [

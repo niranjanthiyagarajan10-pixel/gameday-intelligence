@@ -29,6 +29,9 @@ from mcp_server.server import create_mcp, http_app  # noqa: E402
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 
+LangCode = Literal["en", "es", "hi", "fr", "pt", "de", "ja", "it"]
+
+
 class NewRoom(BaseModel):
     start_minute: float = Field(default=0.0, ge=0.0, le=89.0)
     speed: float = 1.0
@@ -37,24 +40,28 @@ class NewRoom(BaseModel):
 
 class Question(BaseModel):
     question: str = Field(min_length=2, max_length=300)
-    lang: Literal["en", "es", "hi"] = "en"
+    lang: LangCode = "en"
     audience: Literal["casual", "analyst"] = "casual"
+
+
+class Want(BaseModel):
+    lang: LangCode
 
 
 class SpeakLine(BaseModel):
     index: int = Field(ge=-1, le=12)  # a beat's line, or -1 for why it worked
-    lang: Literal["en", "es", "hi"] = "en"
+    lang: LangCode = "en"
 
 
 class ReelPart(BaseModel):
     part: Literal["intro", "outro"]
-    lang: Literal["en", "es", "hi"] = "en"
+    lang: LangCode = "en"
 
 
 class Speak(BaseModel):
     moment_id: str = Field(min_length=1, max_length=80)
     style: Literal["classic", "hype", "stats", "tactician"] = "classic"
-    lang: Literal["en", "es", "hi"] = "en"
+    lang: LangCode = "en"
 
 
 class Control(BaseModel):
@@ -130,7 +137,7 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         return found
 
     @app.get("/api/rooms/{room_id}/explain/{event_id}")
-    async def explain(room_id: str, event_id: str, lang: Literal["en", "es", "hi"] = Query("en")) -> dict[str, Any]:
+    async def explain(room_id: str, event_id: str, lang: LangCode = Query("en")) -> dict[str, Any]:
         """Explain this moment: the beats of the move behind a goal or big chance, each with a verified line."""
         found = await room_or_404(room_id).explain(event_id, lang)
         if found is None:
@@ -150,7 +157,7 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
 
     @app.get("/api/rooms/{room_id}/reel")
-    async def reel(room_id: str, lang: Literal["en", "es", "hi"] = Query("en")) -> dict[str, Any]:
+    async def reel(room_id: str, lang: LangCode = Query("en")) -> dict[str, Any]:
         """The Highlights reel: the clips in match order, with the Producer's verified intro and outro."""
         found = await room_or_404(room_id).reel(lang)
         if found is None:
@@ -184,7 +191,7 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
     async def commentary(
         room_id: str, moment_id: str,
         style: Literal["classic", "hype", "stats", "tactician"] = Query("classic"),
-        lang: Literal["en", "es", "hi"] = Query("en"),
+        lang: LangCode = Query("en"),
     ) -> dict[str, Any]:
         """A key moment in the fan's commentator style, written by the Commentator and verified."""
         said = await room_or_404(room_id).commentary(moment_id, style, lang)
@@ -204,15 +211,20 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
             return JSONResponse(status_code=503, content=said)
         return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
 
+    @app.post("/api/rooms/{room_id}/want")
+    async def want(room_id: str, body: Want) -> dict[str, Any]:
+        """A fan is watching in this language: agents write it from now on, and recent cards catch up."""
+        return {"ok": room_or_404(room_id).want(body.lang)}
+
     @app.get("/api/rooms/{room_id}/preview")
-    async def match_preview(room_id: str) -> dict[str, Any]:
+    async def match_preview(room_id: str, lang: LangCode = Query("en")) -> dict[str, Any]:
         """The Preview agent's story: table, form, head to head, forecast and players to watch."""
-        return await room_or_404(room_id).preview()
+        return await room_or_404(room_id).preview(lang)
 
     @app.get("/api/rooms/{room_id}/brief")
-    async def match_brief(room_id: str) -> dict[str, Any]:
+    async def match_brief(room_id: str, lang: LangCode = Query("en")) -> dict[str, Any]:
         """Catch me up: the Summarizer's three points on the match so far."""
-        return await room_or_404(room_id).brief()
+        return await room_or_404(room_id).brief(lang)
 
     @app.get("/api/newsdesk")
     async def news() -> dict[str, Any]:
@@ -220,9 +232,9 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         return await hub.newsdesk()
 
     @app.get("/api/rooms/{room_id}/postgame")
-    async def match_postgame(room_id: str) -> dict[str, Any]:
+    async def match_postgame(room_id: str, lang: LangCode = Query("en")) -> dict[str, Any]:
         """What decided the match, and what each club should watch next time."""
-        return await room_or_404(room_id).postgame()
+        return await room_or_404(room_id).postgame(lang)
 
     @app.post("/api/rooms/{room_id}/recap")
     async def write_recap(room_id: str) -> dict[str, Any]:

@@ -16,7 +16,7 @@ from engine.pitch import BALL_MARGIN, PITCH_LENGTH, PITCH_WIDTH
 
 Side = Literal["home", "away"]
 Audience = Literal["casual", "analyst"]
-Lang = Literal["en", "es", "hi"]
+Lang = Literal["en", "es", "hi", "fr", "pt", "de", "ja", "it"]
 Position = Literal["GK", "DF", "MF", "FW"]
 
 Unit = Annotated[float, Field(ge=0.0, le=1.0)]

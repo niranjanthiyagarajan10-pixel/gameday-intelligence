@@ -1,5 +1,5 @@
-"""The Personalizer agent: takes a verified English template and writes it for a fan in Spanish or
-Hindi, keeping every slot exactly. Code fills the slots after, so numbers and names stay correct in
+"""The Personalizer agent: takes a verified English template and writes it for a fan in another
+language, keeping every slot exactly. Code fills the slots after, so numbers and names stay correct in
 every language. Its output is re-checked before use: same slots, no typed numbers or names.
 """
 
@@ -12,9 +12,18 @@ from collections.abc import Iterable
 
 from engine.models import template_slots
 
-LANGS = {"es": "Spanish (neutral, as used on international sports broadcasts)", "hi": "Hindi, in Devanagari script"}
+LANGS = {
+    "es": "Spanish (neutral, as used on international sports broadcasts)",
+    "hi": "Hindi, in Devanagari script",
+    "fr": "French (as used on French sports broadcasts)",
+    "pt": "Portuguese (Brazilian, as used on sports broadcasts)",
+    "de": "German (as used on German sports broadcasts)",
+    "ja": "Japanese (natural sports broadcast Japanese)",
+    "it": "Italian (as used on Italian sports broadcasts)",
+}
+ALL_LANGS = ("en", *LANGS)
 EM_DASH = chr(0x2014)
-DIGITS = re.compile(r"[0-9०-९]")  # ASCII and Devanagari digits
+DIGITS = re.compile(r"[0-9०-९０-９]")  # ASCII, Devanagari and full-width digits
 
 INSTRUCTIONS = """You are the Personalizer for Gameday Intelligence, a live football match companion.
 You rewrite one short on-screen line for a fan in another language.

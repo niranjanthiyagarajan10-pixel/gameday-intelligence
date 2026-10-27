@@ -255,13 +255,16 @@ def test_room_swaps_in_the_narrators_verified_text():
         room.advance()
     assert room.cards, "expected a key moment in two halves of a minute"
     queue = room.subscribe()
+    room._wanted.update(es=time.monotonic(), hi=time.monotonic())  # fans watching in Spanish and Hindi
     room._to_narrate.append(room.cards[0])
 
     async def drain():
         task = asyncio.create_task(room._narrate_worker())
         for _ in range(400):  # the update goes out once the translations are in, not when the English lands
             await asyncio.sleep(0.02)
-            if not room._to_narrate and len(room.cards[0]["langs"]) == 2:
+            langs = room.cards[0]["langs"]
+            if not room._to_narrate and all(len(langs.get(x, {})) == 2 and langs[x]["casual"].get("lang") == x
+                                            and room.cards[0]["sources"]["casual"] == "narrator" for x in ("es", "hi")):
                 break
         task.cancel()
 
@@ -273,4 +276,4 @@ def test_room_swaps_in_the_narrators_verified_text():
         kinds.append(queue.get_nowait()["type"])
     assert "trace" in kinds and "card_update" in kinds
     assert {s["agent"] for s in room.trace} == {"Narrator", "Verifier", "Personalizer"}
-    assert set(card["langs"]) == {"es", "hi"} and card["langs"]["es"]["casual"]["lang"] == "es"
+    assert {"es", "hi"} <= set(card["langs"]) and card["langs"]["es"]["casual"]["lang"] == "es"

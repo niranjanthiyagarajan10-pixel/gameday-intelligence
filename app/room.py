@@ -21,6 +21,7 @@ from agents.desk import CardDesk, TraceStep, name_list
 from agents.workflow import card_workflow, run_card
 from agents.llm import LLM
 from agents import analyst, commentator, deep, explainer, newsdesk, personalizer, postgame, preview, producer, recap, summarizer
+from agents import i18n
 from agents.personalizer import LANGS
 from app import explain as explain_facts
 from app import matchday
@@ -67,6 +68,8 @@ MAX_PRIVATE_ROOMS = 20
 CLIP_BEFORE_S = 12.0
 CLIP_AFTER_S = 3.0
 TRACE_MAX = 400
+WANT_TTL_S = 15 * 60  # a language stays "watched" this long after a fan last asked for it
+CATCH_UP_CARDS = 12
 MCP_URL = os.getenv("ANALYST_MCP_URL", f"http://127.0.0.1:{os.getenv('PORT', '8000')}/mcp")
 ASKS_PER_MINUTE = 12  # the app is public and every question costs model calls
 SPEECH_PER_MINUTE = 40  # voiced lines per room, to keep the Speech bill small
@@ -173,6 +176,8 @@ class MatchRoom:
         self._shots_clipped = 0
         self.clips: dict[str, dict[str, Any]] = {}
         self._explained: dict[str, dict[str, Any]] = {}
+        self._kept: dict[str, dict[str, Any]] = {}  # each story's templates, for writing other languages later
+        self._wanted: dict[str, float] = {}  # language -> when a fan last asked for it
         self._explain_parts: dict[str, dict[str, Any]] = {}  # the templates, for writing other languages later
         self._explain_lock = asyncio.Lock()
         self._reel: dict[str, Any] | None = None  # the Highlights reel, rewritten when the match moves on
@@ -296,13 +301,14 @@ class MatchRoom:
     # Before and after the match
 
     async def _write_story(self, tag: str, agent: str, module: Any, facts: dict[str, str], truths: dict[str, Any],
-                           ask: str, names: Any = None, langs: tuple[str, ...] = LANGS,
+                           ask: str, names: Any = None, langs: tuple[str, ...] | None = None,
                            keep: dict[str, Any] | None = None) -> tuple[dict[str, Any], str, dict[str, dict[str, Any]]]:
         """An agent writes a story over facts: draft, check, at most one retry, else the template.
         Returns the filled parts, the source and the Personalizer's languages. `names` are the names
         the story may not type; by default this room's players and clubs. `keep`, when given, receives
         the templates, so other languages can be written later."""
         names = self.desk.forbidden if names is None else names
+        langs = self.wanted_langs() if langs is None else langs
         t = self.live.t
         steps: list[TraceStep] = []
         feedback: list[str] = []
@@ -340,10 +346,17 @@ class MatchRoom:
                                    "template story, every value a fact" if self.llm.live else "no model: template story", t))
         fill = lambda tpl: story.fill(tpl, facts)  # noqa: E731
         filled = {k: [fill(x) for x in v] if isinstance(v, list) else fill(v) for k, v in parts.items()}
+        kept = {"parts": parts, "facts": facts, "names": names, "source": source}
+        self._kept[tag] = kept
         if keep is not None:
-            keep.update(parts=parts, facts=facts, names=names, source=source)
+            keep.update(kept)
         written_langs: dict[str, dict[str, Any]] = {}
-        if self.llm.live and source == "agent":
+        if source == "template":  # translated ahead of time: every language, no model call
+            for lang in LANGS:
+                static = i18n.parts(parts, facts, lang)
+                if static is not None:
+                    written_langs[lang] = static
+        elif self.llm.live:
             for lang in langs:
                 out = await self._personalize(tag, parts, facts, names, lang, steps)
                 if out is not None:
@@ -354,7 +367,7 @@ class MatchRoom:
     async def _personalize(self, tag: str, parts: dict[str, Any], facts: dict[str, str], names: Any, lang: str,
                            steps: list[TraceStep]) -> dict[str, Any] | None:
         """The Personalizer writes a verified story in another language; None if any part fails its check."""
-        fill = lambda tpl: story.fill(tpl, facts)  # noqa: E731
+        fill = lambda tpl: i18n.fill(tpl, facts, lang)  # noqa: E731
         out: dict[str, Any] = {}
         for key, value in parts.items():
             written = []
@@ -372,7 +385,60 @@ class MatchRoom:
             return out
         return None
 
-    async def preview(self) -> dict[str, Any]:
+    async def _localize(self, tag: str, obj: dict[str, Any], keep: dict[str, Any] | None, lang: str) -> None:
+        """Make sure a story has the fan's language: a template story from the translations made ahead
+        of time, an agent's story by the Personalizer, the first time anyone asks for that language."""
+        if lang == "en" or lang not in LANGS or lang in obj.get("langs", {}) or not keep:
+            return
+        if keep["source"] == "template":
+            written = i18n.parts(keep["parts"], keep["facts"], lang)
+        elif self.llm.live:
+            steps: list[TraceStep] = []
+            written = await self._personalize(tag, keep["parts"], keep["facts"], keep["names"], lang, steps)
+            self._log(steps)
+        else:
+            written = None
+        if written is not None:
+            obj.setdefault("langs", {})[lang] = written
+
+    # Languages: written only for the languages fans are watching in
+
+    def want(self, lang: str) -> bool:
+        """A fan is watching in this language. New ones get the recent cards translated at once."""
+        if lang not in LANGS:
+            return False
+        now = time.monotonic()
+        fresh = now - self._wanted.get(lang, -WANT_TTL_S - 1) > WANT_TTL_S
+        self._wanted[lang] = now
+        if fresh and self.llm.live:
+            try:
+                asyncio.get_running_loop().create_task(self._catch_up(lang))
+            except RuntimeError:  # no event loop (a script or a test): nothing to catch up
+                pass
+        return True
+
+    def wanted_langs(self) -> tuple[str, ...]:
+        now = time.monotonic()
+        return tuple(lang for lang, seen in self._wanted.items() if now - seen <= WANT_TTL_S)
+
+    async def _catch_up(self, lang: str) -> None:
+        """Translate the latest Narrator cards for a language a fan just picked."""
+        for card in list(self.cards)[-CATCH_UP_CARDS:]:
+            changed = False
+            for aud, cue in card["cues"].items():
+                if card["sources"].get(aud) != "narrator" or aud in card["langs"].get(lang, {}):
+                    continue
+                event = OverlayEvent.model_validate({k: v for k, v in cue.items() if k != "text"})
+                w = await self.desk.translate(event, lang, self.live.t)
+                self._log(w.steps)
+                if w.source == "personalizer":
+                    card["langs"].setdefault(lang, {})[aud] = {**w.cue.model_dump(mode="json"), "text": w.cue.text()}
+                    changed = True
+            if changed:
+                self.publish({"type": "card_update", "moment_id": card["moment"]["moment_id"], "cues": card["cues"],
+                              "source": card["source"], "sources": card["sources"], "langs": card["langs"]})
+
+    async def preview(self, lang: str = "en") -> dict[str, Any]:
         """The Preview agent's story for this fixture, with the table, form, head to head and players to watch."""
         async with self._story_lock:
             if self._preview is None:
@@ -382,9 +448,10 @@ class MatchRoom:
                     "preview", "Preview", preview, pack["facts"], pack["truths"], preview.prompt(pack["facts"], pack["watch"]))
                 self._preview = {**{k: v for k, v in pack.items() if k != "truths"}, **filled,
                                  "source": source, "langs": langs, "home": c.home, "away": c.away}
+            await self._localize("preview", self._preview, self._kept.get("preview"), lang)
             return self._preview
 
-    async def postgame(self) -> dict[str, Any]:
+    async def postgame(self, lang: str = "en") -> dict[str, Any]:
         """What decided the match and what each club should watch next time. Rewritten as the match moves on."""
         async with self._story_lock:
             stale = self._postgame is None or self._postgame["status"] != self.status or (
@@ -396,9 +463,10 @@ class MatchRoom:
                 self._postgame = {"decided": pack["decided"], "next": pack["next"], **filled, "source": source,
                                   "langs": langs, "status": self.status, "t": self.live.t,
                                   "home": self.config.home, "away": self.config.away}
+            await self._localize("postgame", self._postgame, self._kept.get("postgame"), lang)
             return self._postgame
 
-    async def brief(self) -> dict[str, Any]:
+    async def brief(self, lang: str = "en") -> dict[str, Any]:
         """Catch me up: the Summarizer's three points on the match so far. Rewritten when the match moves on."""
         async with self._story_lock:
             b = self._brief
@@ -410,6 +478,7 @@ class MatchRoom:
                 self._brief = {**filled, "source": source, "langs": langs, "stats": pack["stats"],
                                "score": pack["truths"]["score"], "minute": int(self.live.t // 60), "status": self.status,
                                "t": self.live.t, "cards": len(self.cards)}
+            await self._localize("brief", self._brief, self._kept.get("brief"), lang)
             return self._brief
 
     async def explain(self, event_id: str, lang: str = "en") -> dict[str, Any] | None:
@@ -435,14 +504,7 @@ class MatchRoom:
                     return out
                 self._explained[event_id] = out
                 self._explain_parts[event_id] = keep
-            keep = self._explain_parts.get(event_id, {})
-            if lang != "en" and lang not in out["langs"] and self.llm.live and keep.get("source") == "agent":
-                steps: list[TraceStep] = []
-                written = await self._personalize(f"explain {event_id}", keep["parts"], keep["facts"], keep["names"],
-                                                  lang, steps)
-                self._log(steps)
-                if written is not None:
-                    out["langs"][lang] = written
+            await self._localize(f"explain {event_id}", out, self._explain_parts.get(event_id), lang)
             return out
 
     async def explain_line(self, event_id: str, index: int, lang: str) -> dict[str, Any] | None:
@@ -481,13 +543,7 @@ class MatchRoom:
                               "clips": [reel_facts.clip_dict(s, self.names, self.teams) for s in chosen]}
                 self._reel_parts = keep
             out = self._reel
-            keep = self._reel_parts
-            if lang != "en" and lang not in out["langs"] and self.llm.live and keep.get("source") == "agent":
-                steps: list[TraceStep] = []
-                written = await self._personalize("reel", keep["parts"], keep["facts"], keep["names"], lang, steps)
-                self._log(steps)
-                if written is not None:
-                    out["langs"][lang] = written
+            await self._localize("reel", out, self._reel_parts, lang)
             return {k: v for k, v in out.items() if k != "key"}
 
     async def reel_line(self, part: str, lang: str) -> dict[str, Any] | None:
@@ -506,7 +562,9 @@ class MatchRoom:
         now = time.monotonic()
         while self._asked and now - self._asked[0] > 60:
             self._asked.popleft()
-        out: dict[str, Any] = {"question": question, "answer": ASK_FALLBACK, "source": "fallback", "lang": "en",
+        fallback_text = (i18n.template(ASK_FALLBACK, lang) if lang != "en" else None)
+        out: dict[str, Any] = {"question": question, "answer": fallback_text or ASK_FALLBACK, "source": "fallback",
+                               "lang": lang if fallback_text else "en",
                                "evidence": [], "tools_used": [], "limits": ""}
         if len(self._asked) >= ASKS_PER_MINUTE:
             out["answer"] = "Lots of questions right now. Try again in a minute."
@@ -607,7 +665,7 @@ class MatchRoom:
             fill = lambda tpl: tpl.format(**facts).replace("%%", "%")  # noqa: E731
             written: dict[str, Any] = {"headline": fill(head), "text": fill(body),
                                        "source": "recap", "t": t, "langs": {}}
-            for lang in LANGS:
+            for lang in self.wanted_langs():
                 parts = []
                 for template in (head, body):
                     res = await self.llm.complete(agent="Personalizer", instructions=personalizer.INSTRUCTIONS,
@@ -617,7 +675,7 @@ class MatchRoom:
                                else personalizer.check(template, out, self.desk.forbidden))
                     steps.append(TraceStep("recap", "both", "Personalizer", f"write {lang}",
                                            "pass" if not reasons else "reject", res.ms, "; ".join(reasons), t))
-                    parts.append(None if reasons else fill(out))
+                    parts.append(None if reasons else out.format(**i18n.localize(facts, lang)).replace("%%", "%"))
                 if all(parts):
                     written["langs"][lang] = {"headline": parts[0], "text": parts[1]}
             self._log(steps)
@@ -736,7 +794,7 @@ class MatchRoom:
             # The card desk is an Agent Framework workflow: two Narrators in parallel, the Verifier
             # inside each, then the Personalizer. See agents/workflow.py.
             try:
-                done = await run_card(self.workflow, moment, self.llm.live)
+                done = await run_card(self.workflow, moment, langs=self.wanted_langs() if self.llm.live else ())
             except Exception as e:  # the card keeps its verified template; the live match never stops
                 self._log([TraceStep(moment.moment_id, "both", "Desk", "workflow", "error", 0,
                                      f"{type(e).__name__}: {e}"[:200], moment_time_of(moment))])
@@ -751,6 +809,10 @@ class MatchRoom:
                 if w.source == "narrator":
                     card["cues"][w.cue.audience] = {**w.cue.model_dump(mode="json"), "text": w.cue.text()}
                     card["sources"][w.cue.audience] = "narrator"
+                    for lang in list(card["langs"]):  # the template's translations no longer match
+                        card["langs"][lang].pop(w.cue.audience, None)
+                        if not card["langs"][lang]:
+                            del card["langs"][lang]
                     changed = True
             if changed:
                 card["source"] = "narrator"

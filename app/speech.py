@@ -27,7 +27,8 @@ log = logging.getLogger("gameday.speech")
 SPEECH_TIMEOUT_S = 8.0
 TOKEN_SCOPE = "https://cognitiveservices.azure.com/.default"
 CACHE_MAX = 300
-LOCALES = {"en": "en-GB", "es": "es-ES", "hi": "hi-IN"}
+LOCALES = {"en": "en-GB", "es": "es-ES", "hi": "hi-IN", "fr": "fr-FR", "pt": "pt-BR", "de": "de-DE", "ja": "ja-JP",
+           "it": "it-IT"}
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,21 @@ VOICES: dict[tuple[str, str], Voice] = {
     ("hype", "hi"): Voice("hi-IN-AaravNeural", rate="+8%"),
     ("stats", "hi"): Voice("hi-IN-KunalNeural"),
     ("tactician", "hi"): Voice("hi-IN-RehaanNeural", rate="-4%"),
+    ("classic", "fr"): Voice("fr-FR-HenriNeural"),
+    ("hype", "fr"): Voice("fr-FR-HenriNeural", rate="+10%"),
+    ("tactician", "fr"): Voice("fr-FR-HenriNeural", rate="-4%"),
+    ("classic", "pt"): Voice("pt-BR-AntonioNeural"),
+    ("hype", "pt"): Voice("pt-BR-AntonioNeural", rate="+10%"),
+    ("tactician", "pt"): Voice("pt-BR-AntonioNeural", rate="-4%"),
+    ("classic", "de"): Voice("de-DE-ConradNeural"),
+    ("hype", "de"): Voice("de-DE-ConradNeural", rate="+10%"),
+    ("tactician", "de"): Voice("de-DE-ConradNeural", rate="-4%"),
+    ("classic", "ja"): Voice("ja-JP-KeitaNeural"),
+    ("hype", "ja"): Voice("ja-JP-KeitaNeural", rate="+10%"),
+    ("tactician", "ja"): Voice("ja-JP-KeitaNeural", rate="-4%"),
+    ("classic", "it"): Voice("it-IT-DiegoNeural"),
+    ("hype", "it"): Voice("it-IT-DiegoNeural", rate="+10%"),
+    ("tactician", "it"): Voice("it-IT-DiegoNeural", rate="-4%"),
 }
 
 

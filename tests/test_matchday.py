@@ -155,7 +155,10 @@ def test_agents_retry_on_a_rejected_draft_and_write_every_language():
     r.fast_forward(300.0)
     pv = asyncio.run(r.preview())
     assert backend.preview_drafts == 2 and pv["source"] == "agent"
-    assert pv["story"].startswith("Kingsport Rovers sit 2nd") and set(pv["langs"]) == {"es", "hi"}
+    assert pv["story"].startswith("Kingsport Rovers sit 2nd") and pv["langs"] == {}  # nobody is watching in another language
+    asyncio.run(r.preview("es"))  # a fan picks Spanish, then Hindi: each is written the first time it is asked for
+    pv = asyncio.run(r.preview("hi"))
+    assert set(pv["langs"]) == {"es", "hi"} and backend.preview_drafts == 2
     checks = [s["status"] for s in r.trace if s["agent"] == "Verifier"]
     assert checks == ["reject", "pass"]
     pg = asyncio.run(r.postgame())
