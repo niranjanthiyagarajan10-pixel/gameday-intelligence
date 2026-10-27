@@ -40,6 +40,7 @@ const GOAL_HOLD_MS = 4200;
 const CUT_HOLD_MS = 4000;
 const END_HOLD_MS = 3500;
 const FINAL_THIRD_X = 24; // world X beyond which the director treats play as an attack
+const WIPE_MID_MS = 180; // a cut lands while the wipe covers the screen
 
 const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -58,6 +59,10 @@ export class Director {
   private shotSince = 0;
   private shotEnd = 1;
   private yaw = 0;
+  private goalSide = 1;
+  private pending: { apply: () => void; at: number } | null = null;
+  /** Called when a cut starts, with the end of the pitch it is about (+1 is the x = 105 end). */
+  onWipe: ((end: number) => void) | null = null;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -92,7 +97,18 @@ export class Director {
     }
   }
 
+  /** A broadcast cut: a wipe in club colour sweeps across, and the camera jumps while it covers the view. */
+  private cutWith(end: number, apply: () => void, now: number) {
+    if (this.still) {
+      apply();
+      return;
+    }
+    this.onWipe?.(end);
+    this.pending = { apply, at: now + WIPE_MID_MS };
+  }
+
   setMode(mode: Preset, now: number, ctx: CamContext) {
+    this.pending = null;
     this.mode = mode;
     this.hold = null;
     if (mode === "goal") this.goalEnd = ctx.ball.x >= 0 ? 1 : -1;
@@ -114,8 +130,9 @@ export class Director {
   goal(end: number, now: number) {
     if (this.hold?.kind === "script") return;
     this.hold = { kind: "goal", until: now + GOAL_HOLD_MS };
+    this.goalSide = end;
     const gx = end * (L / 2);
-    this.flyTo(v3(gx + end * 6.5, 3.4, 2.2), v3(gx - end * 12, 1.2, 0), now, 700);
+    this.cutWith(end, () => this.cut({ pos: v3(gx + end * 6.5, 3.4, 2.2), look: v3(gx - end * 12, 1.2, 0), k: 1, kLook: 1 }), now);
   }
 
   /** A shot: the Director cuts to the end it was aimed at. */
@@ -124,7 +141,7 @@ export class Director {
     this.shot = "end";
     this.shotEnd = end;
     this.shotSince = now;
-    this.cut(this.rig(null));
+    this.cutWith(end, () => this.cut(this.rig(null)), now);
   }
 
   /** Scripted camera for a replay: fly to an exact pose and stay there until released. */
@@ -177,9 +194,14 @@ export class Director {
   }
 
   update(now: number, ctx: CamContext) {
+    if (this.pending && now >= this.pending.at) {
+      this.pending.apply();
+      this.pending = null;
+    }
     if (this.hold?.kind === "goal" && now > this.hold.until) {
+      // Cut back to the chosen view.
       this.hold = null;
-      this.setMode(this.mode, now, ctx);
+      this.cutWith(this.goalSide, () => this.cut(this.rig(ctx)), now);
     }
     if (ctx.focus) {
       // Smooth the focused player's facing so Player cam does not swing with every step.
@@ -193,7 +215,7 @@ export class Director {
       if (want !== this.shot && now - this.shotSince > holdFor) {
         this.shot = want;
         this.shotSince = now;
-        this.cut(this.rig(ctx));
+        this.cutWith(ctx.ball.x >= 0 ? 1 : -1, () => this.cut(this.rig(ctx)), now);
       }
     }
 
