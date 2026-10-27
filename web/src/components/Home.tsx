@@ -1,37 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import type { MatchState } from "../types";
 import { Crest } from "./Crest";
-import { SUB, XI } from "./Squad";
+import { Squad } from "./Squad";
 import { clock } from "../format";
 import { overlayHref } from "../route";
 import { t, tx } from "../i18n";
 
 /**
- * Home: the whole product on one page. What it is, how a line gets from the tracking data to a fan,
- * where every feature lives, and how we know it tells the truth. Reached by clicking the brand.
+ * Home: the whole product as a run of scenes, one idea per screen, in the spirit of a product launch
+ * page. The live score, the headline numbers, how a line is made and checked, the Squad on its pitch,
+ * every feature, and why it can be trusted. Reached by clicking the brand.
  */
 
 interface Evals { planted?: { caught: number; planted: number; clean: number; clean_passed: number } }
 
-const FLOW = [
-  { n: "01", title: tx("Match engine"), body: tx("A synthetic match with full player tracking. Deterministic: the same seed, the same match.") },
-  { n: "02", title: tx("Moments"), body: tx("Code finds the goals, chances and swings, and computes xG, win probability and threat.") },
-  { n: "03", title: tx("Agents write"), body: tx("Agents on Microsoft Foundry write the story with slots like {xg}. They never type a number or a name.") },
-  { n: "04", title: tx("Code fills"), body: tx("Every slot is filled from the engine state, so each number is the real one.") },
-  { n: "05", title: tx("VAR checks"), body: tx("The Verifier checks every slot and every claim. A line the data cannot back goes back to the agent.") },
-  { n: "06", title: tx("You"), body: tx("Your club, your player, casual or analyst depth, eight languages, read aloud if you like.") },
-];
-
-const FEATURES: { title: string; body: string; go: string; tag: string }[] = [
-  { title: tx("Live Match"), body: tx("The 3D pitch, key moments as they happen, win probability, Catch me up and Ask the match."), go: "live", tag: tx("Start here") },
-  { title: tx("Match Theatre"), body: tx("The 3D pitch full screen. Explain this moment replays how a goal was made, beat by beat, with voice. Plus the Highlights reel."), go: "live", tag: tx("One more thing") },
-  { title: tx("Analyst"), body: tx("Every fifteen minutes, why the match is going the way it is: threat, shape, gravity and pressure."), go: "analyst", tag: tx("Analyst depth") },
-  { title: tx("Preview"), body: tx("Before kick-off: form, head to head, the forecast and the players to watch."), go: "#/preview", tag: tx("Before") },
-  { title: tx("Blueprint"), body: tx("After the match: the report, what decided it and what each club should watch next."), go: "#/blueprint", tag: tx("After") },
-  { title: tx("Newsdesk"), body: tx("A newspaper report for every fixture of the matchday."), go: "#/news", tag: tx("Around the league") },
-  { title: tx("League"), body: tx("The table and every fixture. Watch any match from kick-off."), go: "#/league", tag: tx("Around the league") },
-  { title: tx("The Squad"), body: tx("Meet the agents: eleven players and a Super-Sub, each marking the fan problem it solves."), go: "#/squad", tag: tx("The team") },
-  { title: tx("Broadcast overlay"), body: tx("The same verified cards as 1920x1080 graphics, ready to lay over a match feed."), go: "overlay", tag: tx("For broadcasters") },
+const FEATURES: { title: string; body: string; go: string; tag: string; big?: boolean }[] = [
+  { title: tx("Live Match"), body: tx("The 3D pitch, every key moment as it happens, Catch me up and Ask the match."), go: "live", tag: tx("During"), big: true },
+  { title: tx("Match Theatre"), body: tx("Pick any goal. See how it was made, beat by beat, in 3D, with voice."), go: "live", tag: tx("One more thing"), big: true },
+  { title: tx("Analyst"), body: tx("Why the match is going the way it is."), go: "analyst", tag: tx("Go deeper") },
+  { title: tx("Preview"), body: tx("Form, head to head and players to watch."), go: "#/preview", tag: tx("Before") },
+  { title: tx("Blueprint"), body: tx("The report, and what decided it."), go: "#/blueprint", tag: tx("After") },
+  { title: tx("Newsdesk"), body: tx("A report for every fixture."), go: "#/news", tag: tx("Around the league") },
+  { title: tx("League"), body: tx("The table. Watch any match."), go: "#/league", tag: tx("Around the league") },
+  { title: tx("Broadcast overlay"), body: tx("The same cards as TV graphics."), go: "overlay", tag: tx("For broadcasters") },
 ];
 
 const STACK = ["Microsoft Foundry", "Microsoft Agent Framework", "Model Context Protocol", "Azure AI Speech", "Azure Container Apps", "OpenTelemetry"];
@@ -52,10 +44,33 @@ const DEMO = [
   },
 ];
 
+/** Fades each .rv element up as it scrolls into view. */
+function useReveal(root: RefObject<HTMLElement>) {
+  useEffect(() => {
+    const els = root.current?.querySelectorAll(".rv");
+    if (!els) return;
+    if (!("IntersectionObserver" in window)) {
+      els.forEach((e) => e.classList.add("in"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        }
+      }),
+      { threshold: 0.12 },
+    );
+    els.forEach((e) => io.observe(e));
+    return () => io.disconnect();
+  }, [root]);
+}
+
 function SlotDemo() {
   const [step, setStep] = useState(0); // 0 draft, 1 filled, 2 judged; two examples in turn
   useEffect(() => {
-    const id = window.setInterval(() => setStep((s) => (s + 1) % 6), 1700);
+    const id = window.setInterval(() => setStep((s) => (s + 1) % 6), 1800);
     return () => window.clearInterval(id);
   }, []);
   const ex = DEMO[Math.floor(step / 3)];
@@ -64,8 +79,8 @@ function SlotDemo() {
     <div className="hm-demo" aria-live="polite">
       <div className="hm-demo-steps">
         {[t("Agent writes"), t("Code fills"), t("VAR checks")].map((s, i) => (
-          <span key={s} className={i <= phase ? "on" : ""}>
-            {i + 1}. {s}
+          <span key={s} className={i === phase ? "on" : i < phase ? "done" : ""}>
+            {s}
           </span>
         ))}
       </div>
@@ -98,7 +113,7 @@ function LiveTile({ state, onOpen }: { state: MatchState; onOpen: () => void }) 
   const [h, d, a] = stats.win_prob;
   const pct = (x: number) => `${Math.round(x * 100)}%`;
   return (
-    <button className="hm-live" onClick={onOpen}>
+    <button className="hm-live rv" onClick={onOpen}>
       <div className="hm-live-top">
         <span className={`dot ${status === "live" && !state.paused ? "" : "off"}`} />
         <span className="label">{status === "full_time" ? t("Full time") : t("Live now")}</span>
@@ -106,8 +121,8 @@ function LiveTile({ state, onOpen }: { state: MatchState; onOpen: () => void }) 
       </div>
       <div className="hm-live-score">
         <div>
-          <Crest club={roster.clubs.home} size={52} />
-          <b>{roster.clubs.home.short}</b>
+          <Crest club={roster.clubs.home} size={64} />
+          <b>{roster.clubs.home.name}</b>
         </div>
         <span className="num">
           {stats.score[0]}
@@ -115,8 +130,8 @@ function LiveTile({ state, onOpen }: { state: MatchState; onOpen: () => void }) 
           {stats.score[1]}
         </span>
         <div>
-          <Crest club={roster.clubs.away} size={52} />
-          <b>{roster.clubs.away.short}</b>
+          <Crest club={roster.clubs.away} size={64} />
+          <b>{roster.clubs.away.name}</b>
         </div>
       </div>
       <div className="hm-live-wp">
@@ -134,89 +149,79 @@ function LiveTile({ state, onOpen }: { state: MatchState; onOpen: () => void }) 
   );
 }
 
-export function Home({ state, open }: { state: MatchState; open: (where: string) => void }) {
+export function Home({ state, open, toSquad }: { state: MatchState; open: (where: string) => void; toSquad?: boolean }) {
   const [evals, setEvals] = useState<Evals | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  useReveal(root);
   useEffect(() => {
     fetch("/api/evals").then((r) => (r.ok ? r.json() : null)).then(setEvals).catch(() => undefined);
   }, []);
+  useEffect(() => {
+    if (toSquad) window.setTimeout(() => document.getElementById("squad")?.scrollIntoView({ behavior: "smooth" }), 50);
+  }, [toSquad]);
   const p = evals?.planted;
+  const fmt = (n: number) => n.toLocaleString("en-GB");
   const go = (where: string) => {
     if (where === "overlay") window.open(overlayHref(true), "_blank", "noreferrer");
+    else if (where === "squad") document.getElementById("squad")?.scrollIntoView({ behavior: "smooth" });
     else open(where);
   };
 
   return (
-    <div className="home">
-      <section className="hm-hero">
-        <div className="hm-hero-text">
-          <span className="hm-kicker">{t("A live match companion")}</span>
-          <h1>{t("Every match tells a story.")}</h1>
-          <p className="hm-lede">
-            {t("Gameday Intelligence turns live tracking data into verified, explainable match stories for every fan. A squad of AI agents writes them. A referee made of code checks every one.")}
-          </p>
-          <div className="hm-cta">
-            <button className="hm-btn main" onClick={() => go("live")}>{t("Watch live")}</button>
-            <button className="hm-btn" onClick={() => go("#/squad")}>{t("Meet the Squad")}</button>
-          </div>
+    <div className="home" ref={root}>
+      <section className="hm-scene hm-hero">
+        <span className="hm-eyebrow rv">Gameday Intelligence</span>
+        <h1 className="rv">{t("Every match tells a story.")}</h1>
+        <p className="hm-sub rv">{t("Now every fan can read it.")}</p>
+        <div className="hm-cta rv">
+          <button className="hm-btn main" onClick={() => go("live")}>{t("Watch live")}</button>
+          <button className="hm-btn" onClick={() => go("squad")}>{t("Meet the Squad")}</button>
         </div>
         <LiveTile state={state} onOpen={() => go("live")} />
       </section>
 
-      <section className="hm-numbers">
-        <div><b className="num">11<small>+1</small></b><span>{t("AI agents on Microsoft Foundry")}</span></div>
-        <div><b className="num">15</b><span>{t("MCP tools over the match")}</span></div>
-        <div><b className="num">8</b><span>{t("languages")}</span></div>
-        <div><b className="num">{p ? `${p.caught.toLocaleString("en-GB")}/${p.planted.toLocaleString("en-GB")}` : "..."}</b><span>{t("planted errors caught by VAR")}</span></div>
-        <div className="zero"><b className="num">0</b><span>{t("numbers typed by an AI")}</span></div>
-      </section>
-
-      <section className="hm-sec">
-        <header className="hm-sec-h">
-          <span className="hm-kicker">{t("How it works")}</span>
-          <h2>{t("From tracking data to your screen")}</h2>
-        </header>
-        <ol className="hm-flow">
-          {FLOW.map((f) => (
-            <li key={f.n} className={f.n === "05" ? "var" : ""}>
-              <span className="hm-flow-n num">{f.n}</span>
-              <b>{t(f.title)}</b>
-              <p>{t(f.body)}</p>
-            </li>
-          ))}
-        </ol>
-        <SlotDemo />
-      </section>
-
-      <section className="hm-sec">
-        <header className="hm-sec-h">
-          <span className="hm-kicker">{t("The Squad")}</span>
-          <h2>{t("Eleven agents. One Super-Sub. One referee.")}</h2>
-        </header>
-        <div className="hm-squad">
-          {[...XI, SUB].map((a) => (
-            <a key={a.no} href="#/squad" className="hm-shirt">
-              <b className="num">{a.no}</b>
-              <span>{t(a.nick)}</span>
-              <small>{a.agent}</small>
-            </a>
-          ))}
-          <a href="#/squad" className="hm-shirt ref">
-            <b>VAR</b>
-            <span>{t("The referee")}</span>
-            <small>{t("Code, not AI")}</small>
-          </a>
+      <section className="hm-scene">
+        <h2 className="hm-h rv">{t("Get the highlights.")}</h2>
+        <div className="hm-bento">
+          <div className="hm-stat rv"><b className="num">11<small>+1</small></b><span>{t("AI agents on Microsoft Foundry")}</span></div>
+          <div className="hm-stat rv"><b className="num">8</b><span>{t("languages")}</span></div>
+          <div className="hm-stat rv"><b className="num">15</b><span>{t("MCP tools over the match")}</span></div>
+          <div className="hm-stat hl rv"><b className="num">0</b><span>{t("numbers typed by an AI")}</span></div>
         </div>
       </section>
 
-      <section className="hm-sec">
-        <header className="hm-sec-h">
-          <span className="hm-kicker">{t("Where to go")}</span>
-          <h2>{t("Everything in the product")}</h2>
-        </header>
+      <section className="hm-scene">
+        <h2 className="hm-h hm-stack-h rv">
+          <span>{t("Agents write.")}</span>
+          <span>{t("Code fills.")}</span>
+          <span className="sig">{t("VAR checks.")}</span>
+        </h2>
+        <p className="hm-copy rv">
+          {t("Agents never type a number or a name.")}{" "}
+          <b>{t("Code fills every one from the match engine, then VAR checks each claim before a fan sees it.")}</b>
+        </p>
+        <div className="hm-wide rv"><SlotDemo /></div>
+      </section>
+
+      <section className="hm-scene hm-squad-scene" id="squad">
+        <h2 className="hm-h rv">{t("Meet the Gameday XI.")}</h2>
+        <p className="hm-copy rv">
+          {t("Eleven AI agents and a Super-Sub, one fan problem each.")}{" "}
+          <b>{t("Hover a player to see what it does. Press Kick off to watch them win.")}</b>
+        </p>
+        <div className="hm-full rv">
+          <Squad trace={state.trace} embedded />
+        </div>
+      </section>
+
+      <section className="hm-scene">
+        <h2 className="hm-h rv">{t("Before. During. After.")}</h2>
+        <p className="hm-copy rv">
+          <b>{t("Everything a fan needs, in one place.")}</b> {t("Pick a part to open it.")}
+        </p>
         <div className="hm-tiles">
-          {FEATURES.map((f, i) => (
-            <button key={f.title} className="hm-tile" onClick={() => go(f.go)}>
-              <span className="hm-tile-n num">{String(i + 1).padStart(2, "0")}</span>
+          {FEATURES.map((f) => (
+            <button key={f.title} className={`hm-tile rv ${f.big ? "big" : ""}`} onClick={() => go(f.go)}>
               <span className="hm-tile-tag">{t(f.tag)}</span>
               <b>{t(f.title)}</b>
               <p>{t(f.body)}</p>
@@ -226,30 +231,32 @@ export function Home({ state, open }: { state: MatchState; open: (where: string)
         </div>
       </section>
 
-      <section className="hm-sec hm-trust">
-        <div>
-          <span className="hm-kicker">{t("Why you can trust it")}</span>
-          <h2>{t("Every number true.")}</h2>
-          <p>
-            {t("We planted errors into agent lines on purpose: wrong numbers, wrong names, claims the data cannot back. VAR has to catch every one, and let every clean line through.")}
-          </p>
-          <a href="#/evals" className="hm-link">{t("See the full eval report")} &rarr;</a>
+      <section className="hm-scene hm-trust">
+        <span className="hm-eyebrow rv">{t("Why you can trust it")}</span>
+        <div className="hm-giant num rv">
+          {p ? fmt(p.caught) : "..."}
+          <small>/{p ? fmt(p.planted) : "..."}</small>
         </div>
-        <div className="hm-trust-nums">
-          <div><b className="num">{p ? `${Math.round((p.caught / p.planted) * 100)}%` : "..."}</b><span>{t("planted errors caught")}</span></div>
+        <p className="hm-copy rv">
+          {t("We planted errors on purpose: wrong numbers, wrong names, claims the data cannot back.")}{" "}
+          <b>{t("VAR caught every one.")}</b>
+        </p>
+        <div className="hm-trust-row rv">
           <div><b className="num">{p ? `${Math.round((p.clean_passed / p.clean) * 100)}%` : "..."}</b><span>{t("clean lines let through")}</span></div>
-          <div><b className="num">8s</b><span>{t("the longest any AI call may take. Then a checked template takes over.")}</span></div>
+          <div><b className="num">8s</b><span>{t("longest wait, then a checked template")}</span></div>
+          <div><b className="num">0</b><span>{t("errors shown to a fan")}</span></div>
         </div>
+        <a href="#/evals" className="hm-link rv">{t("See the full eval report")} &rarr;</a>
       </section>
 
-      <section className="hm-sec hm-stack">
-        <span className="hm-kicker">{t("Built on")}</span>
-        <div>
+      <section className="hm-scene hm-built">
+        <span className="hm-eyebrow rv">{t("Built on")}</span>
+        <div className="hm-chips rv">
           {STACK.map((s) => (
             <span key={s}>{s}</span>
           ))}
         </div>
-        <p className="hm-note">{t("Synthetic data only. Every club, player and league here is fictional.")}</p>
+        <p className="hm-note rv">{t("Synthetic data only. Every club, player and league here is fictional.")}</p>
       </section>
     </div>
   );

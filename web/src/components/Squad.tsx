@@ -153,7 +153,7 @@ function PitchLines() {
 
 interface Evals { planted?: { caught: number; planted: number; clean: number; clean_passed: number } }
 
-export function Squad({ trace }: { trace: TraceStep[] }) {
+export function Squad({ trace, embedded = false }: { trace: TraceStep[]; embedded?: boolean }) {
   const [sel, setSel] = useState<number | "var">(9);
   const [phase, setPhase] = useState<"idle" | "play" | "done">("idle");
   const [beaten, setBeaten] = useState<Set<number>>(new Set());
@@ -209,13 +209,15 @@ export function Squad({ trace }: { trace: TraceStep[] }) {
   const p = evals?.planted;
 
   return (
-    <div className="squad">
+    <div className={`squad ${embedded ? "embedded" : ""}`}>
       <header className="sq-head">
-        <div>
-          <span className="label">{t("Meet the team")}</span>
-          <h1>{t("The Gameday XI")}</h1>
-          <p>{t("Eleven AI agents on Microsoft Foundry, one problem each. And a referee that is code, not AI.")}</p>
-        </div>
+        {!embedded && (
+          <div>
+            <span className="label">{t("Meet the team")}</span>
+            <h1>{t("The Gameday XI")}</h1>
+            <p>{t("Eleven AI agents on Microsoft Foundry, one problem each. And a referee that is code, not AI.")}</p>
+          </div>
+        )}
         <div className="sq-actions">
           {phase === "idle" && <button className="sq-kick" onClick={kickOff}>{t("Kick off")}</button>}
           {phase !== "idle" && <button className="sq-reset" onClick={reset}>{t("Line up again")}</button>}

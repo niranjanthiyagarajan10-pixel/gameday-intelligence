@@ -7,7 +7,6 @@ import { ShotPage } from "./components/ShotPage";
 import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
-import { Squad } from "./components/Squad";
 import { Home } from "./components/Home";
 import { Blueprint } from "./components/Blueprint";
 import { League } from "./components/League";
@@ -200,14 +199,11 @@ export default function App() {
   return (
     <div className="wrap">
       <header className="topbar">
-        <a className={`brand brand-link ${route.page === "home" ? "on" : ""}`} href="#/home" title={t("About Gameday Intelligence")}>
+        <a className={`brand brand-link ${route.page === "home" || route.page === "squad" ? "on" : ""}`} href="#/home" title={t("About Gameday Intelligence")}>
           <b>Gameday</b>
           <span>Intelligence</span>
         </a>
         <div className="tabs">
-          <button className={`tab tab-squad ${route.page === "squad" ? "on" : ""}`} onClick={() => (location.hash = "#/squad")}>
-            {t("The Squad")}
-          </button>
           <button className={`tab ${route.page === "preview" ? "on" : ""}`} onClick={() => (location.hash = "#/preview")}>
             {t("Preview")}
           </button>
@@ -308,10 +304,10 @@ export default function App() {
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "league" && <League onWatch={watch} />}
       {route.page === "evals" && <Evals />}
-      {route.page === "squad" && <Squad trace={state.trace} />}
-      {route.page === "home" && (
+      {(route.page === "home" || route.page === "squad") && (
         <Home
           state={state}
+          toSquad={route.page === "squad"}
           open={(where) => {
             if (where === "live" || where === "analyst") {
               setTab(where);
