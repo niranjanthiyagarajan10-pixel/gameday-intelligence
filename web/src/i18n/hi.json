@@ -283,7 +283,7 @@
  "None": "कोई नहीं",
  "Not an AI: code. Agents never type a number or a name. Code fills every slot, then checks every claim against the match data. A line that fails goes back to its agent with the reasons, then falls back to a template. Nothing unchecked reaches a fan.": "कोई AI नहीं: कोड। एजेंट कभी भी नंबर या नाम टाइप नहीं करते। कोड हर स्लॉट भरता है, फिर मैच डेटा के खिलाफ हर दावे की जांच करता है। जो लाइन फेल होती है, वह कारणों के साथ अपने एजेंट के पास वापस जाती है, फिर एक टेम्पलेट पर लौटती है। बिना जांच के कुछ भी दर्शक तक नहीं पहुँचता।",
  "Not in my language": "मेरी भाषा में नहीं",
- "Now every fan can read it.": "अब हर फैन इसे पढ़ सकता है।",
+ "Now it speaks your language.": "अब यह आपकी भाषा में बोलता है।",
  "Numbers no slot supplied": "कोई नंबर स्लॉट नहीं दिया गया",
  "Off": "बंद",
  "Off target": "लक्ष्य से बाहर",

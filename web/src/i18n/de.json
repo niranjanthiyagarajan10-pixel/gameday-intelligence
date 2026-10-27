@@ -283,7 +283,7 @@
  "None": "Keine",
  "Not an AI: code. Agents never type a number or a name. Code fills every slot, then checks every claim against the match data. A line that fails goes back to its agent with the reasons, then falls back to a template. Nothing unchecked reaches a fan.": "Keine KI: Code. Agenten tippen nie eine Zahl oder einen Namen. Code füllt jede Lücke und prüft dann jede Angabe anhand der Spieldaten. Eine fehlerhafte Zeile geht zurück zum Agenten mit den Gründen und fällt dann auf eine Vorlage zurück. Nichts Ungeprüftes erreicht die Fans.",
  "Not in my language": "Nicht in meiner Sprache",
- "Now every fan can read it.": "Jetzt kann es jeder Fan lesen.",
+ "Now it speaks your language.": "Jetzt spricht es deine Sprache.",
  "Numbers no slot supplied": "Keine Zahlen für Slot angegeben",
  "Off": "Aus",
  "Off target": "Neben das Tor",

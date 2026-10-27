@@ -235,6 +235,7 @@ export default function App() {
             {t("League")}
           </button>
         </div>
+        {route.page !== "home" && route.page !== "squad" && (
         <div className="settings">
           <button className="set" onClick={toggleDepth} title={t("Switch between casual and analyst depth")}>
             <span className="label">{t("Depth")}</span>
@@ -296,6 +297,7 @@ export default function App() {
             </button>
           </div>
         </div>
+        )}
       </header>
 
       {!["blueprint", "league", "evals", "preview", "news", "squad", "home"].includes(route.page) && <Scoreboard state={state} />}

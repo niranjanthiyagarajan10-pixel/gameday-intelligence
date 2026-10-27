@@ -172,7 +172,7 @@ export function Home({ state, open, toSquad }: { state: MatchState; open: (where
       <section className="hm-scene hm-hero">
         <span className="hm-eyebrow rv">Gameday Intelligence</span>
         <h1 className="rv">{t("Every match tells a story.")}</h1>
-        <p className="hm-sub rv">{t("Now every fan can read it.")}</p>
+        <p className="hm-sub rv">{t("Now it speaks your language.")}</p>
         <div className="hm-cta rv">
           <button className="hm-btn main" onClick={() => go("live")}>{t("Watch live")}</button>
           <button className="hm-btn" onClick={() => go("squad")}>{t("Meet the Squad")}</button>

@@ -273,7 +273,7 @@
  "None": "なし",
  "Not an AI: code. Agents never type a number or a name. Code fills every slot, then checks every claim against the match data. A line that fails goes back to its agent with the reasons, then falls back to a template. Nothing unchecked reaches a fan.": "AIではない：コード。エージェントは数字や名前を一切入力しない。コードが全ての枠を埋め、試合データと照合。失敗した行は理由付きでエージェントに戻り、テンプレートに落ちる。未確認の情報はファンに届かない。",
  "Not in my language": "対応言語ではありません",
- "Now every fan can read it.": "今や全てのファンが読めるように。",
+ "Now it speaks your language.": "今、あなたの言葉で話します。",
  "Numbers no slot supplied": "スロット未提供の数字",
  "Off": "オフ",
  "Off target": "枠外シュート",
