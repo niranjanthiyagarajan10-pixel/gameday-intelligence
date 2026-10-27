@@ -244,7 +244,9 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
       return () => window.clearTimeout(timer);
     }
     audio.current ??= new Audio();
-    void sayPart(state.room, part, prefs.lang, audio.current, text).finally(() => {
+    // A voice that fails at once must not flash the card: it stays up at least long enough to read.
+    const read = new Promise<void>((done) => window.setTimeout(done, Math.min(6000, 1500 + text.length * 30)));
+    void Promise.all([sayPart(state.room, part, prefs.lang, audio.current, text), read]).finally(() => {
       if (token === run.current) setCardDone(true);
     });
   }, [step, reel, state.room, prefs.lang]);

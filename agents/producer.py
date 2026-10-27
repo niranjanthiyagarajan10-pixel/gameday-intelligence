@@ -60,7 +60,7 @@ def check(parts: dict[str, Any], facts: dict[str, str], names: Any, truths: dict
 
 def fallback(facts: dict[str, str], truths: dict[str, Any]) -> dict[str, Any]:
     when = "at full time" if truths["finished"] else "after {minute}"
-    intro = "{home} {home_goals}, {away} {away_goals} " + when + ". Here are {clips} from the match."
+    intro = "{home} {home_goals}, {away} {away_goals} " + when + ". The reel has {clips} from the match."
     outro = "Expected goals: {home} {home_xg}, {away} {away_xg}."
     if "swing" in facts:
         outro += " The biggest swing in win probability was {swing}, from {swing_player} in {swing_minute}."
