@@ -1,0 +1,268 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1620 1450" width="1620" height="1450" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Gameday Intelligence: end to end architecture</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#e8ff3a"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8c9097"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ff5a4f"/></marker>
+    <style>
+      .h { font-family: 'Barlow Condensed', 'Arial Narrow', 'Segoe UI', Arial, sans-serif; font-weight: 800; text-transform: uppercase; }
+      .k { font-family: 'Barlow Condensed', 'Arial Narrow', 'Segoe UI', Arial, sans-serif; font-weight: 700; letter-spacing: 2px; }
+      .m { font-family: Consolas, 'JetBrains Mono', Menlo, monospace; }
+    </style>
+  </defs>
+
+  <rect width="1620" height="1450" fill="#000"/>
+
+  <!-- Title -->
+  <text x="40" y="62" class="h" font-size="46" fill="#e8ff3a">Gameday <tspan fill="#f4f4f1">Intelligence</tspan></text>
+  <text x="40" y="100" font-size="20" fill="#8c9097">One pipeline, five stages. <tspan fill="#f4f4f1">Numbers come from code. Words come from agents. VAR checks every line.</tspan></text>
+  <g font-size="15" fill="#8c9097">
+    <rect x="1258" y="40" width="22" height="22" fill="none" stroke="#e8ff3a" stroke-width="2"/>
+    <text x="1290" y="57">AI agent on Microsoft Foundry</text>
+    <rect x="1258" y="74" width="22" height="22" fill="none" stroke="#8c9097" stroke-width="2"/>
+    <text x="1290" y="91">Deterministic code, no AI</text>
+  </g>
+
+  <!-- Row A: the five stages -->
+  <g>
+    <!-- stage boxes: x = 40 + i*314, w = 284 -->
+    <g>
+      <rect x="40" y="140" width="284" height="340" fill="#0b0c0e" stroke="#24262b"/>
+      <rect x="40" y="140" width="284" height="4" fill="#8c9097"/>
+      <text x="62" y="198" class="h" font-size="44" fill="#5a5e66">01</text>
+      <text x="120" y="196" class="h" font-size="32" fill="#f4f4f1">Ingest</text>
+      <text x="62" y="228" font-size="16" fill="#8c9097">A synthetic match, as it happens</text>
+      <line x1="62" y1="246" x2="302" y2="246" stroke="#24262b"/>
+      <g font-size="18" fill="#f4f4f1">
+        <text x="62" y="280">Our own match simulator</text>
+        <text x="62" y="314">22 players at 5 fps</text>
+        <text x="62" y="348">Passes, shots, tackles</text>
+        <text x="62" y="382">Pressure, cards, subs</text>
+        <text x="62" y="416">Same seed, same match</text>
+      </g>
+      <text x="62" y="460" class="m" font-size="14" fill="#5a5e66">engine/sim, engine/feed.py</text>
+    </g>
+    <g>
+      <rect x="354" y="140" width="284" height="340" fill="#0b0c0e" stroke="#24262b"/>
+      <rect x="354" y="140" width="284" height="4" fill="#8c9097"/>
+      <text x="376" y="198" class="h" font-size="44" fill="#5a5e66">02</text>
+      <text x="434" y="196" class="h" font-size="32" fill="#f4f4f1">Interpret</text>
+      <text x="376" y="228" font-size="16" fill="#8c9097">Code only. No language model.</text>
+      <line x1="376" y1="246" x2="616" y2="246" stroke="#24262b"/>
+      <g font-size="18" fill="#f4f4f1">
+        <text x="376" y="280">xG and expected threat</text>
+        <text x="376" y="314">Live win probability</text>
+        <text x="376" y="348">Leverage and gravity</text>
+        <text x="376" y="382">Shape and press</text>
+        <text x="376" y="416">Key moments + evidence</text>
+      </g>
+      <text x="376" y="460" class="m" font-size="14" fill="#5a5e66">engine/</text>
+    </g>
+    <g>
+      <rect x="668" y="140" width="284" height="340" fill="#0b0c0e" stroke="#e8ff3a" stroke-width="2"/>
+      <rect x="668" y="140" width="284" height="4" fill="#e8ff3a"/>
+      <text x="690" y="198" class="h" font-size="44" fill="#e8ff3a">03</text>
+      <text x="748" y="196" class="h" font-size="32" fill="#f4f4f1">Explain</text>
+      <text x="690" y="228" font-size="16" fill="#8c9097">Agents write, VAR checks</text>
+      <line x1="690" y1="246" x2="930" y2="246" stroke="#24262b"/>
+      <g font-size="18" fill="#f4f4f1">
+        <text x="690" y="280">12 agents on Foundry</text>
+        <text x="690" y="314">Write words, not numbers</text>
+        <text x="690" y="348">Code fills every <tspan class="m" fill="#e8ff3a">{slot}</tspan></text>
+        <text x="690" y="382">VAR checks every claim</text>
+        <text x="690" y="416">Fallback within 8 seconds</text>
+      </g>
+      <text x="690" y="460" class="m" font-size="14" fill="#5a5e66">agents/, mcp_server/</text>
+    </g>
+    <g>
+      <rect x="982" y="140" width="284" height="340" fill="#0b0c0e" stroke="#24262b"/>
+      <rect x="982" y="140" width="284" height="4" fill="#8c9097"/>
+      <text x="1004" y="198" class="h" font-size="44" fill="#5a5e66">04</text>
+      <text x="1062" y="196" class="h" font-size="32" fill="#f4f4f1">Render</text>
+      <text x="1004" y="228" font-size="16" fill="#8c9097">On screen, beside the match</text>
+      <line x1="1004" y1="246" x2="1244" y2="246" stroke="#24262b"/>
+      <g font-size="18" fill="#f4f4f1">
+        <text x="1004" y="280">Live Match in 3D</text>
+        <text x="1004" y="314">Match Theatre + reel</text>
+        <text x="1004" y="348">Blueprint and Newsdesk</text>
+        <text x="1004" y="382">Broadcast overlay + cues</text>
+        <text x="1004" y="416">Voice: Azure AI Speech</text>
+      </g>
+      <text x="1004" y="460" class="m" font-size="14" fill="#5a5e66">app/ (WebSocket), web/</text>
+    </g>
+    <g>
+      <rect x="1296" y="140" width="284" height="340" fill="#0b0c0e" stroke="#24262b"/>
+      <rect x="1296" y="140" width="284" height="4" fill="#8c9097"/>
+      <text x="1318" y="198" class="h" font-size="44" fill="#5a5e66">05</text>
+      <text x="1376" y="196" class="h" font-size="32" fill="#f4f4f1">Personalize</text>
+      <text x="1318" y="228" font-size="16" fill="#8c9097">The same match, made for you</text>
+      <line x1="1318" y1="246" x2="1558" y2="246" stroke="#24262b"/>
+      <g font-size="18" fill="#f4f4f1">
+        <text x="1318" y="280">Casual or analyst depth</text>
+        <text x="1318" y="314">8 languages, everywhere</text>
+        <text x="1318" y="348">Favourite clubs, players</text>
+        <text x="1318" y="382">Metric mode, player focus</text>
+        <text x="1318" y="416">Commentary style</text>
+      </g>
+      <text x="1318" y="460" class="m" font-size="14" fill="#5a5e66">web/, agents/personalizer.py</text>
+    </g>
+    <!-- arrows between stages -->
+    <g stroke="#e8ff3a" stroke-width="3" marker-end="url(#a)">
+      <line x1="326" y1="310" x2="350" y2="310"/>
+      <line x1="640" y1="310" x2="664" y2="310"/>
+      <line x1="954" y1="310" x2="978" y2="310"/>
+      <line x1="1268" y1="310" x2="1292" y2="310"/>
+    </g>
+  </g>
+
+  <!-- Row B: inside Explain -->
+  <text x="40" y="540" class="k" font-size="20" fill="#e8ff3a">INSIDE 03 EXPLAIN</text>
+  <text x="250" y="540" class="h" font-size="26" fill="#f4f4f1">How one line reaches a fan</text>
+  <rect x="40" y="556" width="1540" height="344" fill="#0b0c0e" stroke="#24262b"/>
+
+  <g>
+    <!-- nodes: x = 60 + i*304, w = 262, y = 600, h = 130 -->
+    <rect x="60" y="600" width="262" height="130" fill="#000" stroke="#8c9097" stroke-width="2"/>
+    <text x="80" y="636" class="h" font-size="24" fill="#f4f4f1">Key moment</text>
+    <text x="80" y="666" font-size="16" fill="#8c9097">A goal, a big chance, a swing</text>
+    <text x="80" y="690" font-size="16" fill="#8c9097">Facts and evidence</text>
+    <text x="80" y="714" font-size="16" fill="#8c9097">from the engine</text>
+
+    <rect x="364" y="600" width="262" height="130" fill="#000" stroke="#e8ff3a" stroke-width="2"/>
+    <text x="384" y="636" class="h" font-size="24" fill="#e8ff3a">Agent writes</text>
+    <text x="384" y="668" class="m" font-size="16" fill="#f4f4f1"><tspan fill="#e8ff3a">{player}</tspan> scores</text>
+    <text x="384" y="692" class="m" font-size="16" fill="#f4f4f1">from <tspan fill="#e8ff3a">{dist}</tspan> metres</text>
+    <text x="384" y="716" font-size="14" fill="#8c9097">Agent Framework on Foundry</text>
+
+    <rect x="668" y="600" width="262" height="130" fill="#000" stroke="#8c9097" stroke-width="2"/>
+    <text x="688" y="636" class="h" font-size="24" fill="#f4f4f1">Code fills</text>
+    <text x="688" y="668" font-size="16" fill="#f4f4f1"><tspan font-weight="700">Quinn Duarte</tspan> scores</text>
+    <text x="688" y="692" font-size="16" fill="#f4f4f1">from <tspan font-weight="700">14</tspan> metres</text>
+    <text x="688" y="716" font-size="14" fill="#8c9097">Every slot from engine state</text>
+
+    <rect x="972" y="600" width="262" height="130" fill="#000" stroke="#8c9097" stroke-width="2"/>
+    <text x="992" y="636" class="h" font-size="24" fill="#f4f4f1">VAR checks</text>
+    <text x="992" y="666" font-size="16" fill="#8c9097">Typed numbers or names,</text>
+    <text x="992" y="690" font-size="16" fill="#8c9097">claims the data cannot back,</text>
+    <text x="992" y="714" font-size="16" fill="#8c9097">wording, em dashes</text>
+
+    <rect x="1276" y="600" width="284" height="130" fill="#e8ff3a"/>
+    <text x="1296" y="636" class="h" font-size="24" fill="#000">On screen</text>
+    <text x="1296" y="666" font-size="16" fill="#000">Card, voice, overlay, reel</text>
+    <text x="1296" y="690" font-size="16" fill="#000">in the fan's language,</text>
+    <text x="1296" y="714" font-size="16" fill="#000">evidence one tap away</text>
+
+    <g stroke="#e8ff3a" stroke-width="3" marker-end="url(#a)">
+      <line x1="324" y1="665" x2="360" y2="665"/>
+      <line x1="628" y1="665" x2="664" y2="665"/>
+      <line x1="932" y1="665" x2="968" y2="665"/>
+      <line x1="1236" y1="665" x2="1272" y2="665"/>
+    </g>
+    <text x="1254" y="652" class="k" font-size="14" fill="#38e07b" text-anchor="middle">PASS</text>
+
+    <!-- reject loop: VAR back to the agent -->
+    <path d="M1050 732 V790 H495 V736" fill="none" stroke="#ff5a4f" stroke-width="3" marker-end="url(#r)"/>
+    <text x="772" y="818" class="k" font-size="16" fill="#ff5a4f" text-anchor="middle">SENT BACK WITH REASONS, UP TO 2 RETRIES</text>
+
+    <!-- fallback: template takes over -->
+    <path d="M1160 732 V826" fill="none" stroke="#8c9097" stroke-width="3" marker-end="url(#g)"/>
+    <text x="1172" y="782" font-size="14" fill="#8c9097">still wrong,</text>
+    <text x="1172" y="800" font-size="14" fill="#8c9097">or over 8 s</text>
+    <rect x="1030" y="830" width="300" height="54" fill="#000" stroke="#8c9097" stroke-width="2"/>
+    <text x="1048" y="856" class="h" font-size="20" fill="#f4f4f1">Checked template</text>
+    <text x="1048" y="876" font-size="14" fill="#8c9097">written and translated ahead of time</text>
+    <path d="M1332 857 H1418 V736" fill="none" stroke="#8c9097" stroke-width="3" marker-end="url(#g)"/>
+
+    <text x="60" y="860" font-size="17" fill="#8c9097">Agents never type a number or a name.</text>
+    <text x="60" y="884" font-size="17" fill="#f4f4f1">A fan never sees an error.</text>
+  </g>
+
+  <!-- Row C left: Ask the match -->
+  <text x="40" y="960" class="k" font-size="20" fill="#e8ff3a">ASK THE MATCH</text>
+  <rect x="40" y="976" width="760" height="220" fill="#0b0c0e" stroke="#24262b"/>
+  <g>
+    <rect x="60" y="1000" width="200" height="110" fill="#000" stroke="#8c9097" stroke-width="2"/>
+    <text x="78" y="1034" class="h" font-size="22" fill="#f4f4f1">Fan asks</text>
+    <text x="78" y="1062" font-size="15" fill="#8c9097">"Who has created</text>
+    <text x="78" y="1084" font-size="15" fill="#8c9097">the most danger?"</text>
+
+    <rect x="296" y="1000" width="210" height="110" fill="#000" stroke="#e8ff3a" stroke-width="2"/>
+    <text x="314" y="1034" class="h" font-size="22" fill="#e8ff3a">Analyst agent</text>
+    <text x="314" y="1062" font-size="15" fill="#8c9097">Explores the match,</text>
+    <text x="314" y="1084" font-size="15" fill="#8c9097">answers with slots</text>
+
+    <rect x="542" y="1000" width="238" height="110" fill="#000" stroke="#8c9097" stroke-width="2"/>
+    <text x="560" y="1034" class="h" font-size="22" fill="#f4f4f1">MCP server</text>
+    <text x="560" y="1062" font-size="15" fill="#8c9097">15 read-only tools over</text>
+    <text x="560" y="1084" font-size="15" fill="#8c9097">the match and league</text>
+
+    <g stroke="#e8ff3a" stroke-width="3">
+      <line x1="262" y1="1055" x2="292" y2="1055" marker-end="url(#a)"/>
+      <line x1="508" y1="1055" x2="538" y2="1055" marker-start="url(#a)" marker-end="url(#a)"/>
+    </g>
+    <text x="60" y="1146" font-size="17" fill="#f4f4f1">Code re-runs every tool call the answer names and fills its numbers.</text>
+    <text x="60" y="1172" font-size="17" fill="#8c9097">The calls show as evidence. If the data cannot answer, it says so.</text>
+  </g>
+
+  <!-- Row C right: the Gameday XI -->
+  <text x="820" y="960" class="k" font-size="20" fill="#e8ff3a">THE GAMEDAY XI</text>
+  <rect x="820" y="976" width="760" height="220" fill="#0b0c0e" stroke="#24262b"/>
+  <g font-size="15" class="k" fill="#f4f4f1" letter-spacing="0.5">
+    <!-- chips: x = 840 + c*182, y = 994 + r*46, w = 170, h = 36 -->
+    <g fill="none" stroke="#e8ff3a" stroke-width="1.5">
+      <rect x="840" y="994" width="170" height="36"/><rect x="1022" y="994" width="170" height="36"/><rect x="1204" y="994" width="170" height="36"/><rect x="1386" y="994" width="170" height="36"/>
+      <rect x="840" y="1040" width="170" height="36"/><rect x="1022" y="1040" width="170" height="36"/><rect x="1204" y="1040" width="170" height="36"/><rect x="1386" y="1040" width="170" height="36"/>
+      <rect x="840" y="1086" width="170" height="36"/><rect x="1022" y="1086" width="170" height="36"/><rect x="1204" y="1086" width="170" height="36"/><rect x="1386" y="1086" width="170" height="36"/>
+    </g>
+    <text x="852" y="1018">1 ANALYST</text><text x="1034" y="1018">2 SUMMARIZER</text><text x="1216" y="1018">3 PREVIEW</text><text x="1398" y="1018">4 POST-GAME</text>
+    <text x="852" y="1064">5 PERSONALIZER</text><text x="1034" y="1064">6 IN-DEPTH ANALYST</text><text x="1216" y="1064">7 NARRATOR X2</text><text x="1398" y="1064">8 COMMENTATOR</text>
+    <text x="852" y="1110">9 EXPLAINER</text><text x="1034" y="1110">10 RECAP</text><text x="1216" y="1110">11 NEWSDESK</text><text x="1398" y="1110">12 PRODUCER</text>
+    <rect x="840" y="1132" width="352" height="36" fill="#f4f4f1"/>
+    <text x="852" y="1156" fill="#000">VAR: THE VERIFIER, PURE CODE</text>
+  </g>
+  <text x="1208" y="1148" font-size="14" fill="#8c9097">Cards run as an Agent Framework</text>
+  <text x="1208" y="1168" font-size="14" fill="#8c9097">workflow: fan out, fan in.</text>
+
+  <!-- Row D: platform -->
+  <text x="40" y="1250" class="k" font-size="20" fill="#e8ff3a">RUNS ON</text>
+  <g>
+    <!-- tiles: x = 40 + i*259, w = 247 -->
+    <rect x="40" y="1266" width="247" height="132" fill="#0b0c0e" stroke="#24262b"/>
+    <text x="58" y="1300" class="h" font-size="21" fill="#f4f4f1">Azure Container Apps</text>
+    <text x="58" y="1328" font-size="15" fill="#8c9097">One container: FastAPI,</text>
+    <text x="58" y="1350" font-size="15" fill="#8c9097">WebSocket, React, MCP.</text>
+    <text x="58" y="1372" font-size="15" fill="#8c9097">Always on, no cold start.</text>
+
+    <rect x="299" y="1266" width="247" height="132" fill="#0b0c0e" stroke="#24262b"/>
+    <text x="317" y="1300" class="h" font-size="21" fill="#f4f4f1">Microsoft Foundry</text>
+    <text x="317" y="1328" font-size="15" fill="#8c9097">Every model call, through</text>
+    <text x="317" y="1350" font-size="15" fill="#8c9097">one wrapper. Managed</text>
+    <text x="317" y="1372" font-size="15" fill="#8c9097">identity, no keys.</text>
+
+    <rect x="558" y="1266" width="247" height="132" fill="#0b0c0e" stroke="#24262b"/>
+    <text x="576" y="1300" class="h" font-size="21" fill="#f4f4f1">Azure AI Speech</text>
+    <text x="576" y="1328" font-size="15" fill="#8c9097">Neural voices in eight</text>
+    <text x="576" y="1350" font-size="15" fill="#8c9097">languages. Speaks only</text>
+    <text x="576" y="1372" font-size="15" fill="#8c9097">verified lines.</text>
+
+    <rect x="817" y="1266" width="247" height="132" fill="#0b0c0e" stroke="#24262b"/>
+    <text x="835" y="1300" class="h" font-size="21" fill="#f4f4f1">OpenTelemetry</text>
+    <text x="835" y="1328" font-size="15" fill="#8c9097">Every agent step, retry</text>
+    <text x="835" y="1350" font-size="15" fill="#8c9097">and fallback, live in the</text>
+    <text x="835" y="1372" font-size="15" fill="#8c9097">Trace panel.</text>
+
+    <rect x="1076" y="1266" width="247" height="132" fill="#0b0c0e" stroke="#24262b"/>
+    <text x="1094" y="1300" class="h" font-size="21" fill="#f4f4f1">GitHub Actions</text>
+    <text x="1094" y="1328" font-size="15" fill="#8c9097">Tests and 5,111 planted</text>
+    <text x="1094" y="1350" font-size="15" fill="#8c9097">errors, then deploy with</text>
+    <text x="1094" y="1372" font-size="15" fill="#8c9097">OIDC. No stored secrets.</text>
+
+    <rect x="1335" y="1266" width="245" height="132" fill="#0b0c0e" stroke="#24262b"/>
+    <text x="1353" y="1300" class="h" font-size="21" fill="#f4f4f1">GitHub Copilot</text>
+    <text x="1353" y="1328" font-size="15" fill="#8c9097">Agent Mode uses the</text>
+    <text x="1353" y="1350" font-size="15" fill="#8c9097">same MCP server to</text>
+    <text x="1353" y="1372" font-size="15" fill="#8c9097">explore a live match.</text>
+  </g>
+
+  <text x="40" y="1430" font-size="14" fill="#5a5e66">Synthetic data only. Every club, player and league is fictional and generated by our own simulator.</text>
+</svg>
