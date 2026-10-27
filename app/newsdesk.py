@@ -77,23 +77,33 @@ async def write() -> None:
     league = build_league()
     room = MatchRoom("newsdesk", league, RoomConfig(scenario=None), llm)
     written = json.loads(WRITTEN_PATH.read_text(encoding="utf-8")) if WRITTEN_PATH.exists() else {}
+    from agents.personalizer import LANGS
+    from agents.desk import TraceStep  # noqa: F401  (trace rows from the Personalizer)
     for m in matches():
-        from agents.personalizer import LANGS
-        if m["scenario"] in written and set(written[m["scenario"]].get("langs", {})) >= set(LANGS):
-            continue  # keep reports already written and checked in every language; delete an entry to rewrite it
+        entry = written.get(m["scenario"])
         names = name_list({p.player_id: p.name for c in (m["home"], m["away"]) for p in league.squads[c]},
                           {"home": m["facts"]["home"], "away": m["facts"]["away"]})
-        for attempt in range(WRITE_ROUNDS):
-            filled, source, langs = await room._write_story(
-                "news", "Newsdesk", newsdesk, m["facts"], m["truths"], newsdesk.prompt(m["facts"], m["hint"]), names,
-                langs=tuple(LANGS))
-            if source == "agent":
-                written[m["scenario"]] = {**filled, "langs": langs, "model": llm.strong,
-                                          "written_at": time.strftime("%Y-%m-%d %H:%M")}
-                print(m["scenario"], "written on round", attempt + 1, "|", filled["headline"])
-                break
-        else:
-            print(m["scenario"], "kept its template after", WRITE_ROUNDS, "rounds")
+        if entry is None or "templates" not in entry:  # write (or rewrite) the report, keeping its templates
+            for attempt in range(WRITE_ROUNDS):
+                filled, source, langs = await room._write_story(
+                    "news", "Newsdesk", newsdesk, m["facts"], m["truths"], newsdesk.prompt(m["facts"], m["hint"]),
+                    names, langs=())
+                if source == "agent":
+                    entry = written[m["scenario"]] = {**filled, "langs": {}, "templates": room._kept["news"]["parts"],
+                                                      "model": llm.strong, "written_at": time.strftime("%Y-%m-%d %H:%M")}
+                    print(m["scenario"], "written on round", attempt + 1, "|", filled["headline"])
+                    break
+            else:
+                print(m["scenario"], "kept its template after", WRITE_ROUNDS, "rounds")
+                continue
+        for lang in LANGS:  # each missing language: the Personalizer translates the verified templates
+            for _ in range(3):
+                if lang in entry["langs"]:
+                    break
+                out = await room._personalize("news", entry["templates"], m["facts"], names, lang, [])
+                if out is not None:
+                    entry["langs"][lang] = out
+        print(m["scenario"], "languages:", sorted(entry["langs"]))
     WRITTEN_PATH.write_text(json.dumps(written, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
