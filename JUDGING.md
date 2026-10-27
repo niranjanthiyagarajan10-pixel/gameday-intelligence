@@ -3,7 +3,7 @@
 Gameday Intelligence is a live match companion. AI agents explain a synthetic football match to every fan, in eight languages, at casual or analyst depth, and every number they show is guaranteed by code.
 
 - **Live app:** https://gameday-intelligence.orangecliff-ca1053f4.eastus2.azurecontainerapps.io (no sign-in; a match is always live)
-- **Architecture:** [docs/architecture.svg](docs/architecture.svg), explained in the [README](README.md#architecture-end-to-end)
+- **Architecture:** [docs/architecture.png](docs/architecture.png), explained in the [README](README.md#architecture-end-to-end)
 - **Category:** Best Multi-Agent System. Also built for the Grand Prize brief: synthetic events to explainable, personalized match intelligence on the Microsoft AI stack.
 
 ## A three-minute tour
