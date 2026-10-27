@@ -414,3 +414,28 @@ export interface Explanation {
   source: "agent" | "template";
   langs: Record<string, { lines: string[]; why: string }>;
 }
+
+/** A clip in the Highlights reel. Every field comes from the shot record, none from a model. */
+export interface ReelClip {
+  event_id: string;
+  minute: number;
+  team: "home" | "away";
+  player: string;
+  player_name: string;
+  club: string;
+  outcome: string;
+  label: string;
+  xg: number;
+}
+
+/** The Highlights reel: clips picked in code, the Producer's verified intro and outro. */
+export interface Reel {
+  intro: string;
+  outro: string;
+  source: "agent" | "template";
+  langs: Record<string, { intro: string; outro: string }>;
+  score: [number, number];
+  status: string;
+  minute: number;
+  clips: ReelClip[];
+}

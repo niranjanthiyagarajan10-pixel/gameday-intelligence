@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { BoxRow, Card, Clip, Explanation, MatchState, Roster, Shot } from "../types";
+import type { BoxRow, Card, Clip, Explanation, MatchState, Reel, Roster, Shot } from "../types";
 import type { Prefs } from "../prefs";
 import { KIND_LABEL } from "../format";
 import { Crest } from "./Crest";
@@ -24,6 +24,9 @@ interface Props {
 
 const momentT = (c: Card) => Number(c.moment.state_ref.split("@")[1]);
 
+/** Where the Highlights reel is: its title card, a clip by index, or its closing card. */
+type ReelStep = { phase: "intro" } | { phase: "clip"; i: number } | { phase: "outro" };
+
 /** One line of an explanation, said by Azure AI Speech, or the browser's voice when Speech is unavailable.
  * Never takes longer than the line needs: a voice that stalls must not stall the replay. */
 function sayLine(room: string, eventId: string, index: number, lang: string, audio: HTMLAudioElement, text: string): Promise<void> {
@@ -31,12 +34,18 @@ function sayLine(room: string, eventId: string, index: number, lang: string, aud
   return Promise.race([cap, voiceLine(room, eventId, index, lang, audio)]);
 }
 
-async function voiceLine(room: string, eventId: string, index: number, lang: string, audio: HTMLAudioElement): Promise<void> {
-  const r = await fetch(`/api/rooms/${room}/explain/${encodeURIComponent(eventId)}/speech`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ index, lang }),
-  });
+function voiceLine(room: string, eventId: string, index: number, lang: string, audio: HTMLAudioElement): Promise<void> {
+  return speakVia(`/api/rooms/${room}/explain/${encodeURIComponent(eventId)}/speech`, { index, lang }, lang, audio);
+}
+
+/** The reel's intro or outro, read the same way, with the same time cap. */
+function sayPart(room: string, part: "intro" | "outro", lang: string, audio: HTMLAudioElement, text: string): Promise<void> {
+  const cap = new Promise<void>((done) => window.setTimeout(done, Math.min(12000, 2500 + text.length * 70)));
+  return Promise.race([cap, speakVia(`/api/rooms/${room}/reel/speech`, { part, lang }, lang, audio)]);
+}
+
+async function speakVia(url: string, body: object, lang: string, audio: HTMLAudioElement): Promise<void> {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (r.ok && r.headers.get("content-type")?.startsWith("audio/")) {
     const url = URL.createObjectURL(await r.blob());
     audio.src = url;
@@ -49,11 +58,11 @@ async function voiceLine(room: string, eventId: string, index: number, lang: str
     });
     return;
   }
-  const body = await r.json().catch(() => null);
-  if (!body?.text || !("speechSynthesis" in window)) return;
+  const said = await r.json().catch(() => null);
+  if (!said?.text || !("speechSynthesis" in window)) return;
   await new Promise<void>((done) => {
-    const u = new SpeechSynthesisUtterance(body.text);
-    u.lang = BROWSER_LANG[body.lang ?? lang] ?? "en-GB";
+    const u = new SpeechSynthesisUtterance(said.text);
+    u.lang = BROWSER_LANG[said.lang ?? lang] ?? "en-GB";
     u.onend = u.onerror = () => done();
     speechSynthesis.speak(u);
   });
@@ -116,9 +125,19 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
     window.speechSynthesis?.cancel();
   };
 
-  const explain = useCallback(async (card: Card) => {
-    const id = card.moment.event_ids[0];
-    if (!id) return;
+  // The Highlights reel. `run` changes with every step, so a late voice or fetch never acts on a newer one.
+  const [reel, setReel] = useState<Reel | null>(null);
+  const [step, setStep] = useState<ReelStep | null>(null);
+  const [cardDone, setCardDone] = useState(false);
+  const [reelNote, setReelNote] = useState<string | null>(null);
+  const reelRef = useRef<Reel | null>(null);
+  const stepRef = useRef<ReelStep | null>(null);
+  const run = useRef(0);
+  reelRef.current = reel;
+  stepRef.current = step;
+
+  /** Plays one shot's replay; false when it has no replay to play. */
+  const playShot = useCallback(async (id: string, title: string, compact = false): Promise<boolean> => {
     setLoading(id);
     hush();
     try {
@@ -130,24 +149,109 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
         const s = await fetch(`/api/rooms/${state.room}/shots/${encodeURIComponent(id)}`);
         body = await s.json();
       }
-      if (!body.clip || body.clip.frames.length < 2) return;
+      if (!body.clip || body.clip.frames.length < 2) return false;
       const ex = body.beats ? (body as Explanation) : null;
       setStory(ex);
       setPaused(false);
       said.current = "";
       setReq({
         key: `${id}@${performance.now()}`,
-        title: KIND_LABEL[card.moment.kind] ?? "Chance",
+        title,
         shot: body.shot,
         clip: body.clip,
         story: ex ?? undefined,
         lang: prefs.lang,
         voice: voiceRef.current && !!ex,
+        compact,
       });
+      return true;
+    } catch {
+      return false;
     } finally {
       setLoading(null);
     }
   }, [state.room, prefs.lang]);
+
+  const stopReel = useCallback(() => {
+    run.current++;
+    reelRef.current = null;
+    stepRef.current = null;
+    setReel(null);
+    setStep(null);
+    setCardDone(false);
+  }, []);
+
+  const explain = useCallback(async (card: Card) => {
+    const id = card.moment.event_ids[0];
+    if (!id) return;
+    if (reelRef.current) stopReel();
+    await playShot(id, KIND_LABEL[card.moment.kind] ?? "Chance");
+  }, [playShot, stopReel]);
+
+  const goTo = useCallback(async (next: ReelStep | null) => {
+    const token = ++run.current;
+    hush();
+    setCardDone(false);
+    setCaption(null);
+    if (next === null) {
+      stepRef.current = null;
+      setReel(null);
+      setStep(null);
+      return;
+    }
+    stepRef.current = next;
+    setStep(next);
+    if (next.phase !== "clip") {
+      setReq(null);
+      setStory(null);
+      return;
+    }
+    const clip = reelRef.current?.clips[next.i];
+    const ok = clip ? await playShot(clip.event_id, clip.label, true) : false;
+    // A clip with no replay is skipped rather than shown as an error.
+    if (!ok && token === run.current) void goTo(after(next, reelRef.current));
+  }, [playShot]);
+
+  const startReel = useCallback(async () => {
+    stopReel();
+    hush();
+    setReelNote(null);
+    pitch.current?.stopExplain();
+    try {
+      const r = await fetch(`/api/rooms/${state.room}/reel?lang=${prefs.lang}`);
+      if (!r.ok) {
+        setReelNote("The reel appears after the first goal or big chance.");
+        return;
+      }
+      const body: Reel = await r.json();
+      reelRef.current = body;
+      setReel(body);
+      setPaused(false);
+      void goTo({ phase: "intro" });
+    } catch {
+      setReelNote("The reel appears after the first goal or big chance.");
+    }
+  }, [state.room, prefs.lang, goTo, stopReel]);
+
+  // A title card is read once; it moves on when the line has been said and the reel is not paused.
+  useEffect(() => {
+    if (!step || step.phase === "clip" || !reel) return;
+    const token = run.current;
+    const part = step.phase;
+    const text = (prefs.lang !== "en" && reel.langs[prefs.lang]?.[part]) || reel[part];
+    if (!voiceRef.current) {
+      const timer = window.setTimeout(() => token === run.current && setCardDone(true), Math.min(9000, 1500 + text.length * 55));
+      return () => window.clearTimeout(timer);
+    }
+    audio.current ??= new Audio();
+    void sayPart(state.room, part, prefs.lang, audio.current, text).finally(() => {
+      if (token === run.current) setCardDone(true);
+    });
+  }, [step, reel, state.room, prefs.lang]);
+
+  useEffect(() => {
+    if (step && step.phase !== "clip" && cardDone && !paused) void goTo(after(step, reel));
+  }, [step, cardDone, paused, reel, goTo]);
 
   const startedWith = useRef<string | null>(null);
   useEffect(() => {
@@ -163,7 +267,10 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
     setReq(null);
     setStory(null);
     setCaption(null);
-  }, []);
+    // In the reel, a clip that ends (or is skipped) hands over to the next one.
+    const at = stepRef.current;
+    if (at?.phase === "clip") void goTo(after(at, reelRef.current));
+  }, [goTo]);
 
   // Each story caption is read once; when the line has been said the replay moves on.
   useEffect(() => {
@@ -186,14 +293,14 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === " " && req) {
+      if (e.key === " " && (req || step)) {
         e.preventDefault();
         setPaused((p) => !p);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, req]);
+  }, [onClose, req, step]);
 
   useEffect(() => {
     pitch.current?.pauseReplay(paused);
@@ -238,6 +345,19 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
             <Pitch3D ref={pitch} frame={frame} roster={roster} focus={focus} tagged={new Set(prefs.players)} speed={state.speed}
               fx={state.fx} onSelect={onFocus} explain={req} onExplainEnd={endExplain} onCaption={setCaption} hideCaption />
           </Suspense>
+          {reel && step && step.phase !== "clip" && (
+            <div className="mt-reel-card" style={{ "--h": home.primary, "--a": away.primary } as CSSProperties}>
+              <span className="label">{step.phase === "intro" ? "Highlights" : reel.status === "full_time" ? "Full time" : `${reel.minute}'`}</span>
+              <div className="mt-reel-score">
+                <Crest club={home} size={56} />
+                <b>{home.name}</b>
+                <span className="num"><i>{reel.score[0]}</i><i>{reel.score[1]}</i></span>
+                <b>{away.name}</b>
+                <Crest club={away} size={56} />
+              </div>
+              <p>{(prefs.lang !== "en" && reel.langs[prefs.lang]?.[step.phase]) || reel[step.phase]}</p>
+            </div>
+          )}
           {caption && (
             <div key={`${caption.kind}${caption.text}`} className="mt-caption" style={{ "--club": caption.color } as CSSProperties}>
               <span className="kind">{caption.kind}</span>
@@ -266,7 +386,64 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
         </section>
 
         <aside className="mt-rail">
-          {req ? (
+          {reel && step ? (
+            <div className="mt-panel mt-explain">
+              <div className="mt-ph">
+                <h3>Highlights reel</h3>
+                <span className="label">
+                  {step.phase === "intro" ? "Intro" : step.phase === "outro" ? "Outro" : `Clip ${step.i + 1} of ${reel.clips.length}`}
+                </span>
+              </div>
+              <div className="mt-dots" aria-label="Reel progress">
+                {reel.clips.map((c, i) => {
+                  const at = step.phase === "clip" ? step.i : step.phase === "outro" ? reel.clips.length : -1;
+                  return (
+                    <i key={c.event_id} className={i === at ? "on" : i < at ? "done" : ""}
+                      style={{ "--club": roster.clubs[c.team].primary } as CSSProperties} title={`${c.minute}' ${c.label}`} />
+                  );
+                })}
+              </div>
+              {step.phase === "clip" && reel.clips[step.i] && (
+                <div className="mt-who" style={{ "--club": roster.clubs[reel.clips[step.i].team].primary } as CSSProperties}>
+                  <b>{reel.clips[step.i].player_name}</b>
+                  <span className="num">{reel.clips[step.i].minute}'</span>
+                  <span>{reel.clips[step.i].label}</span>
+                  <span className="num">{reel.clips[step.i].xg.toFixed(2)} xG</span>
+                </div>
+              )}
+              {step.phase === "clip" && story && (
+                <ol className="mt-steps">
+                  <li className={`why ${active === -1 ? "on" : ""}`}>
+                    <div className="mt-step-text">
+                      <span className="label">{story.shot.outcome === "goal" ? "Why it worked" : "The verdict"}</span>
+                      <p>{why}</p>
+                    </div>
+                  </li>
+                </ol>
+              )}
+              <div className="mt-ctrl">
+                <button onClick={() => setPaused((p) => !p)}>{paused ? "Play" : "Pause"}</button>
+                <button onClick={() => {
+                  if (step.phase === "clip" && req) pitch.current?.stopExplain();
+                  else void goTo(after(step, reel));
+                }}>Skip</button>
+                <button className={voice ? "on" : ""} aria-pressed={voice} onClick={() => {
+                  setVoice((v) => !v);
+                  if (voice) {
+                    hush();
+                    pitch.current?.release();
+                  }
+                }}>Voice {voice ? "on" : "off"}</button>
+                <button onClick={() => {
+                  stopReel();
+                  hush();
+                  pitch.current?.stopExplain();
+                  setReq(null);
+                  setStory(null);
+                }}>Stop</button>
+              </div>
+            </div>
+          ) : req ? (
             <div className="mt-panel mt-explain">
               <div className="mt-ph">
                 <h3>Explain this moment</h3>
@@ -321,6 +498,11 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
                 <h3>Explain a moment</h3>
                 <span className="label">{chances.length} so far</span>
               </div>
+              <button className="mt-reel-go" onClick={() => void startReel()}>
+                <b>Highlights reel</b>
+                <span>Every goal and the best chances, explained in order</span>
+              </button>
+              {reelNote && <p className="mt-note">{reelNote}</p>}
               <div className="mt-list">
                 {chances.length === 0 && <p className="mt-note">Goals and big chances appear here. Pick one to see how it happened.</p>}
                 {chances.map((c) => {
@@ -360,4 +542,12 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
       </div>
     </div>
   );
+}
+
+/** The reel's next step: the clips in order, then the closing card, then the end. */
+function after(at: ReelStep, reel: Reel | null): ReelStep | null {
+  const n = reel?.clips.length ?? 0;
+  if (at.phase === "intro") return n ? { phase: "clip", i: 0 } : { phase: "outro" };
+  if (at.phase === "clip") return at.i + 1 < n ? { phase: "clip", i: at.i + 1 } : { phase: "outro" };
+  return null;
 }

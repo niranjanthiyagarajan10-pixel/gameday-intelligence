@@ -10,6 +10,7 @@ export interface ExplainRequest {
   story?: Explanation; // the Explainer's verified beats: the replay freezes on each one
   lang?: string;
   voice?: boolean; // a voice reads each beat and releases the hold when it ends
+  compact?: boolean; // the Highlights reel: the build-up plays through, only the shot and the verdict hold
 }
 
 export interface Caption {
@@ -225,6 +226,10 @@ function storyScript(req: ExplainRequest, story: Explanation, roster: Roster, si
     const isShot = b.kind === "shot";
     const t = isShot ? Math.max(start + 0.2, shot.t - SLOW_FROM_S) : Math.min(Math.max(b.t, start + 0.2), shot.t - SLOW_FROM_S - 0.1);
     const title = b.key ? "Key pass" : STEP_TITLE[b.kind] ?? "The move";
+    if (req.compact && !isShot) {
+      beats.push({ t, rate: 1, draw: b.draw.flatMap((d) => storyDraw(d, club.primary, signal, goal, shot.player)) });
+      return;
+    }
     beats.push({
       t,
       rate: isShot ? 0.3 : 1,
