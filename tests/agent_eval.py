@@ -441,6 +441,18 @@ def _story_plants() -> list[tuple[tuple[str, str], bool, str]]:
         for category, bad in _story_mutations(line, facts, truths, postgame.IMPLIED):
             lines = [bad if x == line else x for x in trusted["look_ahead"]]
             out.append((("Post-game", category), bool(postgame.check({"look_ahead": lines}, facts, room.desk.forbidden, truths)), bad))
+    from agents import producer
+    from app import producer as reel
+
+    clips = reel.select(room.live.shots, {k for k, v in room.clips.items() if v is not None})
+    pack = reel.pack(room.live, room.names, room.teams, False, False, clips)
+    facts, truths = pack["facts"], pack["truths"]
+    cut = producer.fallback(facts, truths)
+    out.append((("Producer", "clean reel passes"), not producer.check(cut, facts, room.desk.forbidden, truths), cut["outro"]))
+    for category, bad in _story_mutations(cut["outro"], facts, truths, story.MATCH_IMPLIED):
+        out.append((("Producer", category), bool(producer.check({**cut, "outro": bad}, facts, room.desk.forbidden, truths)), bad))
+    bad = cut["outro"] + " Their pressing led to the goals."
+    out.append((("Producer", "cause and effect"), bool(producer.check({**cut, "outro": bad}, facts, room.desk.forbidden, truths)), bad))
     from agents import deep
 
     room.fast_forward(2000.0)  # past the half hour, so the deep card has a window to compare with

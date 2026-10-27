@@ -20,10 +20,11 @@ from agents import story
 from agents.desk import CardDesk, TraceStep, name_list
 from agents.workflow import card_workflow, run_card
 from agents.llm import LLM
-from agents import analyst, commentator, deep, explainer, newsdesk, personalizer, postgame, preview, recap, summarizer
+from agents import analyst, commentator, deep, explainer, newsdesk, personalizer, postgame, preview, producer, recap, summarizer
 from agents.personalizer import LANGS
 from app import explain as explain_facts
 from app import matchday
+from app import producer as reel_facts
 from app.blueprint import build_blueprint
 from app.league import season as league_season
 from app.speech import Speech
@@ -174,6 +175,9 @@ class MatchRoom:
         self._explained: dict[str, dict[str, Any]] = {}
         self._explain_parts: dict[str, dict[str, Any]] = {}  # the templates, for writing other languages later
         self._explain_lock = asyncio.Lock()
+        self._reel: dict[str, Any] | None = None  # the Highlights reel, rewritten when the match moves on
+        self._reel_parts: dict[str, Any] = {}
+        self._reel_lock = asyncio.Lock()
         self._to_explain: list[str] = []  # big chances whose replay just finished: written ahead of any click
 
     # Snapshots
@@ -453,6 +457,48 @@ class MatchRoom:
             lang = "en"
             text = ex["why"] if index < 0 else ex["beats"][index]["line"]
         return {"text": text, "lang": lang, "style": "tactician", "source": ex["source"]}
+
+    async def reel(self, lang: str = "en") -> dict[str, Any] | None:
+        """The Highlights reel: clips picked and ordered in code, an intro and an outro by the Producer.
+        Rewritten only when the status, the score or the clip list changes. None before any big chance."""
+        recorded = {eid for eid, clip in self.clips.items() if clip is not None}
+        chosen = reel_facts.select(self.live.shots, recorded)
+        if not chosen:
+            return None
+        async with self._reel_lock:
+            score = list(self.live.stats().score)
+            key = (self.status, tuple(score), tuple(s.event_id for s in chosen))
+            if self._reel is None or self._reel["key"] != key:
+                derby = matchday.PROFILES[self.config.home].rival == self.config.away
+                pk = reel_facts.pack(self.live, self.names, self.teams, self.status == "full_time", derby, chosen)
+                keep: dict[str, Any] = {}
+                filled, source, _ = await self._write_story(
+                    "reel", "Producer", producer, pk["facts"], pk["truths"], producer.prompt(pk["facts"]),
+                    langs=(), keep=keep)
+                self._reel = {"key": key, "intro": filled["intro"], "outro": filled["outro"], "source": source,
+                              "langs": {}, "score": score, "status": self.status,
+                              "minute": int(self.live.t // 60), "home": self.config.home, "away": self.config.away,
+                              "clips": [reel_facts.clip_dict(s, self.names, self.teams) for s in chosen]}
+                self._reel_parts = keep
+            out = self._reel
+            keep = self._reel_parts
+            if lang != "en" and lang not in out["langs"] and self.llm.live and keep.get("source") == "agent":
+                steps: list[TraceStep] = []
+                written = await self._personalize("reel", keep["parts"], keep["facts"], keep["names"], lang, steps)
+                self._log(steps)
+                if written is not None:
+                    out["langs"][lang] = written
+            return {k: v for k, v in out.items() if k != "key"}
+
+    async def reel_line(self, part: str, lang: str) -> dict[str, Any] | None:
+        """The reel's intro or outro for the voice: only text the Verifier passed is ever spoken."""
+        r = await self.reel(lang)
+        if r is None or part not in ("intro", "outro"):
+            return None
+        written = r["langs"].get(lang) if lang != "en" else None
+        if written is None:
+            lang = "en"
+        return {"text": (written or r)[part], "lang": lang, "style": "tactician", "source": r["source"]}
 
     async def ask(self, question: str, lang: str = "en", audience: str = "casual") -> dict[str, Any]:
         """Ask the match: the Analyst answers through the MCP tools; code fills every number and name."""

@@ -46,6 +46,11 @@ class SpeakLine(BaseModel):
     lang: Literal["en", "es", "hi"] = "en"
 
 
+class ReelPart(BaseModel):
+    part: Literal["intro", "outro"]
+    lang: Literal["en", "es", "hi"] = "en"
+
+
 class Speak(BaseModel):
     moment_id: str = Field(min_length=1, max_length=80)
     style: Literal["classic", "hype", "stats", "tactician"] = "classic"
@@ -140,6 +145,26 @@ def create_app(default: RoomConfig | None = None) -> FastAPI:
         if said is None:
             raise HTTPException(404, "no such line")
         audio = await room.speak(said, event_id)
+        if audio is None:
+            return JSONResponse(status_code=503, content=said)
+        return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+    @app.get("/api/rooms/{room_id}/reel")
+    async def reel(room_id: str, lang: Literal["en", "es", "hi"] = Query("en")) -> dict[str, Any]:
+        """The Highlights reel: the clips in match order, with the Producer's verified intro and outro."""
+        found = await room_or_404(room_id).reel(lang)
+        if found is None:
+            raise HTTPException(404, "no highlights yet")
+        return found
+
+    @app.post("/api/rooms/{room_id}/reel/speech")
+    async def reel_speech(room_id: str, body: ReelPart) -> Response:
+        """The reel's intro or outro as MP3. 503 with the text means: use the browser voice."""
+        room = room_or_404(room_id)
+        said = await room.reel_line(body.part, body.lang)
+        if said is None:
+            raise HTTPException(404, "no highlights yet")
+        audio = await room.speak(said, "reel")
         if audio is None:
             return JSONResponse(status_code=503, content=said)
         return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
