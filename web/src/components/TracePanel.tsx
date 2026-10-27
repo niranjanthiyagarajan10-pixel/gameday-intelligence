@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AgentInfo, TraceStep } from "../types";
 import { clock } from "../format";
+import { t } from "../i18n";
 
 const GOOD = new Set(["ok", "pass"]);
 const BAD = new Set(["reject", "timeout", "error"]);
@@ -34,8 +35,8 @@ function WorkflowSpans() {
       window.clearInterval(timer);
     };
   }, []);
-  if (!data) return <div className="trace-empty">Loading spans.</div>;
-  if (!data.enabled) return <div className="trace-empty">OpenTelemetry tracing is off on this server.</div>;
+  if (!data) return <div className="trace-empty">{t("Loading spans.")}</div>;
+  if (!data.enabled) return <div className="trace-empty">{t("OpenTelemetry tracing is off on this server.")}</div>;
   const runs = new Map<string, Span[]>();
   for (const s of data.spans) runs.set(s.trace, [...(runs.get(s.trace) ?? []), s]);
   const shown = [...runs.values()]
@@ -43,7 +44,7 @@ function WorkflowSpans() {
     .filter((spans) => spans.some((s) => s.name.startsWith("workflow.run")))
     .reverse()
     .slice(0, 12);
-  if (shown.length === 0) return <div className="trace-empty">Workflow runs appear here as key moments happen.</div>;
+  if (shown.length === 0) return <div className="trace-empty">{t("Workflow runs appear here as key moments happen.")}</div>;
   return (
     <div className="trace-rows">
       {shown.map((spans) => {
@@ -99,11 +100,11 @@ export function TracePanel({ steps, agents, onClose }: { steps: TraceStep[]; age
   const shown = [...steps].reverse().filter((s) => !onlyIssues || !GOOD.has(s.status)).slice(0, 200);
 
   return (
-    <aside className="trace" aria-label="Agent trace">
+    <aside className="trace" aria-label={t("Agent trace")}>
       <div className="trace-head">
-        <b>Agent trace</b>
-        <button onClick={onClose} aria-label="Close the trace">
-          Close
+        <b>{t("Agent trace")}</b>
+        <button onClick={onClose} aria-label={t("Close the trace")}>
+          {t("Close")}
         </button>
       </div>
       <div className="trace-backend">
@@ -113,16 +114,16 @@ export function TracePanel({ steps, agents, onClose }: { steps: TraceStep[]; age
           </>
         ) : (
           <>
-            <span className="muted">&#9679;</span> No model connected: every card uses its verified template.
+            <span className="muted">&#9679;</span> {t("No model connected: every card uses its verified template.")}
           </>
         )}
       </div>
       <div className="trace-tabs">
         <button className={view === "steps" ? "on" : ""} onClick={() => setView("steps")}>
-          Agent steps
+          {t("Agent steps")}
         </button>
         <button className={view === "spans" ? "on" : ""} onClick={() => setView("spans")}>
-          Workflow spans
+          {t("Workflow spans")}
         </button>
       </div>
       {view === "spans" ? (
@@ -130,18 +131,17 @@ export function TracePanel({ steps, agents, onClose }: { steps: TraceStep[]; age
       ) : (
         <>
       <div className="trace-sum">
-        <span>drafts {drafts.length}</span>
-        <span className="ok">passed {passes}</span>
-        <span className="bad">rejected {rejects}</span>
-        <span>fallbacks {fallbacks}</span>
-        <span>avg {avg === null ? "-" : `${avg} ms`}</span>
+        <span>{t("drafts")} {drafts.length}</span>
+        <span className="ok">{t("passed")} {passes}</span>
+        <span className="bad">{t("rejected")} {rejects}</span>
+        <span>{t("fallbacks")} {fallbacks}</span>
+        <span>{t("avg")} {avg === null ? "-" : `${avg} ms`}</span>
       </div>
       <label className="trace-filter">
-        <input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} /> Only rejections, timeouts
-        and fallbacks
+        <input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} /> {t("Only rejections, timeouts and fallbacks")}
       </label>
       <div className="trace-rows" role="log" aria-live="polite">
-        {shown.length === 0 && <div className="trace-empty">Agent steps appear here as key moments happen.</div>}
+        {shown.length === 0 && <div className="trace-empty">{t("Agent steps appear here as key moments happen.")}</div>}
         {shown.map((s, i) => (
           <div key={`${s.moment_id}-${s.audience}-${s.agent}-${s.action}-${i}`} className="trace-row">
             <span className="t">{clock(s.t)}</span>

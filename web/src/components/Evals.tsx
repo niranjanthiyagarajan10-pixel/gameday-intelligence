@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../i18n";
 
 interface Row {
   check: string;
@@ -55,8 +56,8 @@ export function Evals() {
       .then(setR)
       .catch(() => setFailed(true));
   }, []);
-  if (failed) return <div className="empty" style={{ padding: 24 }}>No eval report yet. Run python -m tests.agent_eval.</div>;
-  if (!r) return <div className="empty" style={{ padding: 24 }}>Loading the eval report.</div>;
+  if (failed) return <div className="empty" style={{ padding: 24 }}>{t("No eval report yet. Run python -m tests.agent_eval.")}</div>;
+  if (!r) return <div className="empty" style={{ padding: 24 }}>{t("Loading the eval report.")}</div>;
   const p = r.planted;
   const live = r.live;
   const a = r.analyst;
@@ -72,26 +73,26 @@ export function Evals() {
     <div className="ev">
       <section className="ev-hero">
         <span className="label">Agent evals &middot; how we know the words are true</span>
-        <h1>We tried to make the agents lie</h1>
+        <h1>{t("We tried to make the agents lie")}</h1>
         <p>
-          Every agent line is checked by code before a fan sees it. To prove the checks work, we took {p ? fmt(p.moments) : "every"} real key moments from the five
+          {t("Every agent line is checked by code before a fan sees it. To prove the checks work, we took")} {p ? fmt(p.moments) : "every"} real key moments from the five
           scenario matches and broke their lines on purpose, the way language models break facts. Then we ran the real agents on Microsoft Foundry and checked them again.
         </p>
       </section>
 
       <section className="ev-bigs">
-        {p && <Big value={p.caught} of={p.planted} label="Planted errors caught" note="Typed numbers and names, false claims, made-up details, broken translations, fake tools." />}
-        {p && <Big value={p.clean_passed} of={p.clean} label="Clean lines passed" note="A check that rejects good lines is broken too." />}
-        {live && <Big value={liveVerified} of={liveTotal} label="Live agent lines verified" note="Narrator, Commentator in three styles, Personalizer, on gpt-4.1-mini." />}
+        {p && <Big value={p.caught} of={p.planted} label={t("Planted errors caught")} note={t("Typed numbers and names, false claims, made-up details, broken translations, fake tools.")} />}
+        {p && <Big value={p.clean_passed} of={p.clean} label={t("Clean lines passed")} note={t("A check that rejects good lines is broken too.")} />}
+        {live && <Big value={liveVerified} of={liveTotal} label={t("Live agent lines verified")} note={t("Narrator, Commentator in three styles, Personalizer, on gpt-4.1-mini.")} />}
         {a && (
-          <Big value={a.correct} of={a.questions.length} label="Ask the match answers correct"
-            note={`Checked against the same MCP tools. ${a.questions.filter((q) => !q.correct && q.source !== "fallback").length} wrong answers shown; the rest declined honestly.`} />
+          <Big value={a.correct} of={a.questions.length} label={t("Ask the match answers correct")}
+            note={t("Checked against the same MCP tools. {n} wrong answers shown; the rest declined honestly.", { n: a.questions.filter((q) => !q.correct && q.source !== "fallback").length })} />
         )}
         {live && (
           <div className="ev-big">
             <b className={`num ${live.untraced === 0 ? "up" : "down"}`}>{live.untraced}</b>
-            <span className="label">Numbers no slot supplied</span>
-            <p>Every number in every published line came from code.</p>
+            <span className="label">{t("Numbers no slot supplied")}</span>
+            <p>{t("Every number in every published line came from code.")}</p>
           </div>
         )}
       </section>
@@ -99,8 +100,8 @@ export function Evals() {
       {p && (
         <section className="lg-panel">
           <div className="ev-h">
-            <h2 className="lg-h">Planted errors, by check</h2>
-            <span className="label">Run {p.at} &middot; no model needed &middot; runs in CI</span>
+            <h2 className="lg-h">{t("Planted errors, by check")}</h2>
+            <span className="label">{t("Run")} {p.at} &middot; no model needed &middot; runs in CI</span>
           </div>
           <div className="ev-groups">
             {[...groups.entries()].map(([agent, rows]) => (
@@ -127,17 +128,17 @@ export function Evals() {
         <div className="lg-two">
           <section className="lg-panel">
             <div className="ev-h">
-              <h2 className="lg-h">The live agents</h2>
-              <span className="label">Run {live.at} &middot; Microsoft Foundry</span>
+              <h2 className="lg-h">{t("The live agents")}</h2>
+              <span className="label">{t("Run")} {live.at} &middot; Microsoft Foundry</span>
             </div>
             <table className="lg-table num">
               <thead>
                 <tr>
-                  <th className="l">Agent</th>
-                  <th>Lines</th>
-                  <th>Verified</th>
-                  <th>First draft</th>
-                  <th>Drafts</th>
+                  <th className="l">{t("Agent")}</th>
+                  <th>{t("Lines")}</th>
+                  <th>{t("Verified")}</th>
+                  <th>{t("First draft")}</th>
+                  <th>{t("Drafts")}</th>
                   <th>p50</th>
                   <th>p95</th>
                 </tr>
@@ -159,7 +160,7 @@ export function Evals() {
             <p className="ev-fine">A line that fails the Verifier goes back to its agent with the reason, at most twice; then the template is used. Verified means the agent's own words went live.</p>
           </section>
           <section className="lg-panel">
-            <h2 className="lg-h">What the Verifier caught in real drafts</h2>
+            <h2 className="lg-h">{t("What the Verifier caught in real drafts")}</h2>
             <div className="ev-caught">
               {live.rejections.map(([reason, n]) => (
                 <div key={reason}>
@@ -167,7 +168,7 @@ export function Evals() {
                   <span>{reason}</span>
                 </div>
               ))}
-              {live.rejections.length === 0 && <div className="empty">No draft was rejected in this run.</div>}
+              {live.rejections.length === 0 && <div className="empty">{t("No draft was rejected in this run.")}</div>}
             </div>
           </section>
         </div>
@@ -176,7 +177,7 @@ export function Evals() {
       {a && (
         <section className="lg-panel">
           <div className="ev-h">
-            <h2 className="lg-h">Ask the match</h2>
+            <h2 className="lg-h">{t("Ask the match")}</h2>
             <span className="label">
               {a.correct}/{a.questions.length} correct &middot; {a.honest}/{a.refusals.length} honest when the data cannot answer &middot; p50 {(a.p50_ms / 1000).toFixed(1)}s
             </span>
@@ -198,7 +199,7 @@ export function Evals() {
                 <div>
                   <b>{q.question}</b>
                   <p>{q.answer}</p>
-                  <span className="label">The data cannot answer this</span>
+                  <span className="label">{t("The data cannot answer this")}</span>
                 </div>
               </div>
             ))}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GravityGrid, GravityPlayer, Roster, Side } from "../types";
 import { Jersey } from "./Kit";
 import { Crest } from "./Crest";
+import { t } from "../i18n";
 
 type Metric = "overall" | "on" | "off";
 
@@ -175,7 +176,7 @@ export function GravitySection({ players, maps, cellM, roster }: Props) {
 
   return (
     <section className="bp-section">
-      <h3 className="bp-h">Gravity</h3>
+      <h3 className="bp-h">{t("Gravity")}</h3>
       <div className="bp-two wide-left">
         <div>
           <div className="bp-seg">
@@ -187,15 +188,15 @@ export function GravitySection({ players, maps, cellM, roster }: Props) {
           </div>
           <div className="bp-selects">
             <label>
-              <span className="label">Gravity metric</span>
+              <span className="label">{t("Gravity metric")}</span>
               <select value={metric} onChange={(e) => setMetric(e.target.value as Metric)}>
-                <option value="overall">Overall</option>
-                <option value="on">On-ball</option>
-                <option value="off">Off-ball</option>
+                <option value="overall">{t("Overall")}</option>
+                <option value="on">{t("On-ball")}</option>
+                <option value="off">{t("Off-ball")}</option>
               </select>
             </label>
             <label>
-              <span className="label">Player</span>
+              <span className="label">{t("Player")}</span>
               <select value={player?.player ?? ""} onChange={(e) => setChosen(e.target.value)}>
                 {team.map((p) => (
                   <option key={p.player} value={p.player}>
@@ -211,7 +212,7 @@ export function GravitySection({ players, maps, cellM, roster }: Props) {
             <span className="gravity-dir">{club.short} attacking &rarr;</span>
           </div>
           <div className="gravity-legend">
-            <span className="label">Gravity</span>
+            <span className="label">{t("Gravity")}</span>
             <div className="gravity-scale" style={{ background: legend }} />
             <div className="gravity-ticks num">
               {[SCALE_MAX, SCALE_MAX / 2, 0, -SCALE_MAX / 2, -SCALE_MAX].map((v) => (
@@ -219,8 +220,8 @@ export function GravitySection({ players, maps, cellM, roster }: Props) {
               ))}
             </div>
             <div className="gravity-ticks muted">
-              <span>More attention than usual</span>
-              <span>Less</span>
+              <span>{t("More attention than usual")}</span>
+              <span>{t("Less")}</span>
             </div>
           </div>
         </div>
@@ -228,7 +229,7 @@ export function GravitySection({ players, maps, cellM, roster }: Props) {
         <div className="bp-card flush">
           {!player || !info ? (
             <div className="empty" style={{ padding: 20 }}>
-              Gravity shows once a player has been measured for five minutes with the ball.
+              {t("Gravity shows once a player has been measured for five minutes with the ball.")}
             </div>
           ) : (
             <>
@@ -249,16 +250,15 @@ export function GravitySection({ players, maps, cellM, roster }: Props) {
                 <div className="bp-tiles two">
                   <div className="full">
                     <b className="num">{fmt(player.overall)}</b>
-                    <span>Overall, over {Math.round(player.seconds / 60)} min with the ball</span>
+                    <span>{t("Overall, over")} {Math.round(player.seconds / 60)} min with the ball</span>
                   </div>
-                  <div><b className="num">{fmt(player.final_third_on_ball)}</b><span>Final third on-ball</span></div>
-                  <div><b className="num">{fmt(player.build_up_on_ball)}</b><span>Build-up on-ball</span></div>
-                  <div><b className="num">{fmt(player.final_third_off_ball)}</b><span>Final third off-ball</span></div>
-                  <div><b className="num">{fmt(player.build_up_off_ball)}</b><span>Build-up off-ball</span></div>
+                  <div><b className="num">{fmt(player.final_third_on_ball)}</b><span>{t("Final third on-ball")}</span></div>
+                  <div><b className="num">{fmt(player.build_up_on_ball)}</b><span>{t("Build-up on-ball")}</span></div>
+                  <div><b className="num">{fmt(player.final_third_off_ball)}</b><span>{t("Final third off-ball")}</span></div>
+                  <div><b className="num">{fmt(player.build_up_off_ball)}</b><span>{t("Build-up off-ball")}</span></div>
                 </div>
                 <p className="bp-fine">
-                  Gravity is the defenders a player pulls close beyond the league average for the same spot and role,
-                  from every tracking frame with the ball. +100 is one extra defender.
+                  {t("Gravity is the defenders a player pulls close beyond the league average for the same spot and role, from every tracking frame with the ball. +100 is one extra defender.")}
                 </p>
               </div>
             </>

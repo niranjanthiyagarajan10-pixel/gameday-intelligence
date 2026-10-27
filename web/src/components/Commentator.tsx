@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Card, Roster } from "../types";
 import { cardText, type Lang, type Prefs, type Voice } from "../prefs";
 import { sideColor } from "../format";
+import { BROWSER_LANG, t } from "../i18n";
 
 export const STYLES: { id: Voice; name: string; initials: string; blurb: string; color: string }[] = [
   { id: "classic", name: "Classic", initials: "CL", blurb: "Calm broadcast voice", color: "var(--signal)" },
@@ -9,7 +10,6 @@ export const STYLES: { id: Voice; name: string; initials: string; blurb: string;
   { id: "stats", name: "Stats", initials: "ST", blurb: "Every line carries a number", color: "#7FD1FF" },
   { id: "tactician", name: "Tactician", initials: "TA", blurb: "Strict, shape and pressing", color: "#F4F4F1" },
 ];
-const BROWSER_LANG: Record<Lang, string> = { en: "en-GB", es: "es-ES", hi: "hi-IN" };
 const SHOWN = 4;
 
 interface Said {
@@ -131,26 +131,26 @@ export function Commentator({ room, cards, roster, prefs, update }: {
   return (
     <div className="panel comm">
       <div className="ph">
-        <h3>Commentator</h3>
+        <h3>{t("Commentator")}</h3>
         <button className={`voice-toggle ${prefs.voiceOn ? "on" : ""}`} onClick={() => {
           lastAuto.current = null;
           update({ voiceOn: !prefs.voiceOn });
         }}>
           <span className="spk" aria-hidden />
-          {prefs.voiceOn ? "Voice on" : "Voice off"}
+          {prefs.voiceOn ? t("Voice on") : t("Voice off")}
         </button>
       </div>
-      <div className="comm-styles" role="radiogroup" aria-label="Commentator style">
+      <div className="comm-styles" role="radiogroup" aria-label={t("Commentator style")}>
         {STYLES.map((s) => (
           <button key={s.id} role="radio" aria-checked={style === s.id} className={style === s.id ? "on" : ""}
-            onClick={() => update({ voice: s.id })} title={s.blurb}>
+            onClick={() => update({ voice: s.id })} title={t(s.blurb)}>
             <i style={{ background: s.color }}>{s.initials}</i>
-            <b>{s.name}</b>
+            <b>{t(s.name)}</b>
           </button>
         ))}
       </div>
       <div className="comm-feed">
-        {latest.length === 0 && <div className="empty">The commentator speaks when the first key moment lands.</div>}
+        {latest.length === 0 && <div className="empty">{t("The commentator speaks when the first key moment lands.")}</div>}
         {latest.map((c, i) => {
           const id = c.moment.moment_id;
           const line = lineFor(c);
@@ -162,8 +162,8 @@ export function Commentator({ room, cards, roster, prefs, update }: {
               <div className="say">
                 <p lang={lang} className={waiting ? "dim" : ""}>{line.text}</p>
                 <div className="meta">
-                  <span className="verified">Verified</span>
-                  <span className="label">{line.styled ? `Commentator · ${STYLES.find((s) => s.id === style)?.name}` : "Commentator · Classic"}</span>
+                  <span className="verified">{t("Verified")}</span>
+                  <span className="label">{`${t("Commentator")} · ${t(line.styled ? STYLES.find((s) => s.id === style)?.name ?? "Classic" : "Classic")}`}</span>
                   {playing === id && (
                     <span className="wave" aria-hidden>
                       <i /><i /><i /><i /><i />

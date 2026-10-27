@@ -3,6 +3,7 @@ import type { Analyst as AnalystData, LeverageRow, Roster, Shot, Side } from "..
 import { SHAPE_LABEL, clock, playerName, signed } from "../format";
 import { playerHref, shotHref } from "../route";
 import { PassNetwork, XGRace } from "./TrackingViz";
+import { t } from "../i18n";
 
 interface Props {
   analyst: AnalystData;
@@ -42,18 +43,18 @@ function ShotCard({ shot, roster }: { shot: Shot; roster: Roster }) {
             {(shot.xg * 100).toFixed(1)}
             <small>%</small>
           </div>
-          <div className="sc-label">xG</div>
+          <div className="sc-label">{t("xG")}</div>
         </div>
         <div className="sc-facts">
           <div>
             <i className="sc-dot" style={{ background: outcome.color }} />
-            {outcome.label}
+            {t(outcome.label)}
           </div>
           <div className="num">{clock(shot.t)}</div>
           <div>{shot.shot_type}</div>
         </div>
       </div>
-      <div className="sc-hint">Click to watch the replay</div>
+      <div className="sc-hint">{t("Click to watch the replay")}</div>
     </>
   );
 }
@@ -76,7 +77,7 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
 
   return (
     <div className="swarm-wrap" onMouseLeave={() => setHover(null)}>
-    <svg viewBox={`0 0 ${W} ${TOTAL_H}`} role="img" aria-label="Shot quality by expected goals">
+    <svg viewBox={`0 0 ${W} ${TOTAL_H}`} role="img" aria-label={t("Shot quality by expected goals")}>
       {SIDES.map((side, row) => {
         const club = roster.clubs[side];
         const mine = shots.filter((s) => s.team === side).sort((a, b) => a.xg - b.xg);
@@ -122,7 +123,7 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
             <text x={94} y={y0 + 72} fontSize={52} fontFamily="Barlow Condensed" fontWeight={800} fill="var(--text)">
               {xgTotal.toFixed(2)}
               <tspan fontSize={22} dx={6}>
-                xG
+                {t("xG")}
               </tspan>
             </text>
             <text x={96} y={y0 + 96} fontSize={15} fontFamily="Barlow" fontWeight={600} fill="var(--text-muted)">
@@ -134,7 +135,7 @@ function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
               </text>
             )}
             {placed.map(({ x, y, s }) => {
-              const label = `${playerName(roster, s.player)}, ${clock(s.t)}. xG ${s.xg.toFixed(2)}, ${s.outcome.replace("_", " ")}. Watch the replay.`;
+              const label = `${playerName(roster, s.player)}, ${clock(s.t)}. xG ${s.xg.toFixed(2)}, ${OUTCOME[s.outcome] ? t(OUTCOME[s.outcome].label) : s.outcome}. ${t("Watch the replay.")}`;
               const on = hover?.shot.event_id === s.event_id;
               return (
                 <a
@@ -199,26 +200,26 @@ function LeverageTable({ rows, roster }: { rows: LeverageRow[]; roster: Roster }
   return (
     <div className="panel">
       <div className="ph">
-        <h3>Player leverage</h3>
+        <h3>{t("Player leverage")}</h3>
         <div className="filters">
           {(["all", "home", "away"] as const).map((c) => (
             <button key={c} className={club === c ? "on" : ""} onClick={() => setClub(c)}>
-              {c === "all" ? "All" : roster.clubs[c].short}
+              {c === "all" ? t("All") : roster.clubs[c].short}
             </button>
           ))}
         </div>
       </div>
       <div className="pb" style={{ paddingTop: 6 }}>
         {shown.length === 0 ? (
-          <div className="empty">Leverage builds as the match is played.</div>
+          <div className="empty">{t("Leverage builds as the match is played.")}</div>
         ) : (
           <table className="lv">
             <thead>
               <tr>
-                <th>Player</th>
+                <th>{t("Player")}</th>
                 {COLUMNS.map(([key, label]) => (
                   <th key={key} className={sort === key ? "sorted" : ""} onClick={() => setSort(key)}>
-                    {label}
+                    {t(label)}
                     {sort === key ? " ↓" : ""}
                   </th>
                 ))}
@@ -311,7 +312,7 @@ function ShapeStrip({ analyst, roster, halfS, now }: Props) {
           </span>
         ))}
         <span className="label" style={{ marginLeft: "auto" }}>
-          Low block: back line under 36 m and very compact. High press: line over 45 m with pressure on the ball.
+          {t("Low block: back line under 36 m and very compact. High press: line over 45 m with pressure on the ball.")}
         </span>
       </div>
     </div>
@@ -329,8 +330,8 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
     <div className="grid">
       <div className="panel c12">
         <div className="ph">
-          <h3>Shot quality</h3>
-          <span className="label">Every shot placed by expected goals (xG)</span>
+          <h3>{t("Shot quality")}</h3>
+          <span className="label">{t("Every shot placed by expected goals (xG)")}</span>
         </div>
         <div className="dirs">
           <span>&larr; More difficult</span>
@@ -343,8 +344,8 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
 
       <div className="panel c7">
         <div className="ph">
-          <h3>xG race</h3>
-          <span className="label">Cumulative expected goals, goals marked</span>
+          <h3>{t("xG race")}</h3>
+          <span className="label">{t("Cumulative expected goals, goals marked")}</span>
         </div>
         <div className="pb">
           <XGRace shots={analyst.shots} roster={roster} now={now} halfS={halfS} />
@@ -361,11 +362,11 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
       <div className="c5 col">
         <div className="panel">
           <div className="ph">
-            <h3>Press resistance</h3>
-            <span className="label">Kept the ball when pressed</span>
+            <h3>{t("Press resistance")}</h3>
+            <span className="label">{t("Kept the ball when pressed")}</span>
           </div>
           <div className="pb">
-            {press.length === 0 && <div className="empty">Shown once a player has been pressed 5 times.</div>}
+            {press.length === 0 && <div className="empty">{t("Shown once a player has been pressed 5 times.")}</div>}
             {press.map((r) => (
               <div className="pr" key={r.player}>
                 <div className="pl-cell">
@@ -386,10 +387,10 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
         <div className="grid" style={{ marginTop: 0 }}>
           <div className="panel c6">
             <div className="ph">
-              <h3>Hardest goals</h3>
+              <h3>{t("Hardest goals")}</h3>
             </div>
             <div className="pb">
-              {goals.length === 0 && <div className="empty">No goals yet.</div>}
+              {goals.length === 0 && <div className="empty">{t("No goals yet.")}</div>}
               <ul className="lb">
                 {goals.map((s, i) => (
                   <li key={s.event_id}>
@@ -410,7 +411,7 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
           </div>
           <div className="panel c6">
             <div className="ph">
-              <h3>Fastest</h3>
+              <h3>{t("Fastest")}</h3>
             </div>
             <div className="pb">
               <ul className="lb">
@@ -431,8 +432,8 @@ export function Analyst({ analyst, roster, halfS, now }: Props) {
 
       <div className="panel c12">
         <div className="ph">
-          <h3>Team shape</h3>
-          <span className="label">Out of possession, rolling 60 s</span>
+          <h3>{t("Team shape")}</h3>
+          <span className="label">{t("Out of possession, rolling 60 s")}</span>
         </div>
         <ShapeStrip analyst={analyst} roster={roster} halfS={halfS} now={now} />
       </div>

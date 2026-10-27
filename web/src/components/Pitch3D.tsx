@@ -14,6 +14,7 @@ import { TacticalLayers, type Layer } from "../pitch3d/layers";
 import { Director, PRESET_LABEL, type CamContext, type Preset } from "../pitch3d/camera";
 import { Telestrator, type OverlayStyle, type Spot } from "../pitch3d/overlays";
 import { buildScript, type Beat, type Caption, type ExplainRequest, type Script } from "../pitch3d/explain";
+import { t, labels } from "../i18n";
 
 /**
  * Interactive 3D pitch for the Live tab. Same props as the 2D Pitch, plus `onSelect` for click to
@@ -60,7 +61,7 @@ export interface Pitch3DApi {
 
 const PRESET_KEY = "gdi.pitch3d.preset";
 const LAYER_KEY = "gdi.pitch3d.layers";
-const LAYER_LABEL: Record<Layer, string> = { shape: "Shape", passing: "Passing", control: "Control" };
+const LAYER_LABEL: Record<Layer, string> = labels({ shape: "Shape", passing: "Passing", control: "Control" });
 const CARRIER_M = 2.0;
 const REPLAY_HOLD_MS = 1600; // the last caption stays up this long after the clip ends
 
@@ -766,15 +767,15 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       <div ref={tagLayer} className="p3-tags" />
       <div ref={tip} className="p3-tip" />
       <div className="p3-controls">
-        <div className="p3-group" role="group" aria-label="Camera">
+        <div className="p3-group" role="group" aria-label={t("Camera")}>
           {(Object.keys(PRESET_LABEL) as Preset[]).map((p) => (
             <button key={p} className={p === preset ? "on" : ""} aria-pressed={p === preset} onClick={() => setPreset(p)}>
               {PRESET_LABEL[p]}
             </button>
           ))}
         </div>
-        <div className="p3-group" role="group" aria-label="Layers">
-          <span className="p3-glabel">Layers</span>
+        <div className="p3-group" role="group" aria-label={t("Layers")}>
+          <span className="p3-glabel">{t("Layers")}</span>
           {(Object.keys(LAYER_LABEL) as Layer[]).map((l) => (
             <button key={l} className={layers.has(l) ? "on" : ""} aria-pressed={layers.has(l)} onClick={() => toggle(l)}>
               {LAYER_LABEL[l]}
@@ -784,8 +785,8 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
       </div>
       {replaying && (
         <div className="p3-replay">
-          <b>Replay</b>
-          <button onClick={() => engine.current?.stopExplain()}>Back to live</button>
+          <b>{t("Replay")}</b>
+          <button onClick={() => engine.current?.stopExplain()}>{t("Back to live")}</button>
         </div>
       )}
       {caption && !props.hideCaption && (
@@ -794,7 +795,7 @@ const Scene = forwardRef<Pitch3DApi, Pitch3DProps & { onFail: () => void }>(func
           <p>{caption.text}</p>
         </div>
       )}
-      {!replaying && <div className="p3-hint label">Drag to orbit. Scroll to zoom. Click a player to focus.</div>}
+      {!replaying && <div className="p3-hint label">{t("Drag to orbit. Scroll to zoom. Click a player to focus.")}</div>}
     </div>
   );
 });

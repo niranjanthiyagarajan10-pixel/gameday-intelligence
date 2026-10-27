@@ -4,6 +4,7 @@ import type { Audience, Card, MatchState } from "../types";
 import { Pitch } from "./Pitch";
 import { KIND_LABEL, clock } from "../format";
 import { Tick, useChangedSinceMount } from "../tween";
+import { t } from "../i18n";
 
 interface Props {
   state: MatchState;
@@ -101,7 +102,7 @@ export function Overlay({ state, bg, audience }: Props) {
             <small>{state.status === "full_time" ? "" : half}</small>
           </div>
         </div>
-        <div className="ov-wp" aria-label="Win probability">
+        <div className="ov-wp" aria-label={t("Win probability")}>
           <div className="ov-bar">
             <i style={{ width: `${h * 100}%`, background: home.primary }} />
             <i style={{ width: `${d * 100}%`, background: "#3a3d44" }} />
@@ -112,7 +113,7 @@ export function Overlay({ state, bg, audience }: Props) {
               {home.short} <Tick value={h} scale={100} />%
             </span>
             <span>
-              Draw <Tick value={d} scale={100} />%
+              {t("Draw")} <Tick value={d} scale={100} />%
             </span>
             <span>
               {away.short} <Tick value={a} scale={100} />%
@@ -121,7 +122,7 @@ export function Overlay({ state, bg, audience }: Props) {
         </div>
         {goal && (
           <div key={goal.id} className="ov-goal" style={{ "--club": roster.clubs[goal.team].primary } as CSSProperties}>
-            <b>Goal</b>
+            <b>{t("Goal")}</b>
             <span>
               {scorer ? scorer.name : roster.clubs[goal.team].name} {Math.floor(goal.t / 60)}&prime;
             </span>
@@ -137,7 +138,7 @@ export function Overlay({ state, bg, audience }: Props) {
           </div>
           <div className="ov-body">
             <p>{cue.text}</p>
-            {cue.verified && <span className="ov-verified">Verified from tracking data</span>}
+            {cue.verified && <span className="ov-verified">{t("Verified from tracking data")}</span>}
           </div>
           <div className="ov-hero">
             <b className={`num ${heroClass}`}>{hero.value}</b>
@@ -146,7 +147,7 @@ export function Overlay({ state, bg, audience }: Props) {
         </div>
       )}
 
-      <div className="ov-mark">Gameday Intelligence. Synthetic match.</div>
+      <div className="ov-mark">{t("Gameday Intelligence. Synthetic match.")}</div>
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
 import type { Analyst, Audience, Card, Side } from "./types";
+import { labels } from "./i18n";
 
-export type Lang = "en" | "es" | "hi";
+import type { Lang } from "./i18n";
+export type { Lang } from "./i18n";
+export { LANG_LABEL } from "./i18n";
 export type Metric = "off" | "speed" | "distance" | "xg" | "leverage";
 export type Voice = "classic" | "hype" | "stats" | "tactician";
 
@@ -15,14 +18,13 @@ export interface Prefs {
   voiceOn: boolean;
 }
 
-export const LANG_LABEL: Record<Lang, string> = { en: "English", es: "Español", hi: "हिन्दी" };
-export const METRIC_LABEL: Record<Metric, string> = {
+export const METRIC_LABEL: Record<Metric, string> = labels({
   off: "Off",
   speed: "Top speed",
   distance: "Distance",
   xg: "xG",
   leverage: "Leverage",
-};
+});
 
 const KEY = "gameday.prefs";
 const DEFAULT: Prefs = { clubs: [], players: [], metric: "off", lang: "en", voice: "classic", voiceOn: false };

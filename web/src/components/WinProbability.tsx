@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { Card, Roster, Stats } from "../types";
 import { Tick } from "../tween";
 import { KIND_LABEL } from "../format";
+import { t } from "../i18n";
 
 interface Props {
   stats: Stats;
@@ -85,7 +86,7 @@ export function WinProbability({ stats, history, cards, roster, halfS }: Props) 
         <div className="wp-tip-min num">{minute(hoverT)}</div>
         <div className="wp-tip-row">
           <span><i style={{ background: home.primary }} />{home.short} {pct(p[1])}</span>
-          <span><i style={{ background: "#3A3D44" }} />Draw {pct(p[2])}</span>
+          <span><i style={{ background: "#3A3D44" }} />{t("Draw")} {pct(p[2])}</span>
           <span><i style={{ background: away.primary }} />{away.short} {pct(p[3])}</span>
         </div>
         {hoverT >= SWING_S && swing !== 0 && (
@@ -121,7 +122,7 @@ export function WinProbability({ stats, history, cards, roster, halfS }: Props) 
             <Tick value={d} scale={100} />
             <small>%</small>
           </div>
-          <div className="label">Draw</div>
+          <div className="label">{t("Draw")}</div>
         </div>
         <div>
           <div className="hero num" style={{ color: away.primary }}>
@@ -132,7 +133,7 @@ export function WinProbability({ stats, history, cards, roster, halfS }: Props) 
         </div>
       </div>
       <div className="wp-chart" ref={box} onPointerMove={onMove} onPointerLeave={() => setHoverT(null)}>
-        <svg viewBox={`0 -4 ${W} ${H + 22}`} style={{ width: "100%", marginTop: 14, display: "block" }} role="img" aria-label="Win probability over the match. Hover for the reading at any minute.">
+        <svg viewBox={`0 -4 ${W} ${H + 22}`} style={{ width: "100%", marginTop: 14, display: "block" }} role="img" aria-label={t("Win probability over the match. Hover for the reading at any minute.")}>
           {[1, 2, 3].map((i) => (
             <line key={i} x1={0} x2={W} y1={(H * i) / 4} y2={(H * i) / 4} stroke="var(--line-dash)" strokeDasharray="2 4" />
           ))}
@@ -174,7 +175,7 @@ export function WinProbability({ stats, history, cards, roster, halfS }: Props) 
           ))}
         </svg>
         {reading}
-        {hoverT === null && <div className="wp-hint label">Hover the chart for any minute</div>}
+        {hoverT === null && <div className="wp-hint label">{t("Hover the chart for any minute")}</div>}
       </div>
     </>
   );

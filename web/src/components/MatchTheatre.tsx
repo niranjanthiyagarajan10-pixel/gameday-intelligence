@@ -6,12 +6,13 @@ import { KIND_LABEL } from "../format";
 import { Crest } from "./Crest";
 import { WinProbability } from "./WinProbability";
 import type { Caption, ExplainRequest, Pitch3DApi } from "./Pitch3D";
+import { BROWSER_LANG, t, type Lang } from "../i18n";
 
 const Pitch3D = lazy(() => import("./Pitch3D"));
 
 const EXPLAIN_KINDS = new Set(["goal", "low_xg_goal", "big_chance"]);
 const MARK_KINDS = new Set(["goal", "low_xg_goal", "big_chance", "red_card"]);
-const BROWSER_LANG: Record<string, string> = { en: "en-GB", es: "es-ES", hi: "hi-IN" };
+
 
 interface Props {
   state: MatchState;
@@ -62,7 +63,7 @@ async function speakVia(url: string, body: object, lang: string, audio: HTMLAudi
   if (!said?.text || !("speechSynthesis" in window)) return;
   await new Promise<void>((done) => {
     const u = new SpeechSynthesisUtterance(said.text);
-    u.lang = BROWSER_LANG[said.lang ?? lang] ?? "en-GB";
+    u.lang = BROWSER_LANG[(said.lang ?? lang) as Lang] ?? "en-GB";
     u.onend = u.onerror = () => done();
     speechSynthesis.speak(u);
   });
@@ -75,7 +76,7 @@ function BoxScore({ rows, roster }: { rows: BoxRow[]; roster: Roster }) {
     <div className="mt-box">
       <div className="mt-box-head">
         <Crest club={roster.clubs.home} size={22} />
-        <span className="label">Team stats</span>
+        <span className="label">{t("Team stats")}</span>
         <Crest club={roster.clubs.away} size={22} />
       </div>
       {rows.map((r) => {
@@ -87,7 +88,7 @@ function BoxScore({ rows, roster }: { rows: BoxRow[]; roster: Roster }) {
           <div key={r.key} className="mt-row">
             <b className={`num ${lead === 0 ? "lead" : ""}`} style={lead === 0 ? ({ "--club": colors[0] } as CSSProperties) : undefined}>{fmt(a)}</b>
             <div className="mt-row-mid">
-              <span>{r.label}</span>
+              <span>{t(r.label)}</span>
               <div className="mt-split">
                 <i style={{ width: `${total ? (100 * a) / total : 50}%`, background: colors[0] }} />
                 <i style={{ width: `${total ? (100 * b) / total : 50}%`, background: colors[1] }} />
@@ -185,7 +186,7 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
     const id = card.moment.event_ids[0];
     if (!id) return;
     if (reelRef.current) stopReel();
-    await playShot(id, KIND_LABEL[card.moment.kind] ?? "Chance");
+    await playShot(id, KIND_LABEL[card.moment.kind] ?? t("Chance"));
   }, [playShot, stopReel]);
 
   const goTo = useCallback(async (next: ReelStep | null) => {
@@ -324,9 +325,9 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
   const why = story ? (prefs.lang !== "en" && story.langs[prefs.lang]?.why) || story.why : "";
 
   return (
-    <div className="theatre" role="dialog" aria-label="Match Theatre">
+    <div className="theatre" role="dialog" aria-label={t("Match Theatre")}>
       <header className="mt-top">
-        <span className="mt-brand">Match Theatre</span>
+        <span className="mt-brand">{t("Match Theatre")}</span>
         <div className="mt-score">
           <Crest club={home} size={30} />
           <b>{home.name}</b>
@@ -338,12 +339,12 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
           <Crest club={away} size={30} />
           <span className="mt-clock num">{state.status === "full_time" ? "FT" : `${minute}'`}</span>
         </div>
-        <button className="mt-close" onClick={onClose}>Close <kbd>Esc</kbd></button>
+        <button className="mt-close" onClick={onClose}>{t("Close")} <kbd>{t("Esc")}</kbd></button>
       </header>
 
       <div className="mt-body">
         <section className="mt-stage">
-          <Suspense fallback={<div className="mt-loading label">Loading the 3D pitch</div>}>
+          <Suspense fallback={<div className="mt-loading label">{t("Loading the 3D pitch")}</div>}>
             <Pitch3D ref={pitch} frame={frame} roster={roster} focus={focus} tagged={new Set(prefs.players)} speed={state.speed}
               fx={state.fx} onSelect={onFocus} explain={req} onExplainEnd={endExplain} onCaption={setCaption} hideCaption />
           </Suspense>
@@ -366,7 +367,7 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
               <p>{caption.text}</p>
             </div>
           )}
-          <div className="mt-timeline" aria-label="Key moments">
+          <div className="mt-timeline" aria-label={t("Key moments")}>
             <div className="mt-tl-track">
               <i className="mt-tl-now" style={{ width: `${Math.min(100, (100 * stats.t) / total)}%` }} />
               <i className="mt-tl-ht" style={{ left: "50%" }} />
@@ -383,7 +384,7 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
                 );
               })}
             </div>
-            <div className="mt-tl-ends label"><span>0'</span><span>HT</span><span>90'</span></div>
+            <div className="mt-tl-ends label"><span>0'</span><span>{t("HT")}</span><span>90'</span></div>
           </div>
         </section>
 
@@ -391,12 +392,12 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
           {reel && step ? (
             <div className="mt-panel mt-explain">
               <div className="mt-ph">
-                <h3>Highlights reel</h3>
+                <h3>{t("Highlights reel")}</h3>
                 <span className="label">
-                  {step.phase === "intro" ? "Intro" : step.phase === "outro" ? "Outro" : `Clip ${step.i + 1} of ${reel.clips.length}`}
+                  {step.phase === "intro" ? t("Intro") : step.phase === "outro" ? t("Outro") : t("Clip {i} of {n}", { i: step.i + 1, n: reel.clips.length })}
                 </span>
               </div>
-              <div className="mt-dots" aria-label="Reel progress">
+              <div className="mt-dots" aria-label={t("Reel progress")}>
                 {reel.clips.map((c, i) => {
                   const at = step.phase === "clip" ? step.i : step.phase === "outro" ? reel.clips.length : -1;
                   return (
@@ -424,31 +425,31 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
                 </ol>
               )}
               <div className="mt-ctrl">
-                <button onClick={() => setPaused((p) => !p)}>{paused ? "Play" : "Pause"}</button>
+                <button onClick={() => setPaused((p) => !p)}>{paused ? t("Play") : t("Pause")}</button>
                 <button onClick={() => {
                   if (step.phase === "clip" && req) pitch.current?.stopExplain();
                   else void goTo(after(step, reel));
-                }}>Skip</button>
+                }}>{t("Skip")}</button>
                 <button className={voice ? "on" : ""} aria-pressed={voice} onClick={() => {
                   setVoice((v) => !v);
                   if (voice) {
                     hush();
                     pitch.current?.release();
                   }
-                }}>Voice {voice ? "on" : "off"}</button>
+                }}>{t("Voice")} {voice ? "on" : "off"}</button>
                 <button onClick={() => {
                   stopReel();
                   hush();
                   pitch.current?.stopExplain();
                   setReq(null);
                   setStory(null);
-                }}>Stop</button>
+                }}>{t("Stop")}</button>
               </div>
             </div>
           ) : req ? (
             <div className="mt-panel mt-explain">
               <div className="mt-ph">
-                <h3>Explain this moment</h3>
+                <h3>{t("Explain this moment")}</h3>
                 <span className="label">{req.shot.minute}' {req.title}</span>
               </div>
               <div className="mt-who" style={{ "--club": roster.clubs[req.shot.team].primary } as CSSProperties}>
@@ -475,38 +476,38 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
                   </li>
                 </ol>
               ) : (
-                <p className="mt-note">The replay explains this shot from its tracking and the shot record.</p>
+                <p className="mt-note">{t("The replay explains this shot from its tracking and the shot record.")}</p>
               )}
               <div className="mt-ctrl">
-                <button onClick={() => setPaused((p) => !p)}>{paused ? "Play" : "Pause"}</button>
+                <button onClick={() => setPaused((p) => !p)}>{paused ? t("Play") : t("Pause")}</button>
                 <button onClick={() => {
                   const id = req.shot.event_id;
                   const card = state.cards.find((c) => c.moment.event_ids[0] === id);
                   if (card) void explain(card);
-                }}>Replay</button>
+                }}>{t("Replay")}</button>
                 <button className={voice ? "on" : ""} aria-pressed={voice} onClick={() => {
                   setVoice((v) => !v);
                   if (voice) {
                     hush();
                     pitch.current?.release();
                   }
-                }}>Voice {voice ? "on" : "off"}</button>
-                <button onClick={() => pitch.current?.stopExplain()}>Back to live</button>
+                }}>{t("Voice")} {voice ? "on" : "off"}</button>
+                <button onClick={() => pitch.current?.stopExplain()}>{t("Back to live")}</button>
               </div>
             </div>
           ) : (
             <div className="mt-panel">
               <div className="mt-ph">
-                <h3>Explain a moment</h3>
+                <h3>{t("Explain a moment")}</h3>
                 <span className="label">{chances.length} so far</span>
               </div>
               <button className="mt-reel-go" onClick={() => void startReel()}>
-                <b>Highlights reel</b>
-                <span>Every goal and the best chances, explained in order</span>
+                <b>{t("Highlights reel")}</b>
+                <span>{t("Every goal and the best chances, explained in order")}</span>
               </button>
               {reelNote && <p className="mt-note">{reelNote}</p>}
               <div className="mt-list">
-                {chances.length === 0 && <p className="mt-note">Goals and big chances appear here. Pick one to see how it happened.</p>}
+                {chances.length === 0 && <p className="mt-note">{t("Goals and big chances appear here. Pick one to see how it happened.")}</p>}
                 {chances.map((c) => {
                   const club = roster.clubs[c.moment.team ?? "home"];
                   const id = c.moment.event_ids[0];
@@ -516,7 +517,7 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
                       <span className="num">{c.moment.minute}'</span>
                       <b>{KIND_LABEL[c.moment.kind] ?? c.moment.kind}</b>
                       <span>{name(c.moment.players[0])}</span>
-                      <em>{loading === id ? "Loading" : "Explain"}</em>
+                      <em>{loading === id ? t("Loading") : t("Explain")}</em>
                     </button>
                   );
                 })}
@@ -526,15 +527,15 @@ export function MatchTheatre({ state, prefs, start, onClose, onFocus, focus }: P
 
           <div className="mt-panel">
             <div className="mt-ph">
-              <h3>Match stats</h3>
-              <span className="label">From the event feed</span>
+              <h3>{t("Match stats")}</h3>
+              <span className="label">{t("From the event feed")}</span>
             </div>
-            {stats.box ? <BoxScore rows={stats.box} roster={roster} /> : <p className="mt-note">Stats appear once the match starts.</p>}
+            {stats.box ? <BoxScore rows={stats.box} roster={roster} /> : <p className="mt-note">{t("Stats appear once the match starts.")}</p>}
           </div>
 
           <div className="mt-panel">
             <div className="mt-ph">
-              <h3>Win probability</h3>
+              <h3>{t("Win probability")}</h3>
             </div>
             <div className="mt-wp">
               <WinProbability stats={stats} history={state.history} cards={state.cards} roster={roster} halfS={state.halfS} />

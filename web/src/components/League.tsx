@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Crest } from "./Crest";
+import { t } from "../i18n";
 
 interface LeagueClub {
   id: string;
@@ -108,7 +109,7 @@ function FixtureRow({ f, clubs, table, onWatch }: { f: Fixture; clubs: Record<st
       <div className="lg-fx-story">
         <div className="lg-fx-kicker">
           <span className="lg-tag">{f.title}</span>
-          {h.rival === a.id && <span className="lg-derby">Derby</span>}
+          {h.rival === a.id && <span className="lg-derby">{t("Derby")}</span>}
         </div>
         <p>{f.story}</p>
       </div>
@@ -121,7 +122,7 @@ function FixtureRow({ f, clubs, table, onWatch }: { f: Fixture; clubs: Record<st
       <div className="lg-fx-foot">
         <button onClick={() => onWatch(f.scenario)}>Watch live &#9656;</button>
         <span className="label">
-          {last ? `Last met ${clubs[last.home].short} ${last.score[0]}-${last.score[1]} ${clubs[last.away].short}` : "First meeting"}
+          {last ? `${t("Last met")} ${clubs[last.home].short} ${last.score[0]}-${last.score[1]} ${clubs[last.away].short}` : t("First meeting")}
         </span>
       </div>
     </article>
@@ -146,7 +147,7 @@ function ClubDetail({ c, data }: { c: LeagueClub; data: LeagueData }) {
           <p>{c.style}.</p>
           <span className="label dim">
             {c.ground}, {c.city} &middot; {c.formation}
-            {rival ? ` · Rivals: ${rival.name}` : ""}
+            {rival ? ` · ${t("Rivals")}: ${rival.name}` : ""}
           </span>
         </div>
       </div>
@@ -160,37 +161,37 @@ function ClubDetail({ c, data }: { c: LeagueClub; data: LeagueData }) {
         </div>
         <div>
           <b className="num">{row ? sign(row.gd) : ""}</b>
-          <span className="label">Goal diff</span>
+          <span className="label">{t("Goal diff")}</span>
         </div>
         <div>
           <b className="num">{row ? (row.xg_for - row.xg_against).toFixed(1) : ""}</b>
-          <span className="label">xG diff</span>
+          <span className="label">{t("xG diff")}</span>
         </div>
         <div>
           <Form form={c.form} />
-          <span className="label">Form</span>
+          <span className="label">{t("Form")}</span>
         </div>
       </div>
       <div className="lg-cd-more">
         <div>
-          <span className="label">Top scorer</span>
-          <b>{scorer ? `${scorer.name}, ${scorer.goals}` : "No one in the top 20"}</b>
+          <span className="label">{t("Top scorer")}</span>
+          <b>{scorer ? `${scorer.name}, ${scorer.goals}` : t("No one in the top 20")}</b>
         </div>
         <div>
-          <span className="label">Recent results</span>
+          <span className="label">{t("Recent results")}</span>
           {results.map((r) => {
             const home = r.home === c.id;
             const opp = data.clubs[home ? r.away : r.home];
             return (
               <b key={r.matchday} className="num">
-                MD{r.matchday} {home ? "v" : "at"} {opp.short} {r.score[0]}-{r.score[1]}
+                {t("MD")}{r.matchday} {home ? "v" : "at"} {opp.short} {r.score[0]}-{r.score[1]}
               </b>
             );
           })}
         </div>
         {next && (
           <div>
-            <span className="label">Matchday {data.matchday}</span>
+            <span className="label">{t("Matchday")} {data.matchday}</span>
             <b>{next.title}</b>
             <a href="#/league" onClick={(e) => (e.preventDefault(), window.scrollTo({ top: 0, behavior: "smooth" }))}>
               {data.clubs[next.home].short} v {data.clubs[next.away].short} &#8593;
@@ -219,15 +220,15 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
       })
       .catch(() => setData(null));
   }, []);
-  if (!data) return <div className="empty" style={{ padding: 24 }}>Loading the league.</div>;
+  if (!data) return <div className="empty" style={{ padding: 24 }}>{t("Loading the league.")}</div>;
   const { clubs, table } = data;
   const played = Array.from({ length: data.matchday - 1 }, (_, i) => i + 1);
   return (
     <div className="lg">
       <section className="lg-hero">
         <span className="label">The Meridian League &middot; Season so far</span>
-        <h1>Matchday {data.matchday}</h1>
-        <p>Five matches, five stories. Every result, table position and goal below was played by the same simulator that runs the live match.</p>
+        <h1>{t("Matchday")} {data.matchday}</h1>
+        <p>{t("Five matches, five stories. Every result, table position and goal below was played by the same simulator that runs the live match.")}</p>
       </section>
 
       <section className="lg-fixtures">
@@ -238,20 +239,20 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
 
       <div className="lg-two">
         <section className="lg-panel">
-          <h2 className="lg-h">Table</h2>
+          <h2 className="lg-h">{t("Table")}</h2>
           <table className="lg-table num">
             <thead>
               <tr>
                 <th />
-                <th className="l">Club</th>
+                <th className="l">{t("Club")}</th>
                 <th>P</th>
                 <th>W</th>
                 <th>D</th>
                 <th>L</th>
-                <th>GD</th>
-                <th title="Expected goals for and against">xG</th>
-                <th className="l">Form</th>
-                <th>Pts</th>
+                <th>{t("GD")}</th>
+                <th title={t("Expected goals for and against")}>{t("xG")}</th>
+                <th className="l">{t("Form")}</th>
+                <th>{t("Pts")}</th>
               </tr>
             </thead>
             <tbody>
@@ -286,7 +287,7 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
         </section>
 
         <section className="lg-panel">
-          <h2 className="lg-h">Top scorers</h2>
+          <h2 className="lg-h">{t("Top scorers")}</h2>
           <div className="lg-scorers">
             {data.players.slice(0, 8).map((p, i) => {
               const c = clubs[p.club];
@@ -300,7 +301,7 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
                       {c.name} &middot; {p.shots} shots &middot; {p.xg.toFixed(1)} xG
                     </span>
                   </div>
-                  <span className={`gax num ${p.goals_above_xg >= 0 ? "up" : "down"}`} title="Goals above expected">
+                  <span className={`gax num ${p.goals_above_xg >= 0 ? "up" : "down"}`} title={t("Goals above expected")}>
                     {sign(Number(p.goals_above_xg.toFixed(1)))}
                   </span>
                   <span className="g num">{p.goals}</span>
@@ -313,7 +314,7 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
 
       <section className="lg-panel">
         <div className="lg-results-head">
-          <h2 className="lg-h">Results</h2>
+          <h2 className="lg-h">{t("Results")}</h2>
           <div className="lg-mds">
             {played.map((n) => (
               <button key={n} className={md === n ? "on" : ""} onClick={() => setMd(n)}>
@@ -343,7 +344,7 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
                     <Crest club={a} size={22} />
                   </div>
                   <span className="xg num">
-                    xG {r.xg[0].toFixed(2)} &ndash; {r.xg[1].toFixed(2)}
+                    {t("xG")} {r.xg[0].toFixed(2)} &ndash; {r.xg[1].toFixed(2)}
                   </span>
                 </div>
               );
@@ -352,7 +353,7 @@ export function League({ onWatch }: { onWatch: (scenario: string) => void }) {
       </section>
 
       <section className="lg-panel">
-        <h2 className="lg-h">The clubs</h2>
+        <h2 className="lg-h">{t("The clubs")}</h2>
         <div className="lg-crests" role="tablist">
           {Object.values(clubs).map((c) => (
             <button key={c.id} role="tab" aria-selected={pick === c.id} className={pick === c.id ? "on" : ""} onClick={() => setPick(c.id)} title={c.name} style={{ ["--c" as string]: c.primary }}>

@@ -2,10 +2,11 @@ import * as THREE from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { HEAD_Y, L, clamp, ease } from "./core";
 import type { Figure } from "./figures";
+import { labels } from "../i18n";
 
 export type Preset = "broadcast" | "goal" | "tactical" | "follow" | "player" | "eye" | "auto";
 
-export const PRESET_LABEL: Record<Preset, string> = {
+export const PRESET_LABEL: Record<Preset, string> = labels({
   broadcast: "Broadcast",
   goal: "Behind goal",
   tactical: "Tactical",
@@ -13,7 +14,7 @@ export const PRESET_LABEL: Record<Preset, string> = {
   player: "Player cam",
   eye: "Eye line",
   auto: "Director",
-};
+});
 
 /** What the camera needs to know about the match this frame, in world units. */
 export interface CamContext {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Crest } from "./Crest";
 import type { Lang } from "../prefs";
+import { t } from "../i18n";
 
 export interface LeagueClub {
   id: string;
@@ -99,7 +100,7 @@ function Side({ c, side, pos, pts, form }: { c: LeagueClub; side: "home" | "away
       <Crest club={c} size={96} />
       <div>
         <span className="label">
-          {side === "home" ? "Home" : "Away"} &middot; {ord(pos)} &middot; {pts} pts
+          {side === "home" ? t("Home") : t("Away")} &middot; {ord(pos)} &middot; {pts} pts
         </span>
         <h2>{c.name}</h2>
         <div className="sub">
@@ -118,12 +119,12 @@ export function Preview({ room, lang }: { room: string; lang: Lang }) {
   useEffect(() => {
     let alive = true;
     setPv(null);
-    getJson<PreviewData>(`/api/rooms/${room}/preview`).then((d) => alive && d && setPv(d));
+    getJson<PreviewData>(`/api/rooms/${room}/preview?lang=${lang}`).then((d) => alive && d && setPv(d));
     return () => {
       alive = false;
     };
-  }, [room]);
-  if (!pv || !clubs) return <div className="empty" style={{ padding: 24 }}>The Preview agent is writing.</div>;
+  }, [room, lang]);
+  if (!pv || !clubs) return <div className="empty" style={{ padding: 24 }}>{t("The Preview agent is writing.")}</div>;
   const h = clubs[pv.home];
   const a = clubs[pv.away];
   const text = (lang !== "en" && pv.langs?.[lang]) || { headline: pv.headline, story: pv.story };
@@ -134,7 +135,7 @@ export function Preview({ room, lang }: { room: string; lang: Lang }) {
         <Side c={h} side="home" pos={pv.table.home.position} pts={pv.table.home.points} form={pv.form.home} />
         <div className="pv-vs">
           <b>V</b>
-          <span className="label">Matchday {pv.facts.matchday}</span>
+          <span className="label">{t("Matchday")} {pv.facts.matchday}</span>
           <span className="label">{pv.facts.ground}</span>
         </div>
         <Side c={a} side="away" pos={pv.table.away.position} pts={pv.table.away.points} form={pv.form.away} />
@@ -147,16 +148,16 @@ export function Preview({ room, lang }: { room: string; lang: Lang }) {
 
       <div className="pv-grid">
         <section className="pv-story">
-          <span className="label">The story</span>
+          <span className="label">{t("The story")}</span>
           <h3 lang={lang}>{text.headline}</h3>
           <p lang={lang}>{text.story}</p>
           <div className="pv-by">
-            {pv.source === "agent" && <span className="verified">Verified</span>}
+            {pv.source === "agent" && <span className="verified">{t("Verified")}</span>}
             <span className="label">{pv.source === "agent" ? "Preview agent" : "Template preview, filled from the season data"}</span>
           </div>
         </section>
         <section className="pv-panel">
-          <h4>Head to head</h4>
+          <h4>{t("Head to head")}</h4>
           <div className="pv-h2h">
             {pv.h2h.slice(0, 5).map((m, i) => {
               const winner = m.score[0] > m.score[1] ? m.home : m.score[1] > m.score[0] ? m.away : null;
@@ -171,11 +172,11 @@ export function Preview({ room, lang }: { room: string; lang: Lang }) {
                 </div>
               );
             })}
-            {pv.h2h.length === 0 && <div className="empty">First meeting.</div>}
+            {pv.h2h.length === 0 && <div className="empty">{t("First meeting.")}</div>}
           </div>
         </section>
         <section className="pv-panel">
-          <h4>Players to watch</h4>
+          <h4>{t("Players to watch")}</h4>
           <div className="pv-watch">
             {pv.watch.map((p) => {
               const c = p.side === "home" ? h : a;

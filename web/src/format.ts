@@ -1,4 +1,5 @@
 import type { Roster, Side } from "./types";
+import { labels } from "./i18n";
 
 export const pct = (p: number) => `${Math.round(p * 100)}`;
 
@@ -21,7 +22,7 @@ export function sideColor(roster: Roster | null, side: Side | null | undefined):
   return roster.clubs[side].primary;
 }
 
-export const KIND_LABEL: Record<string, string> = {
+export const KIND_LABEL: Record<string, string> = labels({
   goal: "Goal",
   low_xg_goal: "Goal against the odds",
   red_card: "Red card",
@@ -30,13 +31,13 @@ export const KIND_LABEL: Record<string, string> = {
   top_speed: "Top speed",
   control_flip: "Control",
   shape_change: "Shape change",
-};
+});
 
-export const SHAPE_LABEL: Record<string, string> = {
+export const SHAPE_LABEL: Record<string, string> = labels({
   low_block: "Low block",
   mid_block: "Mid block",
   high_press: "High press",
-};
+});
 
 /** Human labels and formats for evidence keys shown in the evidence drawer. */
 export function evidenceRows(evidence: Record<string, number | string>, roster: Roster | null): [string, string][] {

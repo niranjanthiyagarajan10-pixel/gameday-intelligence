@@ -4,6 +4,7 @@ import { ShotMap } from "./ShotMap";
 import { Heatmap } from "./TrackingViz";
 import { signed } from "../format";
 import { shotHref } from "../route";
+import { t, labels } from "../i18n";
 
 interface Props {
   room: string;
@@ -11,7 +12,7 @@ interface Props {
   roster: Roster;
 }
 
-const POSITION: Record<string, string> = { GK: "Goalkeeper", DF: "Defender", MF: "Midfielder", FW: "Forward" };
+const POSITION: Record<string, string> = labels({ GK: "Goalkeeper", DF: "Defender", MF: "Midfielder", FW: "Forward" });
 
 /** A player's game averages and every shot, like the NBA player shot page. Refreshes while the match is live. */
 export function PlayerPage({ room, id, roster }: Props) {
@@ -32,14 +33,14 @@ export function PlayerPage({ room, id, roster }: Props) {
     };
   }, [room, id]);
 
-  if (!info) return <div className="empty" style={{ padding: 24 }}>That player is not in this match.</div>;
+  if (!info) return <div className="empty" style={{ padding: 24 }}>{t("That player is not in this match.")}</div>;
   const club = roster.clubs[info.side];
   const s = summary;
   const fmt = (v: number | null | undefined, digits = 2) => (v === null || v === undefined ? "-" : v.toFixed(digits));
 
   const kpis: [string, string, string][] = s
     ? [
-        [`${s.goals}`, "", `Goals from ${s.shots} shots`],
+        [`${s.goals}`, "", t("Goals from {n} shots", { n: s.shots })],
         [signed(s.goals_minus_xg), "", "Goals above expected"],
         [fmt(s.made_xg), "xG", "Average xG of goals"],
         [fmt(s.missed_xg), "xG", "Average xG of misses"],
@@ -52,7 +53,7 @@ export function PlayerPage({ room, id, roster }: Props) {
         [s.top_speed_kmh.toFixed(1), "km/h", "Top speed"],
         [`${s.sprints}`, "", "Sprints"],
         [signed(s.leverage), "", "Leverage"],
-        [s.press_rate !== null ? `${Math.round(s.press_rate * 100)}` : "-", s.press_rate !== null ? "%" : "", `Press resistance (${s.press_attempts})`],
+        [s.press_rate !== null ? `${Math.round(s.press_rate * 100)}` : "-", s.press_rate !== null ? "%" : "", `${t("Press resistance")} (${s.press_attempts})`],
       ]
     : [];
 
@@ -84,7 +85,7 @@ export function PlayerPage({ room, id, roster }: Props) {
                   {v}
                   {unit && <small>{unit}</small>}
                 </b>
-                <span>{label}</span>
+                <span>{t(label)}</span>
               </div>
             ))}
           </div>
@@ -95,29 +96,29 @@ export function PlayerPage({ room, id, roster }: Props) {
                   {v}
                   {unit && <small>{unit}</small>}
                 </b>
-                <span>{label}</span>
+                <span>{t(label)}</span>
               </div>
             ))}
           </div>
 
           <div className="panel c7" style={{ alignSelf: "start" }}>
             <div className="ph">
-              <h3>Every shot</h3>
-              <span className="label">Click a shot to watch its replay</span>
+              <h3>{t("Every shot")}</h3>
+              <span className="label">{t("Click a shot to watch its replay")}</span>
             </div>
             <div className="pb">
               {s.list.length === 0 ? (
-                <div className="empty">No shots yet.</div>
+                <div className="empty">{t("No shots yet.")}</div>
               ) : (
                 <table className="lv shots">
                   <thead>
                     <tr>
-                      <th>Shot type</th>
-                      <th>Body</th>
-                      <th>Result</th>
-                      <th>Minute</th>
-                      <th>Distance</th>
-                      <th>xG</th>
+                      <th>{t("Shot type")}</th>
+                      <th>{t("Body")}</th>
+                      <th>{t("Result")}</th>
+                      <th>{t("Minute")}</th>
+                      <th>{t("Distance")}</th>
+                      <th>{t("xG")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -126,7 +127,7 @@ export function PlayerPage({ room, id, roster }: Props) {
                         <td>
                           <span className="play">&#9654;</span> {shot.shot_type}
                         </td>
-                        <td>{shot.body_part === "head" ? "Head" : "Foot"}</td>
+                        <td>{shot.body_part === "head" ? t("Head") : t("Foot")}</td>
                         <td>{shot.outcome === "goal" ? <i className="ring" /> : <i className="cross">x</i>}</td>
                         <td>{shot.minute}'</td>
                         <td>{shot.distance_m.toFixed(1)} m</td>
@@ -141,20 +142,20 @@ export function PlayerPage({ room, id, roster }: Props) {
           <div className="c5 col">
             <div className="panel">
               <div className="ph">
-                <h3>Heatmap</h3>
+                <h3>{t("Heatmap")}</h3>
                 <span className="label">Every tracking frame, attacking &rarr;</span>
               </div>
               <div className="pb">
                 {s.heatmap.length ? (
                   <Heatmap grid={s.heatmap} side={info.side} roster={roster} />
                 ) : (
-                  <div className="empty">Builds as the player runs.</div>
+                  <div className="empty">{t("Builds as the player runs.")}</div>
                 )}
               </div>
             </div>
             <div className="panel">
               <div className="ph">
-                <h3>Shot map</h3>
+                <h3>{t("Shot map")}</h3>
               </div>
               <div className="pb">
                 <ShotMap shots={s.list} roster={roster} />

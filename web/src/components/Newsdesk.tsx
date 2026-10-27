@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import type { Lang } from "../prefs";
 import { Crest } from "./Crest";
 import { getJson, useClubs } from "./Preview";
+import { t } from "../i18n";
 
 interface Article {
   scenario: string;
@@ -56,9 +57,9 @@ export function Newsdesk({ lang }: { lang: Lang }) {
     };
   }, []);
 
-  if (!news || !clubs) return <div className="empty" style={{ padding: 24 }}>The Newsdesk is filing.</div>;
+  if (!news || !clubs) return <div className="empty" style={{ padding: 24 }}>{t("The Newsdesk is filing.")}</div>;
   const a = news.articles.find((x) => x.scenario === pick) ?? news.articles[0];
-  const t = (lang !== "en" && a.langs?.[lang]) || a;
+  const txt = (lang !== "en" && a.langs?.[lang]) || a;
   const h = clubs[a.home];
   const w = clubs[a.away];
   const won = a.score[0] === a.score[1] ? null : a.score[0] > a.score[1] ? "home" : "away";
@@ -68,19 +69,19 @@ export function Newsdesk({ lang }: { lang: Lang }) {
     <div className="nd">
       <section className="nd-head">
         <span className="label">The Meridian League &middot; Newsdesk</span>
-        <h1>Matchday {news.matchday}</h1>
-        {news.writing && <span className="label nd-writing">The Newsdesk agent is writing the reports</span>}
+        <h1>{t("Matchday")} {news.matchday}</h1>
+        {news.writing && <span className="label nd-writing">{t("The Newsdesk agent is writing the reports")}</span>}
       </section>
       <div className="nd-grid">
         <article className="nd-article" style={{ "--h": h.primary, "--a": w.primary } as CSSProperties}>
           <div className="nd-hero">
             <div className="nd-kicker">
-              <em>Full time</em>
+              <em>{t("Full time")}</em>
               <span className="label">
                 {a.title} &middot; {a.ground}
               </span>
             </div>
-            <h2 lang={lang}>{t.headline}</h2>
+            <h2 lang={lang}>{txt.headline}</h2>
             <div className="nd-score">
               <Crest club={h} size={52} />
               <span className={won === "away" ? "lost" : ""}>{h.name}</span>
@@ -93,9 +94,9 @@ export function Newsdesk({ lang }: { lang: Lang }) {
               <Crest club={w} size={52} />
             </div>
           </div>
-          <p className="nd-stand" lang={lang}>{t.standfirst}</p>
+          <p className="nd-stand" lang={lang}>{txt.standfirst}</p>
           <div className="nd-by">
-            {a.source === "agent" ? <span className="verified">Every figure checked</span> : <span className="label">Template report</span>}
+            {a.source === "agent" ? <span className="verified">{t("Every figure checked")}</span> : <span className="label">{t("Template report")}</span>}
             <span className="label">{a.source === "agent" ? "By the Newsdesk agent" : "Filled from the match engine"}</span>
           </div>
           <div className="nd-strip">
@@ -104,7 +105,7 @@ export function Newsdesk({ lang }: { lang: Lang }) {
                 {a.stats.xg[0].toFixed(2)}
                 <small> / {a.stats.xg[1].toFixed(2)}</small>
               </b>
-              <span>xG</span>
+              <span>{t("xG")}</span>
             </div>
             <div>
               <b className="num">
@@ -118,25 +119,25 @@ export function Newsdesk({ lang }: { lang: Lang }) {
                 {a.stats.shots[0]}
                 <small> / {a.stats.shots[1]}</small>
               </b>
-              <span>Shots</span>
+              <span>{t("Shots")}</span>
             </div>
             <div>
               <b className="num">{a.stats.top_player_leverage ?? "-"}</b>
-              <span>{a.stats.top_player ?? "Top player"} leverage</span>
+              <span>{a.stats.top_player ?? t("Top player")} leverage</span>
             </div>
             <div>
               <b className="num">{a.stats.spell ? `${Math.round(a.stats.spell.share * 100)}%` : "-"}</b>
-              <span>{a.stats.spell && spellClub ? `${spellClub.short} threat, ${a.stats.spell.start}' to ${a.stats.spell.end}'` : "No dominant spell"}</span>
+              <span>{a.stats.spell && spellClub ? t("{club} threat, {a}' to {b}'", { club: spellClub.short, a: a.stats.spell.start, b: a.stats.spell.end }) : t("No dominant spell")}</span>
             </div>
           </div>
           <div className="nd-body" lang={lang}>
-            {t.body.map((p, i) => (
+            {txt.body.map((p, i) => (
               <div key={i}>
                 <p>{p}</p>
                 {i === 0 && (
                   <blockquote className="nd-pull">
-                    {t.pull}
-                    <small>From the match data</small>
+                    {txt.pull}
+                    <small>{t("From the match data")}</small>
                   </blockquote>
                 )}
               </div>
@@ -153,7 +154,7 @@ export function Newsdesk({ lang }: { lang: Lang }) {
           )}
         </article>
         <aside className="nd-side">
-          <h3>Matchday {news.matchday}</h3>
+          <h3>{t("Matchday")} {news.matchday}</h3>
           {news.articles.map((x) => {
             const xh = clubs[x.home];
             const xa = clubs[x.away];

@@ -85,7 +85,7 @@ export interface Card {
   hero: { value: string; label: string };
   source: string; // "narrator" once an agent's verified draft replaced the template
   sources?: Record<Audience, string>;
-  langs?: Partial<Record<"es" | "hi", Partial<Record<Audience, Cue>>>>; // verified Personalizer translations
+  langs?: Partial<Record<string, Partial<Record<Audience, Cue>>>>; // verified Personalizer translations
 }
 
 /** One agent step for the trace panel (agents/desk.py). */
@@ -323,7 +323,7 @@ export interface BlueprintData {
     headline: string;
     text: string;
     source?: string; // "recap" when the Recap agent wrote it
-    langs?: Partial<Record<"es" | "hi", { headline: string; text: string }>>;
+    langs?: Partial<Record<string, { headline: string; text: string }>>;
   };
   highlights: Highlight[];
   performers: Performer[];

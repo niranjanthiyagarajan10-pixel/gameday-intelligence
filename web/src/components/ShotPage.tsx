@@ -4,6 +4,7 @@ import { Replay } from "./Replay";
 import { ShotMap } from "./ShotMap";
 import { pct, playerName, signed } from "../format";
 import { playerHref } from "../route";
+import { t, labels } from "../i18n";
 
 interface Props {
   room: string;
@@ -11,12 +12,12 @@ interface Props {
   roster: Roster;
 }
 
-const OUTCOME: Record<string, string> = {
+const OUTCOME: Record<string, string> = labels({
   goal: "Goal",
   saved: "Saved",
   off_target: "Off target",
   blocked: "Blocked",
-};
+});
 
 /** One shot, the way NBA Inside the Game shows one field goal: a replay, its difficulty and the details. */
 export function ShotPage({ room, id, roster }: Props) {
@@ -45,8 +46,8 @@ export function ShotPage({ room, id, roster }: Props) {
     };
   }, [room, id]);
 
-  if (missing) return <div className="empty" style={{ padding: 24 }}>That shot is not in this match.</div>;
-  if (!data) return <div className="empty" style={{ padding: 24 }}>Loading the replay.</div>;
+  if (missing) return <div className="empty" style={{ padding: 24 }}>{t("That shot is not in this match.")}</div>;
+  if (!data) return <div className="empty" style={{ padding: 24 }}>{t("Loading the replay.")}</div>;
 
   const s = data.shot;
   const club = roster.clubs[s.team];
@@ -60,10 +61,10 @@ export function ShotPage({ room, id, roster }: Props) {
     ["Nearest defender", s.defender_m !== null ? `${s.defender_m.toFixed(1)} m` : "-"],
     ["Pressure", `${Math.round(s.pressure * 100)}%`],
     ["Shot speed", s.speed_kmh ? `${Math.round(s.speed_kmh)} km/h` : "-"],
-    ["Body part", s.body_part === "head" ? "Head" : "Foot"],
+    ["Body part", s.body_part === "head" ? t("Head") : t("Foot")],
     ["Created by", s.creator ? playerName(roster, s.creator) : "Self-created"],
-    [`${club.short} win chance if it goes in`, `${pct(s.wp_if_goal)}%`],
-    [`${club.short} win chance if it does not`, `${pct(s.wp_if_miss)}%`],
+    [t("{club} win chance if it goes in", { club: club.short }), `${pct(s.wp_if_goal)}%`],
+    [t("{club} win chance if it does not", { club: club.short }), `${pct(s.wp_if_miss)}%`],
     ["Leverage", signed(s.leverage)],
   ];
 
@@ -81,7 +82,7 @@ export function ShotPage({ room, id, roster }: Props) {
       <div className="c8 col">
         <div className="panel">
           <div className="pb">
-            {data.clip ? <Replay clip={data.clip} shot={s} roster={roster} /> : <div className="empty">Recording the replay.</div>}
+            {data.clip ? <Replay clip={data.clip} shot={s} roster={roster} /> : <div className="empty">{t("Recording the replay.")}</div>}
           </div>
         </div>
         <div className="shot-title">
@@ -95,18 +96,18 @@ export function ShotPage({ room, id, roster }: Props) {
           </div>
           <div className="xgcard">
             <b className="num">{s.xg.toFixed(2)}</b>
-            <span>Shot difficulty (xG)</span>
+            <span>{t("Shot difficulty (xG)")}</span>
           </div>
         </div>
         <div className="panel">
           <div className="ph">
-            <h3>Shot details</h3>
-            <span className="label">All measured from tracking and events</span>
+            <h3>{t("Shot details")}</h3>
+            <span className="label">{t("All measured from tracking and events")}</span>
           </div>
           <div className="pb details">
             {details.map(([k, v]) => (
               <div key={k}>
-                <span className="label">{k}</span>
+                <span className="label">{t(k)}</span>
                 <b className="num">{v}</b>
               </div>
             ))}
@@ -117,7 +118,7 @@ export function ShotPage({ room, id, roster }: Props) {
       <div className="c4 col">
         <div className="panel">
           <div className="ph">
-            <h3>Shots by {playerName(roster, s.player, true)}</h3>
+            <h3>{t("Shots by")} {playerName(roster, s.player, true)}</h3>
           </div>
           <div className="pb">
             {player ? (
@@ -128,7 +129,7 @@ export function ShotPage({ room, id, roster }: Props) {
                     {player.goals} of {player.shots} scored. xG {player.xg.toFixed(2)}
                   </span>
                   <span>
-                    <i className="ring" /> Goal <i className="cross">x</i> Miss
+                    <i className="ring" /> {t("Goal")} <i className="cross">x</i> {t("Miss")}
                   </span>
                 </div>
                 <a className="more" href={playerHref(s.player)}>
@@ -136,7 +137,7 @@ export function ShotPage({ room, id, roster }: Props) {
                 </a>
               </>
             ) : (
-              <div className="empty">Loading.</div>
+              <div className="empty">{t("Loading.")}</div>
             )}
           </div>
         </div>

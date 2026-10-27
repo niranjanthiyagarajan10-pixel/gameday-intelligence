@@ -8,6 +8,7 @@ import { ShotExplorer } from "./ShotExplorer";
 import { GravitySection } from "./GravityMap";
 import { playerHref } from "../route";
 import type { Lang } from "../prefs";
+import { t } from "../i18n";
 
 const REFRESH_MS = 5000;
 const POSITION: Record<string, string> = { GK: "GK", DF: "DF", MF: "MF", FW: "FW" };
@@ -26,8 +27,8 @@ function Header({ bp, roster }: { bp: BlueprintData; roster: Roster }) {
         <div className="bp-team-name">
           <h2>{club.name}</h2>
           <span className="muted">
-            {side === "home" ? "Home" : "Away"}, {club.formation}
-            {bp.men[side === "home" ? 0 : 1] < 11 ? `, ${bp.men[side === "home" ? 0 : 1]} men` : ""}
+            {side === "home" ? t("Home") : t("Away")}, {club.formation}
+            {bp.men[side === "home" ? 0 : 1] < 11 ? `, ${t("{n} men", { n: bp.men[side === "home" ? 0 : 1] })}` : ""}
           </span>
         </div>
         <b className={`bp-score num ${score >= other ? "" : "lost"}`}>{score}</b>
@@ -38,7 +39,7 @@ function Header({ bp, roster }: { bp: BlueprintData; roster: Roster }) {
     <section className="bp-head">
       {team("home", h, a)}
       <div className="bp-state">
-        <b>{final ? "Full time" : bp.status === "catching_up" ? "Catching up" : `Live ${Math.floor(bp.t / 60)}'`}</b>
+        <b>{final ? t("Full time") : bp.status === "catching_up" ? t("Catching up") : `${t("Live")} ${Math.floor(bp.t / 60)}'`}</b>
         <a href="#/">&#9656; Back to the match</a>
       </div>
       {team("away", a, h)}
@@ -71,7 +72,7 @@ function Highlights({ room, items, roster }: { room: string; items: Highlight[];
         {data?.clip ? (
           <Replay key={item.event_id} clip={data.clip} shot={data.shot} roster={roster} />
         ) : (
-          <div className="empty bp-reel-wait">Loading the replay from tracking data.</div>
+          <div className="empty bp-reel-wait">{t("Loading the replay from tracking data.")}</div>
         )}
         <div className="bp-reel-caption" style={{ borderLeftColor: club.primary }}>
           <h3>{item.title}</h3>
@@ -79,11 +80,11 @@ function Highlights({ room, items, roster }: { room: string; items: Highlight[];
         </div>
       </div>
       <div className="bp-dots">
-        <button aria-label="Previous highlight" onClick={() => setI((i - 1 + items.length) % items.length)}>&larr;</button>
+        <button aria-label={t("Previous highlight")} onClick={() => setI((i - 1 + items.length) % items.length)}>&larr;</button>
         {items.map((h, k) => (
           <button key={h.event_id} className={k === i ? "on" : ""} aria-label={h.title} onClick={() => setI(k)} />
         ))}
-        <button aria-label="Next highlight" onClick={() => setI((i + 1) % items.length)}>&rarr;</button>
+        <button aria-label={t("Next highlight")} onClick={() => setI((i + 1) % items.length)}>&rarr;</button>
       </div>
     </section>
   );
@@ -92,7 +93,7 @@ function Highlights({ room, items, roster }: { room: string; items: Highlight[];
 function Performers({ items, roster }: { items: Performer[]; roster: Roster }) {
   return (
     <section className="bp-section">
-      <h3 className="bp-h">Top performers</h3>
+      <h3 className="bp-h">{t("Top performers")}</h3>
       <div className="bp-performers">
         {items.map((p) => {
           const info = roster.players[p.player];
@@ -142,7 +143,7 @@ function Marking({ items, roster }: { items: MarkingSpot[]; roster: Roster }) {
   if (!items.length) return null;
   return (
     <section className="bp-section">
-      <h3 className="bp-h">Marking spotlight</h3>
+      <h3 className="bp-h">{t("Marking spotlight")}</h3>
       <div className="bp-pair">
         {items.map((m) => {
           const att = roster.players[m.attacker];
@@ -164,16 +165,16 @@ function Marking({ items, roster }: { items: MarkingSpot[]; roster: Roster }) {
                 <div className="bp-who">
                   <KitAvatar club={attClub} info={att} size={48} />
                   <div>
-                    <span className="label">Attacker</span>
+                    <span className="label">{t("Attacker")}</span>
                     <b>{att.name}</b>
                     <span className="muted">{attClub.short}</span>
                   </div>
                 </div>
                 <div className="bp-tiles two">
-                  <div><b className="num">{m.shots}</b><span>Shots allowed</span></div>
-                  <div><b className="num">{m.xg.toFixed(2)}</b><span>xG allowed</span></div>
-                  <div><b className="num">{m.goals}</b><span>Goals allowed</span></div>
-                  <div><b className="num">{m.received}</b><span>Passes received</span></div>
+                  <div><b className="num">{m.shots}</b><span>{t("Shots allowed")}</span></div>
+                  <div><b className="num">{m.xg.toFixed(2)}</b><span>{t("xG allowed")}</span></div>
+                  <div><b className="num">{m.goals}</b><span>{t("Goals allowed")}</span></div>
+                  <div><b className="num">{m.received}</b><span>{t("Passes received")}</span></div>
                 </div>
                 <h5>
                   {def.name} on {att.name}
@@ -199,7 +200,7 @@ function LeverageCards({ items, roster }: { items: LeverageSpot[]; roster: Roste
   if (!items.length) return null;
   return (
     <section className="bp-section">
-      <h3 className="bp-h">Leverage spotlight</h3>
+      <h3 className="bp-h">{t("Leverage spotlight")}</h3>
       <div className="bp-pair">
         {items.map((l) => {
           const club = roster.clubs[l.team];
@@ -208,17 +209,17 @@ function LeverageCards({ items, roster }: { items: LeverageSpot[]; roster: Roste
             <div key={l.player} className="bp-card flush">
               <Band roster={roster} player={l.player} side={l.team} />
               <div className="bp-card-body">
-                <span className="label">Game leverage</span>
+                <span className="label">{t("Game leverage")}</span>
                 <div className="bp-lev">
                   <b className={`num ${l.total >= 0 ? "up" : "down"}`}>{signed(l.total)}</b>
-                  <span>LVG</span>
+                  <span>{t("LVG")}</span>
                 </div>
                 <div className="bp-parts">
                   {PARTS.map(([k, label]) => {
                     const v = l[k] as number;
                     return (
                       <div key={k} className="bp-part">
-                        <span>{label}</span>
+                        <span>{t(label)}</span>
                         <div className="bp-part-bar">
                           <i
                             style={{
@@ -262,7 +263,7 @@ export function Blueprint({ room, roster, halfS, lang = "en" }: { room: string; 
     };
   }, [room]);
 
-  if (!bp) return <div className="empty" style={{ padding: 24 }}>Building the match blueprint.</div>;
+  if (!bp) return <div className="empty" style={{ padding: 24 }}>{t("Building the match blueprint.")}</div>;
   const translated = lang !== "en" ? bp.overview.langs?.[lang] : undefined;
   const story = translated ? { ...translated, lang } : { headline: bp.overview.headline, text: bp.overview.text, lang: "en" };
 
@@ -270,7 +271,7 @@ export function Blueprint({ room, roster, halfS, lang = "en" }: { room: string; 
     <div className="bp">
       <Header bp={bp} roster={roster} />
       <section className="bp-overview">
-        <span className="label">Match overview</span>
+        <span className="label">{t("Match overview")}</span>
         <h2 lang={story.lang}>{story.headline}</h2>
         <p lang={story.lang}>{story.text}</p>
         <span className="bp-fine">
@@ -292,7 +293,7 @@ export function Blueprint({ room, roster, halfS, lang = "en" }: { room: string; 
             }
           }}
         >
-          {writing ? "The Recap agent is writing" : bp.overview.source === "recap" ? "Rewrite the recap" : "Write the recap now"}
+          {writing ? t("The Recap agent is writing") : bp.overview.source === "recap" ? t("Rewrite the recap") : t("Write the recap now")}
         </button>
       </section>
       <AfterMatch room={room} lang={lang} />

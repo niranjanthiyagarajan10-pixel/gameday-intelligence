@@ -4,6 +4,7 @@ import { Crest } from "./Crest";
 import { KitAvatar } from "./Kit";
 import { clock } from "../format";
 import { shotHref } from "../route";
+import { t, labels } from "../i18n";
 
 const HARD_XG = 0.05;
 const EASY_XG = 0.2;
@@ -11,7 +12,7 @@ const LEAGUE_XG = 0.12; // simulated league average per shot, docs/realism.md
 const COLORS = { hard: "#FF4D4D", average: "#4DA3FF", easy: "#38E07B" } as const;
 const LINE = { fill: "none", stroke: "rgba(255,255,255,.3)", strokeWidth: 0.3 } as const;
 const PEN_ARC_DX = Math.sqrt(9.15 ** 2 - 5.5 ** 2);
-const RESULT: Record<string, string> = { goal: "Goal", saved: "Saved", off_target: "Wide", blocked: "Blocked" };
+const RESULT: Record<string, string> = labels({ goal: "Goal", saved: "Saved", off_target: "Wide", blocked: "Blocked" });
 
 type Band = keyof typeof COLORS;
 const band = (xg: number): Band => (xg < HARD_XG ? "hard" : xg >= EASY_XG ? "easy" : "average");
@@ -36,7 +37,7 @@ function Marker({ kind, x, y, goal, size = 1.25 }: { kind: Band; x: number; y: n
 function HalfPitch({ children }: { children: React.ReactNode }) {
   const net = `hn${useId().replace(/:/g, "")}`;
   return (
-    <svg viewBox="-3 -4 74 59" className="halfpitch" role="img" aria-label="Shots on the attacking half">
+    <svg viewBox="-3 -4 74 59" className="halfpitch" role="img" aria-label={t("Shots on the attacking half")}>
       <defs>
         <pattern id={net} width={0.7} height={0.7} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <path d="M0 0V0.7M0 0H0.7" stroke="rgba(255,255,255,.4)" strokeWidth={0.07} fill="none" />
@@ -86,7 +87,7 @@ export function ShotExplorer({ shots, roster, finishing, halfS }: Props) {
 
   return (
     <section className="bp-section">
-      <h3 className="bp-h">Shot difficulty</h3>
+      <h3 className="bp-h">{t("Shot difficulty")}</h3>
       <div className="bp-two">
         <div>
           <div className="bp-seg">
@@ -113,10 +114,10 @@ export function ShotExplorer({ shots, roster, finishing, halfS }: Props) {
             </HalfPitch>
           </div>
           <div className="bp-legend">
-            <span><svg width={12} height={12} viewBox="-1.5 -1.5 3 3"><Marker kind="hard" x={0} y={0} goal size={1.2} /></svg><b>Hard</b> under {HARD_XG.toFixed(2)} xG</span>
-            <span><svg width={12} height={12} viewBox="-1.5 -1.5 3 3"><Marker kind="average" x={0} y={0} goal size={1.2} /></svg><b>Average</b></span>
-            <span><svg width={12} height={12} viewBox="-1.5 -1.5 3 3"><Marker kind="easy" x={0} y={0} goal size={1.2} /></svg><b>Easy</b> {EASY_XG.toFixed(2)} xG and up</span>
-            <span className="muted">Filled: goal. Hollow: no goal.</span>
+            <span><svg width={12} height={12} viewBox="-1.5 -1.5 3 3"><Marker kind="hard" x={0} y={0} goal size={1.2} /></svg><b>{t("Hard")}</b> {t("under")} {HARD_XG.toFixed(2)} xG</span>
+            <span><svg width={12} height={12} viewBox="-1.5 -1.5 3 3"><Marker kind="average" x={0} y={0} goal size={1.2} /></svg><b>{t("Average")}</b></span>
+            <span><svg width={12} height={12} viewBox="-1.5 -1.5 3 3"><Marker kind="easy" x={0} y={0} goal size={1.2} /></svg><b>{t("Easy")}</b> {EASY_XG.toFixed(2)} xG and up</span>
+            <span className="muted">{t("Filled: goal. Hollow: no goal.")}</span>
           </div>
           <div className="bp-count">
             All shots: <b className="num">{shown.length} attempts</b>
@@ -132,7 +133,7 @@ export function ShotExplorer({ shots, roster, finishing, halfS }: Props) {
 
         <div className="bp-card">
           {!shot || !shooter ? (
-            <div className="empty">No shots for {club.name} in this period yet.</div>
+            <div className="empty">{t("No shots for")} {club.name} in this period yet.</div>
           ) : (
             <>
               <div className="bp-card-top">
@@ -156,14 +157,14 @@ export function ShotExplorer({ shots, roster, finishing, halfS }: Props) {
                 <div>
                   <KitAvatar club={club} info={shooter} size={56} />
                   <div>
-                    <span className="muted">Shooter</span>
+                    <span className="muted">{t("Shooter")}</span>
                     <b>{shooter.name}</b>
                     <span className="muted">{club.short}</span>
                   </div>
                 </div>
                 <div className="r">
                   <div>
-                    <span className="muted">Nearest defender</span>
+                    <span className="muted">{t("Nearest defender")}</span>
                     <b>{defender ? defender.name : "None close"}</b>
                     <span className="muted">{defender ? roster.clubs[defender.side].short : ""}</span>
                   </div>
@@ -171,28 +172,28 @@ export function ShotExplorer({ shots, roster, finishing, halfS }: Props) {
                 </div>
               </div>
               <div className="bp-xg">
-                <span className="lbl">xG</span>
+                <span className="lbl">{t("xG")}</span>
                 <b className="num">{shot.xg.toFixed(2)}</b>
                 <span className="muted">{Math.round(shot.xg * 100)}% chance of a goal</span>
               </div>
               <div className="bp-bar-avg" style={{ paddingLeft: `${LEAGUE_XG * 100}%` }}>
-                League avg {LEAGUE_XG.toFixed(2)}
+                {t("League avg")} {LEAGUE_XG.toFixed(2)}
               </div>
               <div className="bp-bar">
                 <i style={{ width: `${Math.min(shot.xg, 1) * 100}%` }} />
                 <em style={{ left: `${LEAGUE_XG * 100}%` }} />
               </div>
               <div className="bp-bar-labels">
-                <span>Hard 0</span>
-                <span>Easy 1</span>
+                <span>{t("Hard 0")}</span>
+                <span>{t("Easy 1")}</span>
               </div>
               <div className="bp-tiles">
-                <div><b className="num">{shot.defender_m !== null ? shot.defender_m.toFixed(1) : "-"}<small>M</small></b><span>Defender distance</span></div>
-                <div><b className="num">{Math.round(shot.pressure * 100)}<small>%</small></b><span>Pressure</span></div>
-                <div><b className="num">{shot.speed_kmh !== null ? shot.speed_kmh.toFixed(0) : "-"}<small>KM/H</small></b><span>Shot speed</span></div>
-                <div><b className="num">{shot.distance_m.toFixed(1)}<small>M</small></b><span>Shot distance</span></div>
-                <div><b className="num">{shot.angle_deg.toFixed(0)}<small>DEG</small></b><span>Goal angle</span></div>
-                <div><b className={shot.outcome === "goal" ? "made" : "missed"}>{RESULT[shot.outcome] ?? shot.outcome}</b><span>Result</span></div>
+                <div><b className="num">{shot.defender_m !== null ? shot.defender_m.toFixed(1) : "-"}<small>M</small></b><span>{t("Defender distance")}</span></div>
+                <div><b className="num">{Math.round(shot.pressure * 100)}<small>%</small></b><span>{t("Pressure")}</span></div>
+                <div><b className="num">{shot.speed_kmh !== null ? shot.speed_kmh.toFixed(0) : "-"}<small>{t("KM/H")}</small></b><span>{t("Shot speed")}</span></div>
+                <div><b className="num">{shot.distance_m.toFixed(1)}<small>M</small></b><span>{t("Shot distance")}</span></div>
+                <div><b className="num">{shot.angle_deg.toFixed(0)}<small>{t("DEG")}</small></b><span>{t("Goal angle")}</span></div>
+                <div><b className={shot.outcome === "goal" ? "made" : "missed"}>{RESULT[shot.outcome] ?? shot.outcome}</b><span>{t("Result")}</span></div>
               </div>
               <a className="actlink" href={shotHref(shot.event_id)}>
                 Watch the replay &rarr;

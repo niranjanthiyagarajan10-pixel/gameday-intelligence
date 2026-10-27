@@ -19,6 +19,7 @@ import { LANG_LABEL, METRIC_LABEL, usePrefs, type Lang, type Metric } from "./pr
 import { useChangedSinceMount } from "./tween";
 import { clock } from "./format";
 import { overlayHref, useRoute } from "./route";
+import { setLang, t } from "./i18n";
 
 const SPEEDS = [1, 4, 10, 30];
 
@@ -53,11 +54,11 @@ function Scoreboard({ state }: { state: MatchState }) {
   const scored = useChangedSinceMount(stats ? stats.score.join(":") : "");
   if (!roster || !stats) return null;
   const men = analyst?.men ?? [11, 11];
-  const half = status === "full_time" ? "Full time" : stats.t < halfS ? "First half" : "Second half";
+  const half = status === "full_time" ? t("Full time") : stats.t < halfS ? t("First half") : t("Second half");
   const team = (side: Side) => {
     const c = roster.clubs[side];
     const reds = 11 - men[side === "home" ? 0 : 1];
-    return { c, reds, sub: `${side === "home" ? "Home" : "Away"}. ${c.formation}${reds ? `, down to ${11 - reds}` : ""}` };
+    return { c, reds, sub: `${side === "home" ? t("Home") : t("Away")}. ${c.formation}${reds ? `, ${t("down to {n}", { n: 11 - reds })}` : ""}` };
   };
   const h = team("home");
   const a = team("away");
@@ -85,7 +86,7 @@ function Scoreboard({ state }: { state: MatchState }) {
           <span className={`dot ${status === "live" && !state.paused ? "" : "off"}`} />
           <span className="num">{status === "full_time" ? "FT" : clock(stats.t)}</span>
           <span className="label" style={{ marginLeft: 4 }}>
-            {status === "catching_up" ? "Catching up" : state.paused ? "Paused" : half}
+            {status === "catching_up" ? t("Catching up") : state.paused ? t("Paused") : half}
           </span>
         </div>
       </div>
@@ -118,6 +119,20 @@ export default function App() {
   const [tab, setTab] = useState<"live" | "analyst">("live");
   const [depth, setDepth] = useState<Audience>("casual");
   const [prefs, updatePrefs] = usePrefs();
+  setLang(prefs.lang); // before any child renders, so every t() reads the fan's language
+  useEffect(() => {
+    // Tell the room which language this fan watches in: agents write it from now on, and recent cards catch up.
+    if (!state.room || prefs.lang === "en") return;
+    const want = () => fetch(`/api/rooms/${state.room}/want`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: prefs.lang }),
+    }).catch(() => undefined);
+    want();
+    const timer = window.setInterval(want, 5 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [state.room, prefs.lang]);
+  useEffect(() => {
+    document.documentElement.lang = prefs.lang;
+  }, [prefs.lang]);
   const [focus, setFocus] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
   const { roster, stats, analyst } = state;
@@ -174,7 +189,7 @@ export default function App() {
           </div>
         </header>
         <div className="empty" style={{ padding: 24 }}>
-          {room ? "Connecting to the match feed." : "Starting your replay."}
+          {room ? t("Connecting to the match feed.") : t("Starting your replay.")}
         </div>
       </div>
     );
@@ -189,7 +204,7 @@ export default function App() {
         </div>
         <div className="tabs">
           <button className={`tab ${route.page === "preview" ? "on" : ""}`} onClick={() => (location.hash = "#/preview")}>
-            Preview
+            {t("Preview")}
           </button>
           <button
             className={`tab ${route.page === "match" && tab === "live" ? "on" : ""}`}
@@ -198,7 +213,7 @@ export default function App() {
               location.hash = "#/";
             }}
           >
-            Live Match
+            {t("Live Match")}
           </button>
           <button
             className={`tab ${route.page === "match" && tab === "analyst" ? "on" : ""}`}
@@ -207,28 +222,28 @@ export default function App() {
               location.hash = "#/";
             }}
           >
-            Analyst
+            {t("Analyst")}
           </button>
           <button className={`tab ${route.page === "blueprint" ? "on" : ""}`} onClick={() => (location.hash = "#/blueprint")}>
-            Blueprint
+            {t("Blueprint")}
           </button>
           <button className={`tab ${route.page === "news" ? "on" : ""}`} onClick={() => (location.hash = "#/news")}>
-            Newsdesk
+            {t("Newsdesk")}
           </button>
           <button className={`tab ${route.page === "league" ? "on" : ""}`} onClick={() => (location.hash = "#/league")}>
-            League
+            {t("League")}
           </button>
           <button className={`tab ${route.page === "evals" ? "on" : ""}`} onClick={() => (location.hash = "#/evals")}>
-            Evals
+            {t("Evals")}
           </button>
         </div>
         <div className="settings">
-          <button className="set" onClick={toggleDepth} title="Switch between casual and analyst depth">
-            <span className="label">Depth</span>
-            <b>{depth === "casual" ? "Casual" : "Analyst"}</b>
+          <button className="set" onClick={toggleDepth} title={t("Switch between casual and analyst depth")}>
+            <span className="label">{t("Depth")}</span>
+            <b>{depth === "casual" ? t("Casual") : t("Analyst")}</b>
           </button>
           <label className="set">
-            <span className="label">Language</span>
+            <span className="label">{t("Language")}</span>
             <select value={prefs.lang} onChange={(e) => updatePrefs({ lang: e.target.value as Lang })}>
               {(Object.keys(LANG_LABEL) as Lang[]).map((l) => (
                 <option key={l} value={l}>
@@ -239,7 +254,7 @@ export default function App() {
           </label>
           <Favourites roster={roster} prefs={prefs} update={updatePrefs} onPitch={onPitch} />
           <label className={`set ${prefs.metric !== "off" ? "on" : ""}`}>
-            <span className="label">Metric mode</span>
+            <span className="label">{t("Metric mode")}</span>
             <select value={prefs.metric} onChange={(e) => updatePrefs({ metric: e.target.value as Metric })}>
               {(Object.keys(METRIC_LABEL) as Metric[]).map((m) => (
                 <option key={m} value={m}>
@@ -249,9 +264,9 @@ export default function App() {
             </select>
           </label>
           <label className={`set ${focus ? "on" : ""}`}>
-            <span className="label">Player focus</span>
+            <span className="label">{t("Player focus")}</span>
             <select value={focus ?? ""} onChange={(e) => setFocus(e.target.value || "")}>
-              <option value="">Off</option>
+              <option value="">{t("Off")}</option>
               {(["home", "away"] as Side[]).map((side) => (
                 <optgroup key={side} label={roster.clubs[side].name}>
                   {onPitch
@@ -266,20 +281,20 @@ export default function App() {
               ))}
             </select>
           </label>
-          <div className="playback" aria-label="Playback">
+          <div className="playback" aria-label={t("Playback")}>
             <span className={`conn ${state.connected ? "ok" : ""}`} title={state.connected ? "Connected" : "Reconnecting"} />
             {SPEEDS.map((s) => (
               <button key={s} className={state.speed === s ? "on" : ""} onClick={() => control("speed", s)}>
                 {s}x
               </button>
             ))}
-            <button onClick={() => control(state.paused ? "resume" : "pause")}>{state.paused ? "Play" : "Pause"}</button>
-            <button onClick={() => control("restart")}>Restart</button>
-            <a href={overlayHref(true)} target="_blank" rel="noreferrer" title="Broadcast graphics, 1920x1080, transparent without ?bg=pitch">
+            <button onClick={() => control(state.paused ? "resume" : "pause")}>{state.paused ? t("Play") : t("Pause")}</button>
+            <button onClick={() => control("restart")}>{t("Restart")}</button>
+            <a href={overlayHref(true)} target="_blank" rel="noreferrer" title={t("Broadcast graphics, 1920x1080, transparent without ?bg=pitch")}>
               Overlay &#8599;
             </a>
-            <button className={trace ? "on" : ""} onClick={() => setTrace(!trace)} title="Every agent step, live">
-              Trace
+            <button className={trace ? "on" : ""} onClick={() => setTrace(!trace)} title={t("Every agent step, live")}>
+              {t("Trace")}
             </button>
           </div>
         </div>

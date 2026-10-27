@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Clip, Roster, Shot } from "../types";
 import { clock } from "../format";
 import { Ball, Grass, Markings, PlayerToken, carrierOf } from "./Pitch";
+import { t } from "../i18n";
 
 interface Props {
   clip: Clip;
@@ -77,12 +78,12 @@ export function Replay({ clip, shot, roster }: Props) {
   const bz = a ? Math.min(Math.max(lerp(a.ball[2], b.ball[2]), 0), 12) : 0;
   const carrier = a ? carrierOf(a.players, a.ball) : null;
 
-  if (!a) return <div className="empty">No tracking for this shot.</div>;
+  if (!a) return <div className="empty">{t("No tracking for this shot.")}</div>;
 
   return (
     <div className="replay">
       <div className="replay-stage">
-        <svg viewBox="-3 -3 111 74" preserveAspectRatio="xMidYMid meet" className="pitch" role="img" aria-label="Shot replay">
+        <svg viewBox="-3 -3 111 74" preserveAspectRatio="xMidYMid meet" className="pitch" role="img" aria-label={t("Shot replay")}>
           <Grass />
           <Markings ripple={struck && shot.outcome === "goal" ? { end: shot.team === "home" ? 1 : 0, id: shot.event_id } : null} />
           {passes
@@ -152,7 +153,7 @@ export function Replay({ clip, shot, roster }: Props) {
       </div>
       <div className="replay-controls">
         <button onClick={() => (playhead >= t1 ? (setPlayhead(t0), setPlaying(true)) : setPlaying(!playing))}>
-          {playing ? "Pause" : playhead >= t1 ? "Replay" : "Play"}
+          {playing ? t("Pause") : playhead >= t1 ? t("Replay") : t("Play")}
         </button>
         <input
           type="range"
@@ -164,7 +165,7 @@ export function Replay({ clip, shot, roster }: Props) {
             setPlaying(false);
             setPlayhead(Number(e.target.value));
           }}
-          aria-label="Scrub replay"
+          aria-label={t("Scrub replay")}
         />
         <span className="num label">{(playhead - shot.t).toFixed(1)} s</span>
         {RATES.map((r) => (

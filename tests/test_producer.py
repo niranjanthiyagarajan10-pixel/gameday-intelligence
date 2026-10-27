@@ -77,8 +77,9 @@ def test_reel_is_cached_until_the_match_moves_on(room):
     assert "{" not in first["intro"] + first["outro"]
     assert asyncio.run(room.reel())["intro"] == first["intro"]
     assert room._reel is not None and room._reel["key"][0] == room.status
-    said = asyncio.run(room.reel_line("intro", "es"))
-    assert said == {"text": first["intro"], "lang": "en", "style": "tactician", "source": "template"}
+    said = asyncio.run(room.reel_line("intro", "es"))  # the template intro, translated ahead of time
+    assert said["lang"] == "es" and said["source"] == "template" and said["text"] != first["intro"]
+    assert "{" not in said["text"]
     assert asyncio.run(room.reel_line("middle", "en")) is None
 
 

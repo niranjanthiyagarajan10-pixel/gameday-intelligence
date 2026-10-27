@@ -3,6 +3,7 @@ import type { Audience, Card, Roster } from "../types";
 import { KIND_LABEL, evidenceRows, sideColor } from "../format";
 import { shotHref } from "../route";
 import { cardText, type Lang } from "../prefs";
+import { t } from "../i18n";
 
 const SHOT_KINDS = new Set(["goal", "low_xg_goal", "big_chance"]);
 
@@ -46,30 +47,30 @@ export function MomentCard({ card, roster, depth, open: openByDefault, lang = "e
         <span className="min num">{m.minute}'</span>
       </div>
       <p lang={shown.lang}>{shown.text}</p>
-      {lang !== "en" && shown.lang === "en" && <span className="written">English until the translation is verified</span>}
+      {lang !== "en" && shown.lang === "en" && <span className="written">{t("English until the translation is verified")}</span>}
       <div className="big">
         <b className={`num ${heroClass}`}>{card.hero.value}</b>
         <span className="label">{card.hero.label}</span>
       </div>
       <div className="acts">
-        <button onClick={() => setOpen(!open)}>{open ? "Hide evidence" : "Show evidence"}</button>
+        <button onClick={() => setOpen(!open)}>{open ? t("Hide evidence") : t("Show evidence")}</button>
         <button onClick={() => setOwn(audience === "casual" ? "analyst" : "casual")}>
-          {audience === "casual" ? "Go deeper" : "Explain simply"}
+          {audience === "casual" ? t("Go deeper") : t("Explain simply")}
         </button>
         {SHOT_KINDS.has(m.kind) && m.event_ids[0] && onExplain && (
           <button className="actlink" onClick={onExplain}>
-            Explain this moment
+            {t("Explain this moment")}
           </button>
         )}
         {SHOT_KINDS.has(m.kind) && m.event_ids[0] && (
           <a className="actlink" href={shotHref(m.event_ids[0])}>
-            Watch replay
+            {t("Watch replay")}
           </a>
         )}
         <span className="written" title={card.sources?.[audience] === "narrator" ? "Written by the Narrator agent, checked by the Verifier" : "Template text, filled from the evidence"}>
-          {card.sources?.[audience] === "narrator" ? "Narrator" : "Template"}
+          {card.sources?.[audience] === "narrator" ? t("Narrator") : t("Template")}
         </span>
-        {cue.verified && <span className="verified">Verified</span>}
+        {cue.verified && <span className="verified">{t("Verified")}</span>}
       </div>
       {open && (
         <div className="evidence">
@@ -83,7 +84,7 @@ export function MomentCard({ card, roster, depth, open: openByDefault, lang = "e
               ))}
               {m.event_ids.length > 0 && (
                 <tr>
-                  <td>Events</td>
+                  <td>{t("Events")}</td>
                   <td>{m.event_ids.map((id) => id.split("-").pop()).join(", ")}</td>
                 </tr>
               )}

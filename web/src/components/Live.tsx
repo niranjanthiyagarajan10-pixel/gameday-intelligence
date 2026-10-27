@@ -15,6 +15,7 @@ import { playerHref, shotHref } from "../route";
 import { webglAvailable } from "../webgl";
 import type { ExplainRequest } from "../pitch3d/explain";
 import { MatchTheatre } from "./MatchTheatre";
+import { t } from "../i18n";
 
 const Pitch3D = lazy(() => import("./Pitch3D"));
 const VIEW_KEY = "gdi.pitchView.v2"; // v2: 3D became the default
@@ -50,7 +51,7 @@ function GoalBanner({ fx, roster, score }: { fx: FxEvent[]; roster: Roster; scor
   return (
     <div key={goal.id} className="goalbanner" style={{ "--club": club.primary } as CSSProperties} role="status">
       <div className="gb-slab">
-        <span className="gb-word">Goal</span>
+        <span className="gb-word">{t("Goal")}</span>
       </div>
       <div className="gb-info">
         <b>{scorer ? `#${scorer.number} ${scorer.name}` : club.name}</b>
@@ -110,7 +111,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
       if (!r.ok || !body.clip || body.clip.frames.length < 2) throw new Error("no clip");
       if (!explain) setViewBefore(view);
       setView("3d");
-      setExplain({ key: `${id}@${performance.now()}`, title: KIND_LABEL[card.moment.kind] ?? "Chance", shot: body.shot, clip: body.clip });
+      setExplain({ key: `${id}@${performance.now()}`, title: KIND_LABEL[card.moment.kind] ?? t("Chance"), shot: body.shot, clip: body.clip });
     } catch {
       location.hash = shotHref(id);
     }
@@ -134,8 +135,8 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
         <div className="panel">
           <div className="ph">
             <div className="ph-l">
-              <h3>Live pitch</h3>
-              <div className="viewtoggle" role="group" aria-label="Pitch view">
+              <h3>{t("Live pitch")}</h3>
+              <div className="viewtoggle" role="group" aria-label={t("Pitch view")}>
                 {(["2d", "3d"] as const).map((v) => (
                   <button key={v} className={view === v ? "on" : ""} aria-pressed={view === v} onClick={() => setView(v)}>
                     {v.toUpperCase()}
@@ -145,7 +146,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
             </div>
             {can3d && (
               <button className="mt-open" onClick={() => setTheatre({ start: null })}>
-                Match Theatre<i aria-hidden="true">&#8599;</i>
+                {t("Match Theatre")}<i aria-hidden="true">&#8599;</i>
               </button>
             )}
             <div className="legend">
@@ -159,7 +160,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
               </span>
               {focusInfo && (
                 <span className="label" style={{ color: "var(--signal)" }}>
-                  Focus: #{focusInfo.number} {focusInfo.short}
+                  {t("Focus: #")}{focusInfo.number} {focusInfo.short}
                 </span>
               )}
             </div>
@@ -174,31 +175,31 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
               pitch2d
             )}
             {view === "3d" && !theatre && !explain && (
-              <button className="mt-expand" onClick={() => setTheatre({ start: null })}>Open Match Theatre<i aria-hidden="true">&#8599;</i></button>
+              <button className="mt-expand" onClick={() => setTheatre({ start: null })}>{t("Open Match Theatre")}<i aria-hidden="true">&#8599;</i></button>
             )}
             <GoalBanner fx={state.fx} roster={roster} score={stats.score} />
             {focusInfo && !explain && (
               <div className="focusbox" style={{ borderLeftColor: roster.clubs[focusInfo.side].primary }}>
-                <div className="label">Player focus</div>
+                <div className="label">{t("Player focus")}</div>
                 <a className="nm" href={playerHref(focus!)}>
                   #{focusInfo.number} {focusInfo.name}
                 </a>
                 <div className="fstats">
                   <div>
                     <b className="num"><Tick value={focusRun ? focusRun.distance_m / 1000 : 0} digits={1} /></b>
-                    <span className="label">km run</span>
+                    <span className="label">{t("km run")}</span>
                   </div>
                   <div>
                     <b className="num">{liveSpeed !== undefined ? (liveSpeed * 3.6).toFixed(1) : "-"}</b>
-                    <span className="label">km/h now</span>
+                    <span className="label">{t("km/h now")}</span>
                   </div>
                   <div>
                     <b className="num">{focusRun ? focusRun.top_speed_kmh.toFixed(1) : "-"}</b>
-                    <span className="label">top km/h</span>
+                    <span className="label">{t("top km/h")}</span>
                   </div>
                   <div>
                     <b className="num">{focusLev !== undefined ? signed(focusLev) : "+0.00"}</b>
-                    <span className="label">leverage</span>
+                    <span className="label">{t("leverage")}</span>
                   </div>
                 </div>
               </div>
@@ -209,8 +210,8 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
         <div className="grid" style={{ marginTop: 0 }}>
           <div className="panel c7">
             <div className="ph">
-              <h3>Win probability</h3>
-              <span className="label">Live Poisson model</span>
+              <h3>{t("Win probability")}</h3>
+              <span className="label">{t("Live Poisson model")}</span>
             </div>
             <div className="pb">
               <WinProbability stats={stats} history={state.history} cards={state.cards} roster={roster} halfS={state.halfS} />
@@ -218,8 +219,8 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
           </div>
           <div className="panel c5">
             <div className="ph">
-              <h3>Momentum</h3>
-              <span className="label">Threat added, recent play</span>
+              <h3>{t("Momentum")}</h3>
+              <span className="label">{t("Threat added, recent play")}</span>
             </div>
             <div className="pb">
               <div className="mom">
@@ -239,21 +240,21 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
               </div>
               <div className="kv">
                 <div className="k">
-                  <span className="label">Control index</span>
+                  <span className="label">{t("Control index")}</span>
                   <b className="num"><Tick value={stats.control_index} digits={2} /></b>
                 </div>
                 <div className="k">
-                  <span className="label">Chaos index</span>
+                  <span className="label">{t("Chaos index")}</span>
                   <b className="num"><Tick value={stats.chaos_index} digits={2} /></b>
                 </div>
                 <div className="k">
-                  <span className="label">xG</span>
+                  <span className="label">{t("xG")}</span>
                   <b className="num">
                     <Tick value={stats.xg[0]} digits={2} /> <i>/</i> <Tick value={stats.xg[1]} digits={2} />
                   </b>
                 </div>
                 <div className="k">
-                  <span className="label">Possession</span>
+                  <span className="label">{t("Possession")}</span>
                   <b className="num">
                     <Tick value={stats.possession[0]} scale={100} /> <i>/</i> <Tick value={stats.possession[1]} scale={100} />
                   </b>
@@ -270,7 +271,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
           <div className="panel">
             <div className="ph">
               <h3>{METRIC_LABEL[prefs.metric]}</h3>
-              <span className="label">Your metric, live</span>
+              <span className="label">{t("Your metric, live")}</span>
             </div>
             <div className="pb metric-board">
               {board.slice(0, 5).map((r, i) => {
@@ -284,7 +285,7 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
                   </div>
                 );
               })}
-              {board.length === 0 && <div className="empty">Fills in as the match is played.</div>}
+              {board.length === 0 && <div className="empty">{t("Fills in as the match is played.")}</div>}
             </div>
           </div>
         )}
@@ -293,18 +294,18 @@ export function Live({ state, depth, focus, prefs, update, onFocus }: Props) {
         <Commentator room={state.room} cards={state.cards} roster={roster} prefs={prefs} update={update} />
         <div className="panel">
           <div className="ph">
-            <h3>Key moments</h3>
+            <h3>{t("Key moments")}</h3>
             {hasFavs ? (
               <div className="filters">
-                <button className={onlyMine ? "" : "on"} onClick={() => setOnlyMine(false)}>All</button>
-                <button className={onlyMine ? "on" : ""} onClick={() => setOnlyMine(true)}>Mine</button>
+                <button className={onlyMine ? "" : "on"} onClick={() => setOnlyMine(false)}>{t("All")}</button>
+                <button className={onlyMine ? "on" : ""} onClick={() => setOnlyMine(true)}>{t("Mine")}</button>
               </div>
             ) : (
               <span className="label">{state.cards.length} so far</span>
             )}
           </div>
           <div className="feed">
-            {cards.length === 0 && <div className="empty">Key moments appear here as they happen.</div>}
+            {cards.length === 0 && <div className="empty">{t("Key moments appear here as they happen.")}</div>}
             {cards.map((card, i) => (
               <MomentCard key={card.moment.moment_id} card={card} roster={roster} depth={depth} open={i === 0 && depth === "analyst"}
                 lang={prefs.lang} mine={isMine(card, prefs)} onExplain={can3d ? () => explainCard(card) : undefined} />

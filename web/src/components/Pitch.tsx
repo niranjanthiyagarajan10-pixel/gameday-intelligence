@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, Ref } from "react";
 import type { Frame, FxEvent, Roster } from "../types";
+import { t } from "../i18n";
 
 interface Props {
   frame: Frame | null;
@@ -317,7 +318,7 @@ export function Pitch({ frame, roster, focus, tagged, speed, fx, labels = {} }: 
   const ripple = goal ? { end: (goal.team === "home" ? 1 : 0) as 0 | 1, id: goal.id } : null;
 
   return (
-    <svg className="pitch" viewBox="-3 -3 111 74" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Live pitch">
+    <svg className="pitch" viewBox="-3 -3 111 74" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t("Live pitch")}>
       <Grass />
       <Markings ripple={ripple} />
       <text className="pitch-dir" x={0} y={70.6}>

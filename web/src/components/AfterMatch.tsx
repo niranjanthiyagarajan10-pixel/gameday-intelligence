@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Crest } from "./Crest";
 import { ForecastBar, getJson, useClubs } from "./Preview";
 import type { Lang } from "../prefs";
+import { t, labels } from "../i18n";
 
 interface Decided {
   moment_id: string;
@@ -31,9 +32,9 @@ interface PostgameData {
   langs: Record<string, { look_ahead: string[] }>;
 }
 
-const KIND: Record<string, string> = {
+const KIND: Record<string, string> = labels({
   goal: "Goal", low_xg_goal: "Goal", red_card: "Red card", leverage_swing: "Big play", big_chance: "Big chance",
-};
+});
 const REFRESH_MS = 30000;
 
 /** After the match: what decided it (code, from the verified key moments) and what comes next (Post-game agent). */
@@ -42,14 +43,14 @@ export function AfterMatch({ room, lang }: { room: string; lang: Lang }) {
   const clubs = useClubs();
   useEffect(() => {
     let alive = true;
-    const load = () => getJson<PostgameData>(`/api/rooms/${room}/postgame`).then((d) => alive && d && setPg(d));
+    const load = () => getJson<PostgameData>(`/api/rooms/${room}/postgame?lang=${lang}`).then((d) => alive && d && setPg(d));
     load();
     const timer = window.setInterval(load, REFRESH_MS);
     return () => {
       alive = false;
       window.clearInterval(timer);
     };
-  }, [room]);
+  }, [room, lang]);
   if (!pg || !clubs) return null;
   const lines = (lang !== "en" && pg.langs?.[lang]?.look_ahead) || pg.look_ahead;
   const sideClub = (side: "home" | "away" | null) => clubs[side === "away" ? pg.away : pg.home];
@@ -74,12 +75,12 @@ export function AfterMatch({ room, lang }: { room: string; lang: Lang }) {
               </div>
             );
           })}
-          {pg.decided.length === 0 && <div className="empty">No decisive moment yet.</div>}
+          {pg.decided.length === 0 && <div className="empty">{t("No decisive moment yet.")}</div>}
         </div>
-        <span className="bp-fine">Ranked by how much each moment moved the win probability. Each line is the Narrator's, already verified.</span>
+        <span className="bp-fine">{t("Ranked by how much each moment moved the win probability. Each line is the Narrator's, already verified.")}</span>
       </section>
       <section className="bp-section">
-        <h3 className="bp-h">Next up</h3>
+        <h3 className="bp-h">{t("Next up")}</h3>
         <div className="am-next">
           {pg.next.map((n) => {
             const club = clubs[n.club];
@@ -92,7 +93,7 @@ export function AfterMatch({ room, lang }: { room: string; lang: Lang }) {
                     <Crest club={home} size={30} />
                     {home.name}
                   </span>
-                  <span className="label">Matchday {n.matchday}</span>
+                  <span className="label">{t("Matchday")} {n.matchday}</span>
                   <span className="r">
                     {away.name}
                     <Crest club={away} size={30} />
@@ -104,14 +105,14 @@ export function AfterMatch({ room, lang }: { room: string; lang: Lang }) {
           })}
         </div>
         <div className="am-look">
-          <span className="label">What to watch next time</span>
+          <span className="label">{t("What to watch next time")}</span>
           {lines.map((l, i) => (
             <p key={i} lang={lang}>
               {l}
             </p>
           ))}
           <div className="pv-by">
-            {pg.source === "agent" && <span className="verified">Verified</span>}
+            {pg.source === "agent" && <span className="verified">{t("Verified")}</span>}
             <span className="label">{pg.source === "agent" ? "Post-game agent" : "Template, filled from the match and season data"}</span>
           </div>
         </div>

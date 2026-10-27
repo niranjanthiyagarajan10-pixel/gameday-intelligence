@@ -78,13 +78,15 @@ async def write() -> None:
     room = MatchRoom("newsdesk", league, RoomConfig(scenario=None), llm)
     written = json.loads(WRITTEN_PATH.read_text(encoding="utf-8")) if WRITTEN_PATH.exists() else {}
     for m in matches():
-        if m["scenario"] in written:
-            continue  # keep reports already written and checked; delete an entry to rewrite it
+        from agents.personalizer import LANGS
+        if m["scenario"] in written and set(written[m["scenario"]].get("langs", {})) >= set(LANGS):
+            continue  # keep reports already written and checked in every language; delete an entry to rewrite it
         names = name_list({p.player_id: p.name for c in (m["home"], m["away"]) for p in league.squads[c]},
                           {"home": m["facts"]["home"], "away": m["facts"]["away"]})
         for attempt in range(WRITE_ROUNDS):
             filled, source, langs = await room._write_story(
-                "news", "Newsdesk", newsdesk, m["facts"], m["truths"], newsdesk.prompt(m["facts"], m["hint"]), names)
+                "news", "Newsdesk", newsdesk, m["facts"], m["truths"], newsdesk.prompt(m["facts"], m["hint"]), names,
+                langs=tuple(LANGS))
             if source == "agent":
                 written[m["scenario"]] = {**filled, "langs": langs, "model": llm.strong,
                                           "written_at": time.strftime("%Y-%m-%d %H:%M")}

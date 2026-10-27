@@ -1,5 +1,6 @@
 import type { Roster, Shot } from "../types";
 import { shotHref } from "../route";
+import { t } from "../i18n";
 
 interface Props {
   shots: Shot[];
@@ -21,7 +22,7 @@ export function ShotMap({ shots, roster, selected }: Props) {
     return [ya, 105 - xa];
   };
   return (
-    <svg viewBox="-2 -4 72 58" style={{ width: "100%", display: "block", background: "var(--bg)" }} role="img" aria-label="Shot map">
+    <svg viewBox="-2 -4 72 58" style={{ width: "100%", display: "block", background: "var(--bg)" }} role="img" aria-label={t("Shot map")}>
       <rect x={0} y={0} width={68} height={52.5} {...LINE} />
       <rect x={(68 - 40.32) / 2} y={0} width={40.32} height={16.5} {...LINE} />
       <rect x={(68 - 18.32) / 2} y={0} width={18.32} height={5.5} {...LINE} />

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Roster } from "../types";
 import type { Lang } from "../prefs";
 import { Crest } from "./Crest";
 import { getJson } from "./Preview";
+import { t } from "../i18n";
 
 interface Brief {
   bullets: string[];
@@ -27,20 +28,25 @@ export function CatchMeUp({ room, roster, lang }: { room: string; roster: Roster
   const load = async () => {
     setOpen(true);
     setLoading(true);
-    const b = await getJson<Brief>(`/api/rooms/${room}/brief`);
+    const b = await getJson<Brief>(`/api/rooms/${room}/brief?lang=${lang}`);
     if (b) setBrief(b);
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (open) void load(); // a new language: fetch the points written in it
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!open) {
     return (
       <button className="cmu-open" onClick={load}>
-        <b>Catch me up</b>
-        <span>Three points, twenty seconds</span>
+        <b>{t("Catch me up")}</b>
+        <span>{t("Three points, twenty seconds")}</span>
       </button>
     );
   }
-  if (!brief) return <div className="panel cmu"><div className="empty" style={{ padding: 16 }}>The Summarizer is reading the match.</div></div>;
+  if (!brief) return <div className="panel cmu"><div className="empty" style={{ padding: 16 }}>{t("The Summarizer is reading the match.")}</div></div>;
   const bullets = (lang !== "en" && brief.langs?.[lang]?.bullets) || brief.bullets;
   const [ph, pd, pa] = brief.stats.win_prob;
   const lead = ph >= pa ? { c: h, p: ph } : { c: a, p: pa };
@@ -75,7 +81,7 @@ export function CatchMeUp({ room, roster, lang }: { room: string; roster: Roster
             {brief.stats.xg[0].toFixed(2)}
             <small> / {brief.stats.xg[1].toFixed(2)}</small>
           </b>
-          <span>xG</span>
+          <span>{t("xG")}</span>
         </div>
         <div>
           <b className="num">{pct(brief.stats.possession[0])}</b>
@@ -86,7 +92,7 @@ export function CatchMeUp({ room, roster, lang }: { room: string; roster: Roster
             {men[0]}
             <small> v {men[1]}</small>
           </b>
-          <span>On the pitch</span>
+          <span>{t("On the pitch")}</span>
         </div>
       </div>
       <ol className="cmu-points">
@@ -98,10 +104,10 @@ export function CatchMeUp({ room, roster, lang }: { room: string; roster: Roster
         ))}
       </ol>
       <div className="cmu-foot">
-        {brief.source === "agent" ? <span className="verified">Verified</span> : <span className="label">Template</span>}
+        {brief.source === "agent" ? <span className="verified">{t("Verified")}</span> : <span className="label">{t("Template")}</span>}
         <span className="label">{brief.source === "agent" ? "Summarizer agent" : "Filled from the match engine"}</span>
-        <button onClick={load} disabled={loading}>{loading ? "Updating" : "Update"}</button>
-        <button onClick={() => setOpen(false)}>Close</button>
+        <button onClick={load} disabled={loading}>{loading ? t("Updating") : t("Update")}</button>
+        <button onClick={() => setOpen(false)}>{t("Close")}</button>
       </div>
     </div>
   );

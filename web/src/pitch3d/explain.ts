@@ -1,5 +1,8 @@
 import type { BeatDraw, Clip, Explanation, Roster, Shot } from "../types";
 import type { Spot } from "./overlays";
+import { labels, t } from "../i18n";
+
+const tr = t; // `t` is a beat time inside the story loop
 
 /** What the Live tab hands the 3D pitch to explain one shot. */
 export interface ExplainRequest {
@@ -50,12 +53,12 @@ const AFTER_S = 3;
 const SLOW_FROM_S = 1.0;
 const GOAL_POSTS: [number, number] = [30.34, 37.66];
 
-const OUTCOME: Record<string, string> = {
+const OUTCOME: Record<string, string> = labels({
   goal: "Goal.",
   saved: "Saved by the keeper.",
   off_target: "Off target.",
   blocked: "Blocked.",
-};
+});
 
 const pct = (p: number) => Math.round(p * 100);
 
@@ -79,7 +82,7 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
   beats.push({
     t: start,
     rate: 1,
-    caption: { kind: `Replay · ${shot.minute}'`, text: `${req.title} for ${club.name}. Watch how ${shooter} got the chance.`, color: club.primary },
+    caption: { kind: `${t("Replay")} · ${shot.minute}'`, text: t("{title} for {club}. Watch how {player} got the chance.", { title: req.title, club: club.name, player: shooter }), color: club.primary },
   });
 
   // The build-up: each pass by the attacking side as it is played.
@@ -95,7 +98,7 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
   if (shot.creator && assist) {
     beats.push({
       t: assist.t,
-      caption: { kind: "The pass", text: `${name(shot.creator)} picks out ${shooter}.`, color: club.primary },
+      caption: { kind: t("The pass"), text: t("{a} picks out {b}.", { a: name(shot.creator), b: shooter }), color: club.primary },
       draw: [{ type: "ring", at: shot.creator, color: "#f4f4f1", radius: 2.4 }],
     });
   }
@@ -109,7 +112,7 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
   if (shot.defender && shot.defender_m !== null) {
     setUp.push({ type: "ring", at: shot.defender, color: "#f4f4f1", radius: 2.4 });
     setUp.push({ type: "line", a: shot.player, b: shot.defender, color: "#f4f4f1", width: 0.14, opacity: 0.7 });
-    defence = ` Nearest defender ${name(shot.defender)} is ${shot.defender_m.toFixed(1)} m away.`;
+    defence = " " + t("Nearest defender {player} is {m} m away.", { player: name(shot.defender), m: shot.defender_m.toFixed(1) });
   }
   beats.push({
     t: Math.max(start, shot.t - SLOW_FROM_S),
@@ -117,8 +120,8 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
     cam: "shooter",
     draw: setUp,
     caption: {
-      kind: "The shot",
-      text: `${shooter} shoots from ${shot.distance_m.toFixed(1)} m, with ${Math.round(shot.angle_deg)} degrees of goal to aim at.${defence}`,
+      kind: t("The shot"),
+      text: t("{player} shoots from {m} m, with {deg} degrees of goal to aim at.", { player: shooter, m: shot.distance_m.toFixed(1), deg: Math.round(shot.angle_deg) }) + defence,
       color: club.primary,
     },
   });
@@ -128,7 +131,7 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
     strike: true,
     caption: {
       kind: `xG ${shot.xg.toFixed(2)}`,
-      text: `A chance like this is scored about ${pct(shot.xg)} times in 100.`,
+      text: t("A chance like this is scored about {n} times in 100.", { n: pct(shot.xg) }),
       color: club.primary,
     },
   });
@@ -140,19 +143,19 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
   let swing: string;
   if (goal) {
     swing = ifGoal === ifMiss
-      ? ` Win probability for ${club.name}: ${ifGoal}%, the same as if it had missed.`
-      : ` Win probability for ${club.name} rises to ${ifGoal}%, from ${ifMiss}% had it missed.`;
+      ? " " + t("Win probability for {club}: {a}%, the same as if it had missed.", { club: club.name, a: ifGoal })
+      : " " + t("Win probability for {club} rises to {a}%, from {b}% had it missed.", { club: club.name, a: ifGoal, b: ifMiss });
   } else {
     swing = ifGoal === ifMiss
-      ? ` Win probability for ${club.name} stays at ${ifMiss}%. A goal would have moved it by less than one point.`
-      : ` A goal would have lifted ${club.name}'s win probability to ${ifGoal}%. It stays at ${ifMiss}%.`;
+      ? " " + t("Win probability for {club} stays at {b}%. A goal would have moved it by less than one point.", { club: club.name, b: ifMiss })
+      : " " + t("A goal would have lifted the win probability of {club} to {a}%. It stays at {b}%.", { club: club.name, a: ifGoal, b: ifMiss });
   }
   beats.push({
     t: Math.min(end, shot.t + 0.9),
     rate: 1,
     caption: {
       kind: goal ? `Goal · ${roster.clubs.home.short} ${after.replace("-", " : ")} ${roster.clubs.away.short}` : "Outcome",
-      text: `${OUTCOME[shot.outcome] ?? "No goal."}${swing}`,
+      text: `${OUTCOME[shot.outcome] ?? t("No goal.")}${swing}`,
       color: club.primary,
     },
   });
@@ -162,7 +165,7 @@ export function buildScript(req: ExplainRequest, roster: Roster, signal: string)
   return { start, end, beats, goalEnd: goalX > 0 ? 1 : -1, tags };
 }
 
-const STEP_TITLE: Record<string, string> = {
+const STEP_TITLE: Record<string, string> = labels({
   won: "Ball won",
   foul_won: "Foul won",
   restart: "Set piece",
@@ -170,9 +173,9 @@ const STEP_TITLE: Record<string, string> = {
   carry: "The run",
   tackle_beaten: "Tackle beaten",
   shot: "The shot",
-};
+});
 
-export const OUTCOME_TITLE: Record<string, string> = { goal: "Goal", saved: "Saved", blocked: "Blocked", off_target: "Off target" };
+export const OUTCOME_TITLE: Record<string, string> = labels({ goal: "Goal", saved: "Saved", blocked: "Blocked", off_target: "Off target" });
 
 /** How long a caption holds when no voice reads it: long enough to read it twice over. */
 const readMs = (text: string) => Math.min(9000, 1200 + text.length * 55);
@@ -225,7 +228,7 @@ function storyScript(req: ExplainRequest, story: Explanation, roster: Roster, si
     // A move that started before the clip (a foul, then a free kick) shows its first beat at the clip's start.
     const isShot = b.kind === "shot";
     const t = isShot ? Math.max(start + 0.2, shot.t - SLOW_FROM_S) : Math.min(Math.max(b.t, start + 0.2), shot.t - SLOW_FROM_S - 0.1);
-    const title = b.key ? "Key pass" : STEP_TITLE[b.kind] ?? "The move";
+    const title = b.key ? tr("Key pass") : STEP_TITLE[b.kind] ?? tr("The move");
     if (req.compact && !isShot) {
       beats.push({ t, rate: 1, draw: b.draw.flatMap((d) => storyDraw(d, club.primary, signal, goal, shot.player)) });
       return;
@@ -249,7 +252,7 @@ function storyScript(req: ExplainRequest, story: Explanation, roster: Roster, si
     t: Math.min(end, shot.t + 0.9),
     rate: 1,
     hold: hold(why),
-    caption: { kind: `${OUTCOME_TITLE[shot.outcome] ?? "Outcome"} · ${shot.outcome === "goal" ? "Why it worked" : "The verdict"}`, text: why, color: club.primary, step: -1 },
+    caption: { kind: `${OUTCOME_TITLE[shot.outcome] ?? t("Outcome")} · ${shot.outcome === "goal" ? t("Why it worked") : t("The verdict")}`, text: why, color: club.primary, step: -1 },
   });
   beats.sort((p, q) => p.t - q.t);
   const tags = [...new Set(story.beats.flatMap((b) => [b.player, b.to]).filter((id): id is string => !!id))];

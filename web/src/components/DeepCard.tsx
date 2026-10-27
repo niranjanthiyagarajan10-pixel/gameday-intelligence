@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DeepCard as Deep, Roster } from "../types";
 import type { Lang } from "../prefs";
+import { t } from "../i18n";
 
 /** Threat share in five-minute buckets: the home side's share from the top, the away side's from the bottom. */
 function ThreatChart({ chart, roster }: { chart: Deep["chart"]; roster: Roster }) {
@@ -11,9 +12,9 @@ function ThreatChart({ chart, roster }: { chart: Deep["chart"]; roster: Roster }
   const height = 110;
   const bw = chart.length ? (w - 30) / chart.length : 0;
   return (
-    <svg viewBox={`0 0 ${w} ${top + height + 22}`} width="100%" role="img" aria-label="Share of the threat, five minutes at a time">
+    <svg viewBox={`0 0 ${w} ${top + height + 22}`} width="100%" role="img" aria-label={t("Share of the threat, five minutes at a time")}>
       <text x={0} y={11} fill="var(--text-muted)" fontSize={10} fontWeight={600}>
-        SHARE OF THE THREAT, 5 MIN AT A TIME
+        {t("SHARE OF THE THREAT, 5 MIN AT A TIME")}
       </text>
       <line x1={30} x2={w} y1={top + height / 2} y2={top + height / 2} stroke="var(--line-dash)" strokeDasharray="2 4" />
       <text x={24} y={top + 8} fill="var(--text-dim)" fontSize={9} textAnchor="end">{h.short}</text>
@@ -42,14 +43,14 @@ export function DeepCards({ cards, roster, lang }: { cards: Deep[]; roster: Rost
     return (
       <div className="panel deep">
         <div className="deep-empty">
-          <span className="label">In-depth analysis</span>
-          <p>The In-depth Analyst writes its first read at 15 minutes, then every 15 minutes and after every goal or red card.</p>
+          <span className="label">{t("In-depth analysis")}</span>
+          <p>{t("The In-depth Analyst writes its first read at 15 minutes, then every 15 minutes and after every goal or red card.")}</p>
         </div>
       </div>
     );
   }
   const card = cards.find((c) => c.id === shown) ?? cards[cards.length - 1];
-  const t = (lang !== "en" && card.langs?.[lang]) || card;
+  const w = (lang !== "en" && card.langs?.[lang]) || card;
   return (
     <div className="panel deep">
       <div className="deep-main">
@@ -57,10 +58,10 @@ export function DeepCards({ cards, roster, lang }: { cards: Deep[]; roster: Rost
           <span className="label">
             {card.minute}' &middot; Analyst read &middot; {card.window[0]} to {card.window[1]}
           </span>
-          <h3 lang={lang}>{t.headline}</h3>
-          <p lang={lang}>{t.text}</p>
+          <h3 lang={lang}>{w.headline}</h3>
+          <p lang={lang}>{w.text}</p>
           <div className="deep-by">
-            {card.source === "agent" ? <span className="verified">Verified</span> : <span className="label">Template</span>}
+            {card.source === "agent" ? <span className="verified">{t("Verified")}</span> : <span className="label">{t("Template")}</span>}
             <span className="label">{card.source === "agent" ? "In-depth Analyst agent" : "Filled from the match engine"}</span>
           </div>
         </div>
@@ -70,7 +71,7 @@ export function DeepCards({ cards, roster, lang }: { cards: Deep[]; roster: Rost
       </div>
       {cards.length > 1 && (
         <div className="deep-history">
-          <span className="label">Earlier reads</span>
+          <span className="label">{t("Earlier reads")}</span>
           {cards.map((c) => (
             <button key={c.id} className={c.id === card.id ? "on" : ""} onClick={() => setShown(c.id)}>
               {c.minute}'
