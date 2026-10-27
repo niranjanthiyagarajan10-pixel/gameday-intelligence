@@ -27,7 +27,7 @@ interface Agent {
 
 const SKIN = ["#f1c7a0", "#d9a273", "#a86b45", "#7a4a2e", "#e8b98f", "#c68a5e"];
 
-const XI: Agent[] = [
+export const XI: Agent[] = [
   { no: 1, nick: tx("Safe Hands"), agent: "Analyst", trace: ["Analyst"], pos: [7, 34], skin: SKIN[2],
     does: tx("Answers any question about the match through 15 read-only MCP tools. Code re-runs every tool call to fill each number, and it says so when the data cannot answer."),
     problem: tx("Made-up stats"), pain: tx("Chatbots answer football questions with numbers nobody checked."),
@@ -74,7 +74,7 @@ const XI: Agent[] = [
     where: [{ label: tx("Newsdesk"), href: "#/news" }] },
 ];
 
-const SUB: Agent = {
+export const SUB: Agent = {
   no: 12, nick: tx("The Super-Sub"), agent: "Producer", trace: ["Producer"], pos: [0, 0], skin: SKIN[5],
   does: tx("The newest signing: picks the clips and presents a narrated Highlights reel with a verified intro and outro."),
   problem: tx("No time to watch it all"), pain: tx("Ninety minutes is a lot to ask."),

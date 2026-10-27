@@ -8,6 +8,7 @@ import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
 import { Squad } from "./components/Squad";
+import { Home } from "./components/Home";
 import { Blueprint } from "./components/Blueprint";
 import { League } from "./components/League";
 import { Evals } from "./components/Evals";
@@ -199,10 +200,10 @@ export default function App() {
   return (
     <div className="wrap">
       <header className="topbar">
-        <div className="brand">
+        <a className={`brand brand-link ${route.page === "home" ? "on" : ""}`} href="#/home" title={t("About Gameday Intelligence")}>
           <b>Gameday</b>
           <span>Intelligence</span>
-        </div>
+        </a>
         <div className="tabs">
           <button className={`tab tab-squad ${route.page === "squad" ? "on" : ""}`} onClick={() => (location.hash = "#/squad")}>
             {t("The Squad")}
@@ -236,9 +237,6 @@ export default function App() {
           </button>
           <button className={`tab ${route.page === "league" ? "on" : ""}`} onClick={() => (location.hash = "#/league")}>
             {t("League")}
-          </button>
-          <button className={`tab ${route.page === "evals" ? "on" : ""}`} onClick={() => (location.hash = "#/evals")}>
-            {t("Evals")}
           </button>
         </div>
         <div className="settings">
@@ -304,13 +302,24 @@ export default function App() {
         </div>
       </header>
 
-      {!["blueprint", "league", "evals", "preview", "news", "squad"].includes(route.page) && <Scoreboard state={state} />}
+      {!["blueprint", "league", "evals", "preview", "news", "squad", "home"].includes(route.page) && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "league" && <League onWatch={watch} />}
       {route.page === "evals" && <Evals />}
       {route.page === "squad" && <Squad trace={state.trace} />}
+      {route.page === "home" && (
+        <Home
+          state={state}
+          open={(where) => {
+            if (where === "live" || where === "analyst") {
+              setTab(where);
+              location.hash = "#/";
+            } else location.hash = where;
+          }}
+        />
+      )}
       {route.page === "preview" && <Preview room={room} lang={prefs.lang} />}
       {route.page === "news" && <Newsdesk lang={prefs.lang} />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}

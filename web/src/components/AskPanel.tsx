@@ -36,7 +36,7 @@ export function AskPanel({ room, roster, lang, depth, favourites }: Props) {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const fav = favourites.map((p) => roster.players[p]?.name).find(Boolean);
   const suggestions = [
-    t("Who has been the fastest player so far?"),
+    t("Who has created the most danger?"),
     fav ? t("How is {player} playing?", { player: fav }) : t("Who has created the best chances?"),
     t("Which team has the better chance of winning, and why?"),
   ];
@@ -63,9 +63,12 @@ export function AskPanel({ room, roster, lang, depth, favourites }: Props) {
 
   return (
     <div className="panel ask">
-      <div className="ph">
-        <h3>{t("Ask the match")}</h3>
-        <span className="label">Analyst agent &middot; MCP tools</span>
+      <div className="ask-head">
+        <div>
+          <span className="ask-kicker">{t("No. 1 Safe Hands")}</span>
+          <h3>{t("Ask the match")}</h3>
+        </div>
+        <span className="ask-tag">{t("Answers from the match data only")}</span>
       </div>
       <div className="pb">
         <form
@@ -75,6 +78,7 @@ export function AskPanel({ room, roster, lang, depth, favourites }: Props) {
             ask(question);
           }}
         >
+          <span className="ask-prompt" aria-hidden="true">?</span>
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -87,32 +91,44 @@ export function AskPanel({ room, roster, lang, depth, favourites }: Props) {
           </button>
         </form>
         <div className="ask-chips">
-          {suggestions.map((s) => (
+          {suggestions.map((s, i) => (
             <button key={s} onClick={() => ask(s)} disabled={busy}>
+              <i>Q{i + 1}</i>
               {s}
             </button>
           ))}
         </div>
-        {busy && <div className="empty">{t("The Analyst is checking the match data.")}</div>}
+        {busy && (
+          <div className="ask-busy">
+            <span className="ask-scan" />
+            {t("The Analyst is checking the match data.")}
+          </div>
+        )}
         {answers.map((a, i) => (
-          <div key={`${a.question}-${i}`} className="ask-a">
+          <div key={`${a.question}-${i}`} className={`ask-a ${i === 0 ? "latest" : ""}`}>
             <div className="ask-q">{a.question}</div>
             <p>{a.answer}</p>
             <div className="ask-meta">
-              <span className={a.source === "analyst" ? "verified" : "written"}>
+              <span className={`ask-stamp ${a.source === "analyst" ? "ok" : "no"}`}>
                 {a.source === "analyst" ? t("Verified from the match data") : t("No verified answer")}
               </span>
+              {a.evidence.length > 0 && <span className="ask-count">{t("{n} values checked", { n: a.evidence.length })}</span>}
               {lang !== "en" && a.lang === "en" && <span className="written">{t("English")}</span>}
             </div>
             {a.evidence.length > 0 && (
               <details className="ask-ev">
-                <summary>Evidence: {a.evidence.length} values re-read from the tools</summary>
-                {a.evidence.map((e) => (
-                  <div key={e.slot} className="num">
-                    {e.tool}({Object.entries(e.args).map(([k, v]) => `${k}=${String(v)}`).join(", ")}).{e.field} = <b>{e.value}</b>
-                  </div>
-                ))}
-                {a.limits && <div className="muted">Limits: {a.limits}</div>}
+                <summary>{t("Show the evidence")}</summary>
+                <div className="ask-ev-grid">
+                  {a.evidence.map((e) => (
+                    <div key={e.slot} className="ask-ev-row">
+                      <b className="num">{e.value}</b>
+                      <span>
+                        {e.tool}({Object.entries(e.args).map(([k, v]) => `${k}=${String(v)}`).join(", ")}).{e.field}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {a.limits && <div className="muted">{t("Limits")}: {a.limits}</div>}
               </details>
             )}
           </div>
