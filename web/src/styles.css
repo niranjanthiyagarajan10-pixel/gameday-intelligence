@@ -1001,3 +1001,93 @@ table.shots td:first-child { text-align: left; }
 .mt-reel-go b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 18px; letter-spacing: 0.06em; text-transform: uppercase; }
 .mt-reel-go span { font-size: 12px; }
 .mt-reel-go:hover { background: var(--signal); }
+
+/* The Squad: the eleven agents as a team, each marking the problem it solves */
+.tab-squad { color: var(--signal); }
+.squad { padding: 18px 0 32px; }
+.sq-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 0 4px 14px; border-bottom: 1px solid var(--line); }
+.sq-head h1 { font-family: "Barlow Condensed"; font-weight: 800; font-size: clamp(40px, 6vw, 72px); line-height: 0.9; text-transform: uppercase; letter-spacing: 0.01em; margin: 4px 0 8px; }
+.sq-head p { color: var(--text-muted); font-size: 16px; max-width: 640px; }
+.sq-head .label { color: var(--signal); }
+.sq-kick, .sq-reset { font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; padding: 12px 26px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+.sq-kick { background: var(--signal); color: #000; border: 0; }
+.sq-kick:hover { background: #f2ff7a; }
+.sq-reset { background: transparent; color: var(--text); border: 1px solid var(--line-dash); }
+.sq-body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; margin-top: 16px; align-items: start; }
+.sq-stage { position: relative; background: #050806; border: 1px solid var(--line); border-radius: 2px; padding: 10px 6px 4px; }
+.sq-pitch { width: 100%; height: auto; display: block; user-select: none; }
+.sq-pitch .stripe.a { fill: #0f1d14; }
+.sq-pitch .stripe.b { fill: #0c1810; }
+.sq-lines { stroke: rgba(244, 244, 241, 0.42); stroke-width: 2; }
+.sq-lines .dot { fill: rgba(244, 244, 241, 0.42); }
+.sq-side { font-family: "Barlow Condensed"; font-weight: 800; font-size: 24px; letter-spacing: 0.16em; text-transform: uppercase; }
+.sq-side.us { fill: var(--signal); }
+.sq-side.them { fill: #ff4d4d; }
+.sq-mark { stroke: var(--signal); stroke-width: 2; stroke-dasharray: 8 7; opacity: 0.75; animation: sq-dash 1.2s linear infinite; }
+@keyframes sq-dash { to { stroke-dashoffset: -30; } }
+.sq-player { cursor: pointer; outline: none; }
+.sq-player .fig { animation: sq-bob 2.4s ease-in-out infinite; transform-origin: center; }
+.sq-player:nth-of-type(3n) .fig { animation-delay: -0.8s; }
+.sq-player:nth-of-type(3n + 1) .fig { animation-delay: -1.6s; }
+@keyframes sq-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.sq-player.agent { transition: transform 900ms cubic-bezier(0.22, 0.8, 0.25, 1); }
+.fig-no { font-family: "Barlow Condensed"; font-weight: 800; font-size: 14px; }
+.plate rect { fill: #000; stroke: var(--line-dash); stroke-width: 1; }
+.plate-t { font-family: "Barlow Condensed"; font-weight: 800; font-size: 15px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--text); }
+.plate-s { font-family: "Barlow"; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--text-muted); }
+.plate-agent rect { stroke: var(--signal); }
+.plate-problem rect { stroke: #ff4d4d; }
+.plate-problem .plate-t { fill: #ffb3a8; font-size: 13.5px; }
+.plate-ref rect { stroke: var(--text); }
+.sq-player.on .plate-agent rect, .sq-player.agent:hover .plate rect { fill: var(--signal); }
+.sq-player.on .plate-agent text, .sq-player.agent:hover .plate text { fill: #000; }
+.sq-player.on .plate-problem rect, .sq-player.problem:hover .plate rect { fill: #ff4d4d; }
+.sq-player.on .plate-problem text, .sq-player.problem:hover .plate text { fill: #000; }
+.sq-player.ref.on .plate rect, .sq-player.ref:hover .plate rect { fill: var(--text); }
+.sq-player.ref.on .plate text, .sq-player.ref:hover .plate text { fill: #000; }
+.sq-player.on .fig { animation-duration: 0.9s; }
+.sq-player.problem { transition: opacity 400ms ease; }
+.sq-player.problem.beaten { opacity: 0.28; }
+.sq-player.problem.beaten .fig { animation: sq-down 500ms ease-out forwards; }
+@keyframes sq-down { to { transform: translateY(8px) rotate(-14deg); } }
+.sq-player.problem.beaten .plate-t { text-decoration: line-through; }
+.sq-player.ref.whistle .fig { animation: sq-whistle 600ms ease-in-out 3; }
+@keyframes sq-whistle { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.12); } }
+.sq-bench rect { fill: #08090b; stroke: var(--line); }
+.label-svg { font-family: "Barlow"; font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--text-muted); }
+.sq-bench-t { font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--signal); }
+.sq-bench-s { font-family: "Barlow"; font-size: 13px; fill: var(--text-muted); }
+.sq-final { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); background: #000; border: 2px solid var(--signal); border-radius: 3px; padding: 16px 28px; text-align: center; animation: mt-in 260ms ease-out; }
+.sq-final b { display: block; font-family: "Barlow Condensed"; font-weight: 800; font-size: 40px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--signal); line-height: 1; }
+.sq-final span { display: block; margin-top: 6px; font-family: "Barlow Condensed"; font-weight: 700; font-size: 22px; letter-spacing: 0.04em; text-transform: uppercase; }
+.sq-card { background: var(--surface); border: 1px solid var(--line); border-radius: 2px; padding: 18px; position: sticky; top: 12px; }
+.sq-card-top { display: flex; gap: 14px; align-items: center; }
+.sq-card-top h2 { font-family: "Barlow Condensed"; font-weight: 800; font-size: 32px; line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; }
+.sq-shirt { flex: none; display: grid; place-items: center; width: 56px; height: 56px; background: var(--signal); color: #000; font-family: "Barlow Condensed"; font-weight: 800; font-size: 30px; border-radius: 3px; }
+.sq-shirt.ref { background: var(--text); font-size: 18px; }
+.sq-does { margin: 14px 0; font-size: 15px; line-height: 1.5; }
+.sq-vs { border-left: 3px solid #ff4d4d; background: #140b0c; padding: 10px 12px; margin-bottom: 14px; }
+.sq-vs .label { color: #ff4d4d; font-size: 11px; }
+.sq-vs b { display: block; font-family: "Barlow Condensed"; font-weight: 800; font-size: 20px; text-transform: uppercase; margin-top: 2px; }
+.sq-vs p { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+.sq-where .label { font-size: 11px; }
+.sq-where div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sq-where a { font-family: "Barlow Condensed"; font-weight: 700; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--signal); color: var(--signal); border-radius: 2px; text-decoration: none; }
+.sq-where a:hover { background: var(--signal); color: #000; }
+.sq-live { display: flex; align-items: baseline; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.sq-live b { font-family: "Barlow Condensed"; font-weight: 800; font-size: 34px; color: var(--signal); }
+.sq-live span { color: var(--text-muted); font-size: 13px; }
+.sq-var { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sq-var div { background: var(--surface-2); padding: 10px; border-radius: 2px; }
+.sq-var b { display: block; font-family: "Barlow Condensed"; font-weight: 800; font-size: 28px; color: var(--signal); }
+.sq-var span { font-size: 12px; color: var(--text-muted); }
+.sq-evals { display: inline-block; margin-top: 14px; font-family: "Barlow Condensed"; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--signal); border-bottom: 1px solid var(--signal); text-decoration: none; }
+@media (max-width: 980px) {
+  .sq-body { grid-template-columns: 1fr; }
+  .sq-card { position: static; }
+  .sq-head { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-player .fig, .sq-mark, .sq-player.ref.whistle .fig { animation: none; }
+  .sq-player.agent { transition: none; }
+}

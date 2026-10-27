@@ -7,6 +7,7 @@ import { ShotPage } from "./components/ShotPage";
 import { PlayerPage } from "./components/PlayerPage";
 import { Overlay } from "./components/Overlay";
 import { Crest } from "./components/Crest";
+import { Squad } from "./components/Squad";
 import { Blueprint } from "./components/Blueprint";
 import { League } from "./components/League";
 import { Evals } from "./components/Evals";
@@ -203,6 +204,9 @@ export default function App() {
           <span>Intelligence</span>
         </div>
         <div className="tabs">
+          <button className={`tab tab-squad ${route.page === "squad" ? "on" : ""}`} onClick={() => (location.hash = "#/squad")}>
+            {t("The Squad")}
+          </button>
           <button className={`tab ${route.page === "preview" ? "on" : ""}`} onClick={() => (location.hash = "#/preview")}>
             {t("Preview")}
           </button>
@@ -300,12 +304,13 @@ export default function App() {
         </div>
       </header>
 
-      {!["blueprint", "league", "evals", "preview", "news"].includes(route.page) && <Scoreboard state={state} />}
+      {!["blueprint", "league", "evals", "preview", "news", "squad"].includes(route.page) && <Scoreboard state={state} />}
 
       {route.page === "shot" && <ShotPage room={room} id={route.id} roster={roster} />}
       {route.page === "player" && <PlayerPage room={room} id={route.id} roster={roster} />}
       {route.page === "league" && <League onWatch={watch} />}
       {route.page === "evals" && <Evals />}
+      {route.page === "squad" && <Squad trace={state.trace} />}
       {route.page === "preview" && <Preview room={room} lang={prefs.lang} />}
       {route.page === "news" && <Newsdesk lang={prefs.lang} />}
       {route.page === "blueprint" && <Blueprint room={room} roster={roster} halfS={state.halfS} lang={prefs.lang} />}
