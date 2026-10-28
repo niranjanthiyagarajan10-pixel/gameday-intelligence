@@ -2,6 +2,8 @@
 
 Live, verified, personalized football match intelligence. Built for the Microsoft x Premier League "Inside the Game" hackathon.
 
+**Watch the demo (1:57):** https://youtu.be/vox_YWON0Yc
+
 **Try it:** https://gameday-intelligence.orangecliff-ca1053f4.eastus2.azurecontainerapps.io (no sign-in; a match is always live). Start on Home by clicking the Gameday Intelligence logo. **Judges:** [JUDGING.md](JUDGING.md) is a three-minute tour mapped to each judging criterion.
 
 Gameday Intelligence turns a synthetic football match, with all 22 players tracked, into a live companion every fan can follow: key moment cards, commentary with a voice, a 3D pitch, a narrated highlights reel, match reports, and answers to any question about the match. It works in eight languages, at casual or analyst depth, around your favourite clubs and players.

@@ -8,7 +8,7 @@ Submit on the Projects page of https://aka.ms/insidethegame. All materials in En
 
 - [ ] Project name: Gameday Intelligence
 - [ ] Elevator pitch (below)
-- [ ] Demo video under 2 minutes, public on YouTube or Vimeo. Footage of the app running; no third-party trademarks, no copyrighted music.
+- [x] Demo video under 2 minutes: https://youtu.be/vox_YWON0Yc (unlisted, 1:57)
 - [ ] Public GitHub repository URL. The repository must be public to be considered.
 - [ ] Testing link: the live app (no sign-in needed). It must stay up, free and unrestricted until the end of judging on November 10, 2026.
 - [ ] Category: Best Multi-Agent System
