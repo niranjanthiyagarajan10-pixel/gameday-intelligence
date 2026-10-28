@@ -21,7 +21,7 @@ const OUTCOME: Record<string, { label: string; color: string }> = {
   blocked: { label: "Blocked", color: "var(--text-muted)" },
 };
 
-/** The hover card on a shot, in the spirit of the NBA's: who, how hard the chance was, what happened. */
+/** The hover card on a shot: who, how hard the chance was, what happened. */
 function ShotCard({ shot, roster }: { shot: Shot; roster: Roster }) {
   const p = roster.players[shot.player];
   const club = roster.clubs[shot.team];
@@ -59,7 +59,7 @@ function ShotCard({ shot, roster }: { shot: Shot; roster: Roster }) {
   );
 }
 
-/** NBA Inside the Game style beeswarm: every shot placed by xG, goals filled, misses as crosses. */
+/** Shot quality beeswarm: every shot placed by xG, goals filled, misses as crosses. */
 function ShotQuality({ shots, roster }: { shots: Shot[]; roster: Roster }) {
   const W = 1560;
   const X0 = 300;

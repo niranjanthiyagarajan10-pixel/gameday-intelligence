@@ -14,7 +14,7 @@ const MIN_FRAMES = 40; // smoothed frames below which a spot fades to the backgr
 const BANDS = 9; // per side of zero, for the contour look
 const BG: [number, number, number] = [12, 14, 17];
 
-// The NBA's diverging gravity scale: more attention runs dark red to pink, less runs dark blue to ice.
+// A diverging gravity scale: more attention runs dark red to pink, less runs dark blue to ice.
 const STOPS: [number, [number, number, number]][] = [
   [-1, [181, 220, 255]],
   [-0.66, [64, 138, 204]],

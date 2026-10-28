@@ -66,7 +66,7 @@
       <text x="690" y="228" font-size="16" fill="#8c9097">Agents write, VAR checks</text>
       <line x1="690" y1="246" x2="930" y2="246" stroke="#24262b"/>
       <g font-size="18" fill="#f4f4f1">
-        <text x="690" y="280">12 agents on Foundry</text>
+        <text x="690" y="280">11+1 agents on Foundry</text>
         <text x="690" y="314">Write words, not numbers</text>
         <text x="690" y="348">Code fills every <tspan class="m" fill="#e8ff3a">{slot}</tspan></text>
         <text x="690" y="382">VAR checks every claim</text>
@@ -216,7 +216,7 @@
     </g>
     <text x="852" y="1018">1 ANALYST</text><text x="1034" y="1018">2 SUMMARIZER</text><text x="1216" y="1018">3 PREVIEW</text><text x="1398" y="1018">4 POST-GAME</text>
     <text x="852" y="1064">5 PERSONALIZER</text><text x="1034" y="1064">6 IN-DEPTH ANALYST</text><text x="1216" y="1064">7 NARRATOR X2</text><text x="1398" y="1064">8 COMMENTATOR</text>
-    <text x="852" y="1110">9 EXPLAINER</text><text x="1034" y="1110">10 RECAP</text><text x="1216" y="1110">11 NEWSDESK</text><text x="1398" y="1110">12 PRODUCER</text>
+    <text x="852" y="1110">9 EXPLAINER</text><text x="1034" y="1110">10 RECAP</text><text x="1216" y="1110">11 NEWSDESK</text><text x="1398" y="1110">SUB PRODUCER</text>
     <rect x="840" y="1132" width="352" height="36" fill="#f4f4f1"/>
     <text x="852" y="1156" fill="#000">VAR: THE VERIFIER, PURE CODE</text>
   </g>

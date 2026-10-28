@@ -14,7 +14,7 @@ interface Props {
 
 const POSITION: Record<string, string> = labels({ GK: "Goalkeeper", DF: "Defender", MF: "Midfielder", FW: "Forward" });
 
-/** A player's game averages and every shot, like the NBA player shot page. Refreshes while the match is live. */
+/** A player's game averages and every shot. Refreshes while the match is live. */
 export function PlayerPage({ room, id, roster }: Props) {
   const [summary, setSummary] = useState<PlayerSummary | null>(null);
   const info = roster.players[id];

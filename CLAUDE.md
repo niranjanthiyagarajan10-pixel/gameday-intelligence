@@ -17,7 +17,7 @@ Product: a live match companion for fans. It turns synthetic football events wit
 9. No em dashes anywhere: code comments, docs, UI copy, prompts. Use plain language and short sentences.
 10. No medical or injury prediction claims.
 11. Scope is fixed in `docs/SPEC.md` section 3. Anything not listed there is out of scope unless I say otherwise.
-12. All UI follows `docs/DESIGN.md`: a black broadcast-style dashboard in the spirit of NBA Inside the Game. Never ship anything on its banned list (blue or purple gradients, glassmorphism, glows, soft rounded cards, sparkle or robot icons, default shadcn look). Read it before any frontend task.
+12. All UI follows `docs/DESIGN.md`: a black broadcast-style dashboard, like a premium TV sports graphics package. Never ship anything on its banned list (blue or purple gradients, glassmorphism, glows, soft rounded cards, sparkle or robot icons, default shadcn look). Read it before any frontend task.
 
 ## Stack
 

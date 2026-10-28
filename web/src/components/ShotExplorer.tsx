@@ -33,7 +33,7 @@ function Marker({ kind, x, y, goal, size = 1.25 }: { kind: Band; x: number; y: n
   return <circle cx={x} cy={y} r={size * 0.9} {...common} />;
 }
 
-/** The attacking half, standing up like the NBA half court, goal at the top. */
+/** The attacking half, standing up, goal at the top. */
 function HalfPitch({ children }: { children: React.ReactNode }) {
   const net = `hn${useId().replace(/:/g, "")}`;
   return (

@@ -1,4 +1,4 @@
-"""Counterfactual leverage, adapted from NBA Leverage. See docs/SPEC.md section 8.
+"""Counterfactual leverage. See docs/SPEC.md section 8.
 
 leverage(event) = value(actual outcome) - value(opposite outcome), from the acting team's side,
 where value = P(win) + 0.5 * P(draw). Possession is valued with expected threat: holding the ball

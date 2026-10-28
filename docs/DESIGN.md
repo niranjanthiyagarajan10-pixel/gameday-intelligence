@@ -1,6 +1,6 @@
 # Gameday Intelligence design direction
 
-The dashboard must look like a premium sports broadcast product, in the family of NBA Inside the Game, Prime Vision and a modern TV graphics package. It must not look like a generic AI app.
+The dashboard must look like a premium sports broadcast product, in the family of a modern TV sports graphics package. It must not look like a generic AI app.
 
 ## 1. The feel
 
@@ -9,7 +9,7 @@ The dashboard must look like a premium sports broadcast product, in the family o
 - Dense with data, but calm. Thin rules, lots of alignment, no decoration.
 - Looks like it could sit on a broadcast feed tonight.
 
-Reference points: NBA Inside the Game shot difficulty and leverage pages, Prime Video Thursday Night Football graphics, F1 TV timing screens, Bloomberg terminal density.
+Reference points: modern TV sports graphics, timing screens and data-terminal density.
 
 ## 2. Banned (the "AI slop" list)
 
@@ -66,7 +66,7 @@ label         12 / 1.2   Barlow 600, uppercase, letter-spacing 0.06em, --text-mu
 
 - 12 column grid, 16 px gutters, max width 1600 px. Designed for 1920 x 1080 first, because that is what the video records.
 - Panels sit on `--surface` with a 1 px `--line` border. No shadows.
-- Section labels sit above panels, small caps style, like "MORE DIFFICULT" and "LESS DIFFICULT" in the NBA beeswarm.
+- Section labels sit above panels, small caps style, like "MORE DIFFICULT" and "LESS DIFFICULT" on the beeswarm.
 - Must still work at 1280 px wide and on a phone in a single column, but do not spend demo time on mobile polish.
 
 ## 6. Charts
@@ -79,13 +79,13 @@ Use recharts or plain SVG. Rules for every chart:
 - Every chart has a big headline number in the top left of its panel, like "1.84 xG" with "2 goals from 13 shots" under it.
 
 Specific charts:
-- Shot quality beeswarm: copy the NBA layout. One row per team, team crest at left, filled dot for goals, grey cross for misses, xG axis 0 to 1.
+- Shot quality beeswarm: one row per team, team crest at left, filled dot for goals, grey cross for misses, xG axis 0 to 1.
 - Win probability: a stepped line with three bands (home, draw, away). Mark goals and red cards with small vertical ticks.
 - Momentum: a centered bar that leans toward the team in control, filled with that team's colour.
 - Leverage table: dense rows, tabular numbers, a small inline bar for total leverage, sortable headers.
 - Team shape strip: a thin horizontal timeline with three shades for low block, mid block and high press.
-- Gravity heatmap: copy the NBA Gravity map. Smooth contour bands on a near-black pitch with light lines, a diverging scale from dark red to pink for more attention and from dark blue to ice for less, with a labelled scale bar under it. This is the one place a blue scale is allowed, because it encodes data, not decoration.
-- Match Blueprint: one long page of bordered sections in the NBA Blueprint order. Player cards use a club-colour band with the shirt (our stand-in for a player photo); shot difficulty uses red triangles, blue circles and green squares for hard, average and easy, filled for goals.
+- Gravity heatmap: smooth contour bands on a near-black pitch with light lines, a diverging scale from dark red to pink for more attention and from dark blue to ice for less, with a labelled scale bar under it. This is the one place a blue scale is allowed, because it encodes data, not decoration.
+- Match Blueprint: one long page of bordered sections. Player cards use a club-colour band with the shirt (our stand-in for a player photo); shot difficulty uses red triangles, blue circles and green squares for hard, average and easy, filled for goals.
 
 ## 7. The pitch
 

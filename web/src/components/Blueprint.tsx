@@ -244,7 +244,7 @@ function LeverageCards({ items, roster }: { items: LeverageSpot[]; roster: Roste
   );
 }
 
-/** The Match Blueprint: one page that tells the story of the match, after NBA Inside the Game. */
+/** The Match Blueprint: one page that tells the story of the match. */
 export function Blueprint({ room, roster, halfS, lang = "en" }: { room: string; roster: Roster; halfS: number; lang?: Lang }) {
   const [bp, setBp] = useState<BlueprintData | null>(null);
   const [writing, setWriting] = useState(false);

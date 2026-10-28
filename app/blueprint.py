@@ -1,4 +1,4 @@
-"""The Match Blueprint: a one-page story of a match, adapted from the NBA Inside the Game Blueprint.
+"""The Match Blueprint: a one-page story of a match, told from the engine's facts.
 
 Overview, highlights, top performers, shot difficulty, gravity, marking and leverage spotlights.
 Every number comes from the live engine; every sentence is a word-only template from
@@ -61,7 +61,7 @@ class _Names:
         return self.players.get(pid, {}).get("name", pid)
 
     def short(self, pid: str) -> str:
-        """'R. Okafor', like the NBA's 'C. Braun'."""
+        """'R. Okafor': first initial and surname."""
         full = self.name(pid)
         first, _, last = full.partition(" ")
         return f"{first[0]}. {last}" if last else full

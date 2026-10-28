@@ -75,20 +75,6 @@ Do not chase: season simulation, prediction games, Event Hubs, Fabric, A2A, Web 
 | Responsive enough for live play | Room streams frames 10 times a second; agents get an 8 s timeout with a template fallback | Engine done | Agents, Oct 24 |
 | Fans in any market tailor their experience | Depth, focus | Partial | Language, clubs, players, metric mode, Oct 25 |
 
-### Benchmark: NBA Inside the Game
-
-The Premier League judges will know NBA Inside the Game (Shot Difficulty, Leverage, Gravity, Zone Defense, Handle Score). It is mostly post-game stats pages with no live narrative, personalization or languages. We bring football versions of its best ideas into a live, verified, personalized experience.
-
-Positioning line: "NBA Inside the Game shows you the numbers after the game. Gameday Intelligence tells you the story live, verified, and made for you."
-
-| NBA feature | Our football version |
-|---|---|
-| Shot Difficulty (xFG% beeswarm) | Shot quality beeswarm by xG |
-| Leverage | Counterfactual leverage with credit split across players |
-| Zone Defense detection | Low block and high press detection |
-| Defensive Pressure | Press resistance |
-| Gravity | Stretch |
-
 Auto-eventing from video is out of scope. Say so in the README.
 
 ## 3. Scope
@@ -97,7 +83,7 @@ Auto-eventing from video is out of scope. Say so in the README.
 
 1. Simulator with full 2D tracking at 5 frames per second, fictional league, scenario scripts.
 2. Live stats engine: xG, xT, pass difficulty, ball and shot speed, sprints and distance, win probability, momentum, control and chaos.
-3. NBA-inspired metrics: counterfactual leverage with player credit, low block and high press detection, press resistance.
+3. Tracking metrics: counterfactual leverage with player credit, low block and high press detection, press resistance.
 4. Live Match screen: 2D pitch, scoreboard, momentum bar, win probability line, overlay cards, key moments list, trace panel.
 5. Analyst tab: shot quality beeswarm, player leverage table, press resistance, match leaderboards.
 6. Agent pipeline: Editor, Narrator, Verifier, Personalizer, using MCP tools.
@@ -105,8 +91,8 @@ Auto-eventing from video is out of scope. Say so in the README.
 8. Evidence drawer: every card opens the events, numbers and formulas behind it.
 9. Ask the match: chat answered by the Analyst agent through MCP tools, with evidence.
 10. Replay mode: cached agent outputs so the demo works with Foundry off.
-11. Shot replay and player pages (NBA style): click a shot to watch a tracking replay of the move with its difficulty and details; player pages with goals above expected, xG of goals and misses, nearest defender distance and every shot. Built on an explicit `Feed` ingest boundary (`engine/feed.py`).
-12. Match Blueprint page (`#/blueprint`), adapted from the NBA Inside the Game Blueprint: match overview, highlight reel of tracking replays, top performers, shot difficulty explorer with the nearest defender named, Gravity heatmap and player card, marking spotlight, leverage spotlight. Updates live and works as the full-time report.
+11. Shot replay and player pages: click a shot to watch a tracking replay of the move with its difficulty and details; player pages with goals above expected, xG of goals and misses, nearest defender distance and every shot. Built on an explicit `Feed` ingest boundary (`engine/feed.py`).
+12. Match Blueprint page (`#/blueprint`): match overview, highlight reel of tracking replays, top performers, shot difficulty explorer with the nearest defender named, Gravity heatmap and player card, marking spotlight, leverage spotlight. Updates live and works as the full-time report.
 13. Judge-facing extras:
     - `docs/JUDGING.md`: each criterion mapped to the screen, file and number that proves it, plus a 2-minute tour.
     - Jump-to-moment links (for example `/?match=demo&t=55m`) that start playback just before the red card, the shape change and the winner.
@@ -165,8 +151,8 @@ Match Blueprint (`#/blueprint`, built from `GET /api/rooms/{room}/blueprint`, re
 - Match overview: a headline and a paragraph from word-only templates in `agents/report.py`, slots filled by `app/blueprint.py` (result, top scorer or threat, wasteful finisher, chance battle, best spell, red cards, gravity and leverage callouts). The Recap agent rewrites it in M3.
 - Highlights: up to five goals and big chances, each a tracking replay with a broadcast title such as "MENSAH SCORES AFTER A DRIBBLE".
 - Top performers: four different players for goals above xG, creation leverage, defensive leverage and average gravity, each with an info tooltip.
-- Shot difficulty: the attacking half stood up like the NBA half court, every shot marked Hard (under 0.05 xG), Average or Easy (0.20 and up), goals filled. Filter by half. Clicking a shot shows the shooter, the nearest defender by name, xG on a bar against the 0.12 league average, defender distance, pressure, shot speed, distance, angle and result, with a replay link.
-- Gravity: team heatmap in the NBA's diverging scale with an Overall, On-ball or Off-ball switch, and a player card with overall gravity and its final third and build-up, on-ball and off-ball parts.
+- Shot difficulty: the attacking half stood up, every shot marked Hard (under 0.05 xG), Average or Easy (0.20 and up), goals filled. Filter by half. Clicking a shot shows the shooter, the nearest defender by name, xG on a bar against the 0.12 league average, defender distance, pressure, shot speed, distance, angle and result, with a replay link.
+- Gravity: team heatmap in a diverging scale with an Overall, On-ball or Off-ball switch, and a player card with overall gravity and its final third and build-up, on-ball and off-ball parts.
 - Marking spotlight: for each side, the opponent's main threat and the defender who marked them most, with the time bar, shots, xG and goals allowed and passes received.
 - Leverage spotlight: each side's top player, total leverage and its four parts as diverging bars.
 
@@ -352,7 +338,7 @@ control_index = possession_share * pass_completion
 chaos_index = turnovers_per_min_last_5 / baseline
 ```
 
-Counterfactual leverage (adapted from NBA Leverage, implemented in `engine/leverage.py`):
+Counterfactual leverage (implemented in `engine/leverage.py`):
 ```
 value = P(win) + 0.5 * P(draw)        (so an equaliser gets its due)
 possession at a spot = xT(spot) * value(score + 1) + (1 - xT(spot)) * value(score)
@@ -389,7 +375,7 @@ press resistance = retained / pressured possessions  (retained = still in team p
 ```
 Show attempts next to every rate. Hide a rate with fewer than 5 attempts.
 
-Gravity (`engine/gravity.py`, adapted from NBA Gravity):
+Gravity (`engine/gravity.py`):
 ```
 attention(player) = sum over outfield defenders of max(0, 1 - distance / 6 m)
 gravity = 100 * (attention - league average attention for the same zone and role)

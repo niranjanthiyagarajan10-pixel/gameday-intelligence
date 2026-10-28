@@ -137,7 +137,7 @@ def _avg(values: list[float]) -> float | None:
 
 
 def player_summary(live: LiveStats, player_id: str) -> dict[str, Any]:
-    """Per-player game averages, in the spirit of the NBA player shot page."""
+    """Per-player game averages: goals above expected, shot quality and physical numbers."""
     shots = [s for s in live.shots if s.player_id == player_id]
     goals = [s for s in shots if s.outcome == "goal"]
     misses = [s for s in shots if s.outcome != "goal"]

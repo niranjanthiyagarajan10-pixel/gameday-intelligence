@@ -27,7 +27,7 @@ def sigmoid(z: float) -> float:
 
 
 # Expected goals: a logistic model of distance, goal-mouth angle, header, pressure and the
-# distance to the nearest outfield defender (the NBA's "defender contest"). The coefficients
+# distance to the nearest outfield defender (how closely the shot was contested). The coefficients
 # are fitted by regression on simulated shots (engine/calibrate.py writes data/models/xg.json).
 # PRIOR_XG is the hand-set starting point used until a fitted model exists.
 

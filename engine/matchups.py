@@ -1,4 +1,4 @@
-"""Marking matchups from tracking, adapted from the NBA defensive matchup data.
+"""Marking matchups from tracking: which defender marked each attacker.
 
 Every tracking frame while a team has the ball, each of its outfield players is marked by the
 nearest outfield defender. Time is added to that pair, and what the attacker does while marked

@@ -19,7 +19,7 @@ const OUTCOME: Record<string, string> = labels({
   blocked: "Blocked",
 });
 
-/** One shot, the way NBA Inside the Game shows one field goal: a replay, its difficulty and the details. */
+/** One shot: a replay, its difficulty and the details. */
 export function ShotPage({ room, id, roster }: Props) {
   const [data, setData] = useState<ShotPageData | null>(null);
   const [player, setPlayer] = useState<PlayerSummary | null>(null);

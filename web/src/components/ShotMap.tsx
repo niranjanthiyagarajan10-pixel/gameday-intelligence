@@ -11,7 +11,7 @@ interface Props {
 const LINE = { fill: "none", stroke: "rgba(255,255,255,.3)", strokeWidth: 0.3 } as const;
 
 /**
- * Half-pitch shot map with the goal at the top, like the NBA court chart.
+ * Half-pitch shot map with the goal at the top.
  * Shots are drawn in the shooting team's attacking frame, so both teams attack upward.
  * Map: pitch x (52.5 to 105) runs bottom to top, pitch y (0 to 68) runs left to right.
  */

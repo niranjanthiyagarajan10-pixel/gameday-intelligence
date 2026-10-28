@@ -1,4 +1,4 @@
-"""Gravity for football, adapted from NBA Gravity: the defensive attention a player draws beyond what
+"""Gravity for football, the defensive attention a player draws beyond what
 is normal for where they are on the pitch and whether they have the ball.
 
 Every tracking frame while a team has the ball, each of its outfield players gets an attention score:

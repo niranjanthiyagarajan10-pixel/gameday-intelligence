@@ -10,7 +10,7 @@ Gameday Intelligence is a live match companion. AI agents explain a synthetic fo
 ## A three-minute tour
 
 1. **Home** (click the Gameday Intelligence logo). The whole product on one page. Watch the demo card: an agent writes a line with slots, code fills them, VAR checks it. The second example is sent back because "4 in 100 is not a clear chance."
-2. **Meet the Gameday XI** (on Home). Twelve agents as a team, each marking one fan problem. Press **Kick off** to watch them solve all eleven.
+2. **Meet the Gameday XI** (on Home). Eleven agents plus a Super-Sub (11+1), each marking one fan problem. Press **Kick off** to watch them solve all eleven.
 3. **Live Match.** The 3D pitch with all 22 players. Key moment cards arrive as they happen; open one to see its evidence and formula. Switch **Depth** to Analyst and the same moment reads differently. Switch **Language** and everything follows, voice included.
 4. **Ask the match** (under the charts on Live Match). Press a suggested question. Open "Show the evidence" to see the MCP tool calls code re-ran to fill each number.
 5. **Match Theatre** (the white button on Live Match). Pick a goal and press Explain this moment, or play the narrated Highlights reel.
@@ -42,7 +42,7 @@ Gameday Intelligence is a live match companion. AI agents explain a synthetic fo
 
 ### User experience and presentation
 
-- **A black broadcast look**, in the spirit of NBA Inside the Game ([docs/DESIGN.md](docs/DESIGN.md)): condensed type and one signal colour, with no gradients or glows.
+- **A black broadcast look** ([docs/DESIGN.md](docs/DESIGN.md)): condensed type and one signal colour, with no gradients or glows.
 - **Balanced front and back end.** A three.js 3D stadium with seven cameras, telestration on goals, beeswarm and xG race charts, a pass network and Gravity heatmaps, all driven by a deterministic engine and a streaming WebSocket API.
 - **Everything is one tap from its evidence.**
 
@@ -50,7 +50,7 @@ Gameday Intelligence is a live match companion. AI agents explain a synthetic fo
 
 | What the category asks | Where to see it |
 |---|---|
-| Specialized agents with distinct roles | The Gameday XI: twelve agents, one fan problem each (Home, [README](README.md#the-gameday-xi)) |
+| Specialized agents with distinct roles | The Gameday XI: 11+1 agents, one fan problem each (Home, [README](README.md#the-gameday-xi)) |
 | Coordination through shared state and handoffs | Agents share the match room and the MCP tools. The card desk is an Agent Framework workflow: Dispatch fans out to two Narrators in parallel, Settle fans back in, then the Personalizer runs. The Producer chains the Explainer's verified stories into one reel. |
 | Recovery from failures | VAR rejections with reasons and up to two retries; 8 second timeouts; templates translated ahead of time; Foundry rate limits queued and retried. All visible in Trace. |
 | An outcome one agent could not achieve as well | One agent cannot narrate, check itself, translate, present and answer questions live without making up numbers. Splitting the work, with VAR in code, is what makes 0 errors on screen possible. |
