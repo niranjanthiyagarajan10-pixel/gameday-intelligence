@@ -24,62 +24,46 @@ Yellow boxes are AI agents on Microsoft Foundry. Grey boxes are deterministic co
 
 ```mermaid
 flowchart TB
-  subgraph S1["1 INGEST"]
-    SIM["Match simulator: 22 players at 5 fps,<br/>events and tracking frames"]
-  end
-  subgraph S2["2 INTERPRET (code only)"]
-    ENG["Engine: xG, expected threat, win probability,<br/>leverage, gravity, shape and press"]
-    KM["Key moments with their evidence"]
-  end
-  subgraph S3["3 EXPLAIN (agents on Foundry)"]
-    AG["Agent writes a template<br/>#123;player#125; scores from #123;dist#125; metres"]
-    FILL["Code fills every slot from engine state"]
-    VAR{"VAR checks numbers,<br/>names, claims, wording"}
-    TPL["Checked template,<br/>translated ahead of time"]
-    AN["Analyst agent<br/>answers Ask the match"]
-    MCP["MCP server: 15 read-only tools<br/>code re-runs every call cited"]
-  end
-  subgraph S5["5 PERSONALIZE"]
-    PREF["Depth, 8 languages, favourites,<br/>metric mode, player focus, style"]
-    PERS["Personalizer agent<br/>writes the languages being watched"]
-  end
-  subgraph S4["4 RENDER"]
-    ROOM["Match room"]
-    UI["Dashboard over WebSocket<br/>Live 3D, Theatre, Analyst, Blueprint, Newsdesk"]
-    OV["Broadcast overlay and cues API"]
-    SP["Azure AI Speech, verified lines only"]
-  end
+  SIM["Stage 1 INGEST: match simulator, 22 players at 5 fps"]
+  ENG["Stage 2 INTERPRET: engine computes xG, win probability, leverage"]
+  KM["Key moments with evidence"]
+  AG["Stage 3 EXPLAIN: agent writes a template with slots"]
+  FILL["Code fills every slot from the engine"]
+  VAR{"VAR checks the line"}
+  TPL["Checked template, translated ahead"]
+  PERS["Stage 5 PERSONALIZE: Personalizer writes each language"]
+  PREF["Fan picks depth, language, clubs, players"]
+  ROOM["Stage 4 RENDER: match room"]
+  UI["Dashboard: Live 3D, Theatre, Blueprint"]
+  OV["Broadcast overlay and cues API"]
+  SP["Azure AI Speech voice"]
+  Q["Fan asks a question"]
+  AN["Analyst agent"]
+  MCP["MCP server, 15 read-only tools"]
 
   SIM --> ENG --> KM --> AG --> FILL --> VAR
-  VAR -- "sent back with reasons, up to 2 retries" --> AG
-  VAR -- "pass" --> PERS
-  VAR -- "still wrong or over 8 s" --> TPL
+  VAR -->|rejected, up to 2 retries| AG
+  VAR -->|pass| PERS
+  VAR -->|still wrong or over 8 s| TPL
+  TPL --> ROOM
   PREF --> PERS
   PERS --> ROOM
-  TPL --> ROOM
+  Q --> AN
   AN <--> MCP
-  MCP -. reads .-> ENG
+  MCP -.->|reads| ENG
   AN --> ROOM
   ROOM --> UI
   ROOM --> OV
   ROOM --> SP
-  PREF -.-> UI
-  KM ~~~ AN
+  KM ~~~ Q
 
-  classDef ai fill:#1f2206,stroke:#e8ff3a,stroke-width:2px,color:#f4f4f1
-  classDef code fill:#141519,stroke:#8c9097,color:#f4f4f1
-  classDef var fill:#141519,stroke:#f4f4f1,stroke-width:3px,color:#f4f4f1
-  classDef out fill:#e8ff3a,stroke:#e8ff3a,color:#000
+  classDef ai fill:#2a2e05,stroke:#e8ff3a,stroke-width:2px,color:#ffffff
+  classDef code fill:#1b1d22,stroke:#8c9097,color:#ffffff
+  classDef out fill:#e8ff3a,stroke:#e8ff3a,color:#000000
   class AG,AN,PERS ai
-  class SIM,ENG,KM,FILL,TPL,MCP,PREF,ROOM,OV,SP code
-  class VAR var
+  class SIM,ENG,KM,FILL,TPL,MCP,PREF,ROOM,OV,SP,Q,VAR code
   class UI out
-  style S1 fill:#000,stroke:#3a3d44,color:#e8ff3a
-  style S2 fill:#000,stroke:#3a3d44,color:#e8ff3a
-  style S3 fill:#000,stroke:#e8ff3a,color:#e8ff3a
-  style S4 fill:#000,stroke:#3a3d44,color:#e8ff3a
-  style S5 fill:#000,stroke:#3a3d44,color:#e8ff3a
-  linkStyle 5 stroke:#ff5a4f,stroke-width:2px,color:#ff5a4f
+  linkStyle 5 stroke:#ff5a4f,stroke-width:2px
 ```
 
 It runs as one always-on container on **Azure Container Apps**, calls **Microsoft Foundry** with a managed identity (no keys), traces every agent step with **OpenTelemetry** into the Trace panel, and deploys from **GitHub Actions** with OIDC after the tests and evals pass.
